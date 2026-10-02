@@ -331,3 +331,12 @@ module.exports = {
 ```
 
 Restart the backend and the plugin is loaded (`GET /api/v1/firmware` lists what loaded and why a file was skipped). The full guide with every hook is in [`backend/firmware/README.md`](backend/firmware/README.md); [`_example.js`](backend/firmware/_example.js) is a commented template and [`intminer.js`](backend/firmware/intminer.js) a working plugin for Goldshell miners on intminer firmware.
+
+## License and credits
+
+hashes.space is free software under the **GNU Affero General Public License v3.0** ([LICENSE](LICENSE)). If you run a modified version for others over a network, you must offer them its source code.
+
+The blockchain strip builds on the visual language of **[The Mempool Open Source Project®](https://github.com/mempool/mempool)** (AGPL-3.0): the 3D block style, the projected and mined block colours and the fee-rate colour scale. Block data comes from mempool-compatible explorers through their public WebSocket API. Thank you to the mempool contributors.
+
+hashes.space is an independent project and is not affiliated with or endorsed by Mempool Holdings S.A. de C.V. mempool.space® and the mempool logos are trademarks of Mempool Holdings; they are used here only to name the data sources.
+
