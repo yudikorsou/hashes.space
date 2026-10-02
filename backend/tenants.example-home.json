@@ -1,0 +1,13 @@
+[
+  {
+    "id": "home",
+    "name": "hashes.space",
+    "apiKey": "change-me-to-a-long-random-key",
+    "accentColor": "#f7931a",
+    "expectedPoolHosts": ["192.168.1.10"],
+    "nodes": {
+      "sha256": "stratum+tcp://192.168.1.10:3333",
+      "blake2b": ["stratum+tcp://192.168.1.10:23340", "stratum+tcp://192.168.1.10:23339"]
+    }
+  }
+]

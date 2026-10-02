@@ -1,0 +1,151 @@
+<main class="settings">
+  <header class="page-head">
+    <h1>Miner settings</h1>
+    <p>Everything a miner needs to run, in one place for any brand. Each section says whether it is sent to the miner or only saved here.</p>
+  </header>
+
+  @if (selected(); as m) {
+    <!-- m = the connected miner -->
+    <div class="summary" [class]="'summary ' + m.status">
+      <div>
+        <h2>{{ m.name }}</h2>
+        <p><span class="ip">{{ m.host }}</span> · {{ m.model }} · <span class="state">{{ statusLabel[m.status] }}</span></p>
+        <p class="reason">{{ m.statusReason }}</p>
+      </div>
+      <dl class="now">
+        <div><dt>Mining on now</dt><dd>{{ m.poolUrl || 'nothing' }}</dd></div>
+        <div><dt>Hashrate</dt><dd>{{ hashrate(m) }}</dd></div>
+        <div><dt>Settings sent through</dt><dd>{{ m.driver ?? '–' }}</dd></div>
+        @if (m.firmwareVersion) {
+          <div><dt>Firmware</dt><dd>{{ m.firmwareVersion }}</dd></div>
+        }
+      </dl>
+    </div>
+
+    <div class="layout">
+      <nav class="toc" aria-label="Settings sections">
+        @for (s of sections; track s.id) {
+          <button type="button" (click)="goTo(s.id)">{{ s.label }}</button>
+        }
+      </nav>
+
+      <div class="cards">
+        <!-- Pools -->
+        <section class="s-card" id="sec-pools" aria-labelledby="h-pools">
+          <div class="s-card-head">
+            <div>
+              <h2 id="h-pools">Pools</h2>
+              <p>Where the miner sends its work: a main pool, and a failover pool it switches to only if the main pool goes down.</p>
+            </div>
+            <span class="s-cap" [class.saved-only]="!canApplyPools()">{{ canApplyPools() ? 'Applies to the miner' : 'Saved here only' }}</span>
+          </div>
+
+          @if (myNode(); as node) {
+            <div class="node-hint">
+              <span>Your {{ algoLabel() }} node: <code>{{ node }}</code></span>
+              <button type="button" class="btn" (click)="useMyNode()">Use my node as main pool</button>
+            </div>
+          }
+
+          <form class="pool-grid" (submit)="$event.preventDefault(); save(true)" novalidate role="group" aria-label="Pool addresses">
+            <span class="col-head"></span>
+            <span class="col-head">Pool URL</span>
+            <span class="col-head">Worker</span>
+            <span class="col-head">Password</span>
+            @for (p of model().pools; track $index; let i = $index) {
+              <label class="slot" [attr.for]="'pool-url-' + i">{{ slotNames[i] }}<small>{{ slotHints[i] }}</small></label>
+              <div class="field">
+                <input [id]="'pool-url-' + i" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="stratum+tcp://host:port"
+                  [value]="p.url" [class.invalid]="touched() && errors()[i]" (input)="patchPool(i, { url: $any($event.target).value })" />
+                @if (isMyNode(p.url)) {
+                  <span class="tag">your node</span>
+                }
+              </div>
+              <input [id]="'pool-user-' + i" type="text" autocomplete="off" spellcheck="false" placeholder="bc1q….rig01" [attr.aria-label]="slotNames[i] + ' worker'"
+                [value]="p.user" (input)="patchPool(i, { user: $any($event.target).value })" />
+              <input [id]="'pool-pass-' + i" type="text" autocomplete="off" placeholder="x" [attr.aria-label]="slotNames[i] + ' password'"
+                [value]="p.pass" (input)="patchPool(i, { pass: $any($event.target).value })" />
+              @if (touched() && errors()[i]) {
+                <p class="pool-err">{{ slotNames[i] }}: {{ errors()[i] }}</p>
+              }
+            }
+            <button type="submit" hidden></button>
+          </form>
+
+          <p class="hint">The worker is usually your Bitcoin address followed by a dot and the miner name. The password is almost always <code>x</code>.</p>
+
+          <div class="s-actions">
+            <p class="s-result" [class.ok]="result()?.ok" role="status">
+              @if (resultIn() === 'pools') {
+                @if (result(); as r) { {{ r.text }} } @else if (touched() && !hasPrimary()) { Enter a main pool address before applying. }
+              }
+            </p>
+            <button type="button" class="btn" [disabled]="!!saving()" (click)="save(false)">{{ saving() === 'save' && resultIn() === 'pools' ? 'Saving…' : 'Save' }}</button>
+            @if (canApplyPools()) {
+              <button type="button" class="btn primary" [disabled]="!!saving()" (click)="save(true)">{{ saving() === 'apply' ? 'Applying…' : 'Save & apply' }}</button>
+            }
+          </div>
+        </section>
+
+        <!-- Miner (identity) -->
+        <section class="s-card" id="sec-miner" aria-labelledby="h-miner">
+          <div class="s-card-head">
+            <div>
+              <h2 id="h-miner">Miner</h2>
+              <p>How the dashboard knows and reaches this miner. The IP address identifies it: every miner on your network has its own.</p>
+            </div>
+            <span class="s-cap saved-only">Dashboard only</span>
+          </div>
+          <div class="s-grid">
+            <label class="s-field" for="rig-name">Name
+              <input id="rig-name" type="text" [value]="model().name" (input)="patch({ name: $any($event.target).value })" />
+            </label>
+            <div class="s-field readonly">IP address
+              <span>{{ m.host }}</span>
+              <a routerLink="/">Connect to another miner</a>
+            </div>
+            <label class="s-field" for="rig-algo">Hash function
+              <select id="rig-algo" (change)="patch({ algo: $any($event.target).value })">
+                @for (a of algoOptions(); track a.algo) {
+                  <option [value]="a.algo" [selected]="a.algo === model().algo">{{ a.label }}</option>
+                }
+              </select>
+              <span class="s-help">The proof of work this miner computes. It only hashes usefully on a network of the same hash function.</span>
+            </label>
+            <label class="s-field" for="rig-ths">Rated hashrate
+              <span class="s-unit">
+                <input id="rig-ths" type="number" min="0" step="0.001" [value]="model().nominalThs" (input)="patch({ nominalThs: $any($event.target).valueAsNumber || null })" />
+                <span>TH/s</span>
+              </span>
+            </label>
+            <label class="s-field" for="rig-port">API port
+              <input id="rig-port" type="number" min="1" max="65535" [value]="model().port" (input)="patch({ port: $any($event.target).valueAsNumber || null })" />
+              <span class="s-help">Usually 4028 (cgminer API).</span>
+            </label>
+          </div>
+          <div class="s-actions">
+            <p class="s-result" [class.ok]="result()?.ok" role="status">
+              @if (resultIn() === 'miner' && result(); as r) { {{ r.text }} }
+            </p>
+            <button type="button" class="btn primary" [disabled]="!!saving()" (click)="save(false, 'miner')">{{ saving() && resultIn() === 'miner' ? 'Saving…' : 'Save' }}</button>
+          </div>
+        </section>
+
+        <!-- Performance, Cooling, Network, Security, System (shared schema) -->
+        <app-login-settings [miner]="m" />
+
+        @for (g of groups; track g.id) {
+          <app-settings-group [group]="g" [miner]="m" />
+        }
+
+        <app-miner-actions [miner]="m" [now]="now()" />
+
+        <a class="back" routerLink="/">← Back to dashboard</a>
+      </div>
+    </div>
+  } @else {
+    <section class="s-card">
+      <p class="hint">Connect to a miner first: pick one on <a routerLink="/asic">Find ASIC</a>, which lists every miner powered on in your local network. Settings always apply to the one miner this page is connected to.</p>
+    </section>
+  }
+</main>

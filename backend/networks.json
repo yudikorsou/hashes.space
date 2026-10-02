@@ -1,0 +1,36 @@
+[
+  {
+    "id": "sha256",
+    "algo": "sha256",
+    "label": "SHA-256",
+    "chain": "Bitcoin",
+    "ticker": "BTC",
+    "source": "mempool",
+    "wsUrl": "wss://mempool.space/api/v1/ws",
+    "sourceLabel": "mempool.space",
+    "explorer": "https://mempool.space/block/"
+  },
+  {
+    "id": "scrypt",
+    "algo": "scrypt",
+    "label": "Scrypt",
+    "chain": "Litecoin",
+    "ticker": "LTC",
+    "source": "mempool",
+    "wsUrl": "wss://litecoinspace.org/api/v1/ws",
+    "sourceLabel": "litecoinspace.org",
+    "explorer": "https://litecoinspace.org/block/",
+    "blockSeconds": 150
+  },
+  {
+    "id": "blake2b",
+    "algo": "blake2b",
+    "label": "BLAKE2b",
+    "chain": "Bitcoin BLAKE2b",
+    "ticker": "BTCB2",
+    "source": "mempool",
+    "wsUrl": "wss://mempool.guide/api/v1/ws",
+    "sourceLabel": "mempool.guide",
+    "explorer": "https://mempool.guide/block/"
+  }
+]

@@ -1,0 +1,4 @@
+[
+  { "id": "home:192.168.1.21", "tenantId": "home", "name": "Rig 01", "host": "192.168.1.21", "port": 4028, "algo": "sha256", "nominalThs": 200 },
+  { "id": "home:192.168.1.22", "tenantId": "home", "name": "Rig 02", "host": "192.168.1.22", "port": 4028, "algo": "blake2b", "nominalThs": 11, "firmware": "intminer (Goldshell)" }
+]

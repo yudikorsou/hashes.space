@@ -1,0 +1,46 @@
+:host { display: block; min-height: 100vh; }
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 28px;
+  padding: 12px 20px;
+  background: var(--bg);
+  border-bottom: 1px solid var(--line);
+}
+.brand { display: flex; align-items: center; gap: 12px; color: inherit; text-decoration: none; }
+.brand-fan { --fan-size: 34px; }
+/* wordmark: "hashes" solid, the dot is a mined block (mempool purple→blue), "space" in the same gradient light */
+.wordmark { display: inline-flex; align-items: baseline; font: 700 22px/1 var(--display); letter-spacing: -0.01em; white-space: nowrap; }
+.wm-hashes { color: var(--text); }
+.wm-dot { display: inline-block; width: 7px; height: 7px; margin: 0 3px 0 2px; border-radius: 1.5px; background: linear-gradient(135deg, #9339f4, #105fb0); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08); transform: translateY(-1px); }
+.wm-space { font-weight: 500; background: linear-gradient(90deg, #b58cff, #1bd8f4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+.tabs { display: flex; gap: 4px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+.tabs a { white-space: nowrap; }
+.tabs a {
+  font: 500 13.5px/1 var(--sans);
+  color: var(--muted);
+  text-decoration: none;
+  padding: 8px 12px;
+  border-radius: 6px;
+  &:hover { color: var(--text); background: var(--surface); }
+  &.on { color: var(--text); background: var(--surface); box-shadow: inset 0 -2px 0 var(--link); }
+  &:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+}
+
+.source { margin-left: auto; display: flex; align-items: center; gap: 8px; font: 500 12.5px/1 var(--sans); color: var(--muted); text-transform: capitalize; }
+.source .mono { font-family: var(--mono); text-transform: none; }
+.sep { opacity: 0.5; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted-2); }
+.dot.live { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.dot.connecting { background: var(--warn); }
+.dot.offline, .dot.unauthorised { background: var(--bad); }
+
+.banner { margin: 0; padding: 10px 20px; background: color-mix(in srgb, var(--bad) 18%, var(--bg)); color: #ffd6d6; }
+
+@media (max-width: 720px) {
+  .topbar { padding-inline: 16px; }
+  .source { margin-left: 0; }
+}

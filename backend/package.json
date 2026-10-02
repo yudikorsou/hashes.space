@@ -1,0 +1,21 @@
+{
+  "name": "asic-fleet-backend",
+  "version": "1.0.0",
+  "description": "Multi-tenant ASIC fleet dashboard backend: chain data relay (mempool.space / Bitcoin Core / Knots) + miner telemetry over WebSocket",
+  "main": "dist/index.js",
+  "license": "MIT",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node --env-file-if-exists=.env dist/index.js",
+    "dev": "tsx watch --env-file-if-exists=.env src/index.ts"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

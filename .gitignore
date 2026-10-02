@@ -1,0 +1,9 @@
+node_modules/
+dist/
+.angular/
+*.log
+.env
+# your own setup (copy from the *.example-home.json files)
+backend/tenants.home.json
+backend/miners.home.json
+.DS_Store

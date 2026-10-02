@@ -1,0 +1,4 @@
+[
+  { "id": "sc-pro-rack1-01", "tenantId": "demo", "name": "Rack 1 · 01", "model": "Goldshell SC Pro", "host": "192.168.1.101", "port": 4028, "nominalThs": 11 },
+  { "id": "a3-rack1-02", "tenantId": "demo", "name": "Rack 1 · 02", "model": "Bitmain Antminer A3", "host": "192.168.1.102", "port": 4028, "nominalThs": 0.815 }
+]

@@ -1,0 +1,29 @@
+@use './settings-ui';
+/* Single dark theme using the mempool colour palette (as on mempool.guide). */
+:root {
+  color-scheme: dark;
+  --bg: #11131f;
+  --strip-bg: #11131f;
+  --surface: #1d1f31;
+  --cube-empty: #2d3348;
+  --line: #2d3348;
+  --line-strong: #454d68;
+  --text: #ffffff;
+  --muted: #9ea4bc;
+  --muted-2: #4a5263;
+  --orange: #f7931a;
+  --brand: var(--orange);
+  --matrix: #3ce26b;
+  --link: #1bd8f4;
+  --good: #3ccf6e;
+  --warn: #f2b53c;
+  --bad: #ff4d4d;
+
+  --display: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+  --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--text); font: 400 14px/1.45 var(--sans); }
+a { color: var(--link); }

@@ -1,0 +1,33 @@
+<header class="topbar">
+  <a class="brand" routerLink="/" [attr.aria-label]="(socket.tenant()?.name ?? 'hashes.space') + ', home'">
+    <app-fan class="brand-fan" [status]="'hashing'" [spin]="false" />
+    @if (!socket.tenant() || socket.tenant()!.name === 'hashes.space') {
+      <span class="wordmark" aria-hidden="true"><span class="wm-hashes">hashes</span><span class="wm-dot"></span><span class="wm-space">space</span></span>
+    } @else {
+      <!-- white label: another brand's name in the same type -->
+      <span class="wordmark" aria-hidden="true"><span class="wm-hashes">{{ socket.tenant()!.name }}</span></span>
+    }
+  </a>
+
+  <nav class="tabs" aria-label="Main">
+    <a routerLink="/asic" routerLinkActive="on">Find ASIC</a>
+    <a routerLink="/" routerLinkActive="on" [routerLinkActiveOptions]="{ exact: true }">Dashboard</a>
+    <a routerLink="/fleet" routerLinkActive="on">Fleet</a>
+    <a routerLink="/settings" routerLinkActive="on">Miner settings</a>
+  </nav>
+
+  <div class="source">
+    <span class="dot" [class]="'dot ' + socket.connection()"></span>
+    <span>{{ socket.connection() === 'live' ? 'Live' : socket.connection() }}</span>
+    <span class="sep">·</span>
+    <span>{{ sourceLabel() }}</span>
+    <span class="sep">·</span>
+    <span class="mono">tip {{ socket.chain()?.tipHeight | number: '1.0-0' }}</span>
+  </div>
+</header>
+
+@if (socket.connection() === 'unauthorised') {
+  <p class="banner">This dashboard link has an invalid access token. Ask your supplier for a new link.</p>
+}
+
+<router-outlet />

@@ -1,0 +1,37 @@
+<app-network-bar />
+<app-chain-strip [chain]="socket.chain()" />
+
+<main>
+  @if (socket.loginRequired(); as lr) {
+    <!-- Manage → log in to that miner first -->
+    <app-miner-login [host]="lr.host" [minerId]="lr.minerId" [defaultLogin]="lr.defaultLogin" [suggestedUser]="lr.username" />
+  } @else {
+  @if (socket.miner(); as m) {
+    @if (m.defaultLogin) {
+      <p class="login-warn" role="note">
+        <b>Default login.</b> {{ m.host }} still uses <code>admin</code> / <code>123456789</code>. Anyone on your network could change its pool.
+        <a routerLink="/settings" fragment="sec-login">Change it under Miner settings → Login</a>
+      </p>
+    }
+    <app-miner-panel [miner]="m" [now]="now()" [network]="socket.network()" />
+    <ul class="modes" aria-label="What the colours mean">
+      <li class="hashing" [class.on]="m.status === 'hashing'"><b>Connected and hashing</b> Hashing for the right blockchain, and your node accepts its shares. They fly into the block being mined.</li>
+      <li class="not-submitting" [class.on]="m.status === 'not-submitting'"><b>Hashing, not submitting shares</b> The miner works, but its shares don't reach your node. Check the pool.</li>
+      <li class="not-hashing" [class.on]="m.status === 'not-hashing'"><b>Not hashing</b> The miner doesn't answer or has no pool set up. Open Miner settings.</li>
+    </ul>
+
+    <app-hashrate-chart [miner]="m" />
+  } @else {
+    <section class="empty">
+      <app-fan [status]="'not-hashing'" />
+      <div>
+        <h2>No miner connected</h2>
+        <p>Visit Find ASIC first: it lists every miner that is powered on in your local network. Connect one and it shows up here, with its fan spinning while it hashes and every share it sends to your node flying into the block being mined.</p>
+        <a class="btn primary cta" routerLink="/asic">Go to Find ASIC</a>
+      </div>
+    </section>
+  }
+  }
+</main>
+
+<app-share-stream />

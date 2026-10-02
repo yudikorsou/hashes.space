@@ -1,0 +1,79 @@
+/* Shared look of the Miner settings page and its sections (global, used by several components). */
+
+.s-card {
+  scroll-margin-top: 16px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 20px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr); /* long text wraps instead of widening the card */
+  gap: 16px;
+}
+.s-card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 16px; }
+.s-card-head h2 { margin: 0 0 4px; font: 600 18px/1.2 var(--display); letter-spacing: 0.02em; }
+.s-card-head p { margin: 0; color: var(--muted); font-size: 13px; max-width: 62ch; line-height: 1.5; }
+
+/* does this group reach the miner, or is it only saved here? */
+.s-cap { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font: 600 11px/1 var(--sans); letter-spacing: 0.04em; text-transform: uppercase; color: var(--good); }
+.s-cap::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.s-cap.saved-only { color: var(--muted); }
+
+.s-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 16px; }
+.s-field { display: grid; gap: 6px; align-content: start; font: 500 12px/1.25 var(--sans); color: var(--muted); }
+.s-field.wide { grid-column: 1 / -1; }
+/* long option texts get two columns on wide screens */
+@media (min-width: 900px) { .s-field.sel { grid-column: span 2; } }
+.s-field .s-help { font: 400 12px/1.4 var(--sans); color: var(--muted); }
+.s-field .s-err { font: 500 12px/1.3 var(--sans); color: var(--bad); }
+.s-unit { position: relative; }
+.s-unit span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font: 500 12px var(--mono); color: var(--muted); pointer-events: none; }
+.s-unit input { padding-right: 44px; }
+
+.s-toggle { display: flex; align-items: flex-start; gap: 10px; font: 500 13.5px/1.35 var(--sans); color: var(--text); cursor: pointer; }
+.s-toggle input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--link); flex: none; }
+.s-toggle small { display: block; color: var(--muted); font: 400 12px/1.4 var(--sans); margin-top: 2px; }
+
+.s-card input:not([type='checkbox']):not([type='radio']),
+.s-card select {
+  width: 100%;
+  font: 400 13px/1.2 var(--mono);
+  color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 9px 10px;
+}
+.s-card select { font-family: var(--sans); }
+.s-card input::placeholder { color: var(--muted-2); }
+.s-card input:focus, .s-card select:focus { outline: none; border-color: var(--link); box-shadow: 0 0 0 3px color-mix(in srgb, var(--link) 22%, transparent); }
+.s-card .invalid { border-color: var(--bad) !important; }
+
+.s-caution { margin: 0; padding: 10px 12px; border-left: 3px solid var(--warn); background: color-mix(in srgb, var(--warn) 8%, transparent); border-radius: 4px; font-size: 13px; color: var(--text); }
+.s-group-err { margin: 0; color: var(--bad); font-size: 13px; }
+
+.s-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+.s-result { margin: 0 auto 0 0; font-size: 13px; color: var(--orange); max-width: 60ch; }
+.s-result.ok { color: var(--good); }
+
+.btn {
+  font: 600 13px/1 var(--sans);
+  padding: 10px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  border: 1px solid var(--line-strong);
+  color: var(--text);
+  background: transparent;
+  &:hover:not(:disabled) { border-color: var(--link); }
+  &:disabled { opacity: 0.6; cursor: progress; }
+  &:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+}
+.btn.primary { background: #105fb0; border-color: #105fb0; }
+.btn.primary:hover:not(:disabled) { background: #1a6fc4; }
+.btn.danger { color: var(--bad); }
+.btn.danger.solid { background: var(--bad); border-color: var(--bad); color: #1a0505; }
+
+@media (max-width: 640px) {
+  .s-card { padding: 16px; }
+  .s-grid { grid-template-columns: 1fr; }
+}

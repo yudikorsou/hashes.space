@@ -1,0 +1,30 @@
+[
+  {
+    "id": "demo",
+    "name": "hashes.space",
+    "apiKey": "demo-key",
+    "accentColor": "#f7931a",
+    "expectedPoolHosts": [
+      "localhost",
+      "127.0.0.1",
+      "datum"
+    ],
+    "nodes": {
+      "sha256": "stratum+tcp://datum.local:23334",
+      "scrypt": "stratum+tcp://datum.local:23336",
+      "blake2b": "stratum+tcp://datum.local:23335"
+    }
+  },
+  {
+    "id": "acme",
+    "name": "ACME Hashworks",
+    "apiKey": "acme-key-change-me",
+    "accentColor": "#3bb2ff",
+    "expectedPoolHosts": [
+      "192.168.1.50"
+    ],
+    "nodes": {
+      "sha256": "stratum+tcp://192.168.1.50:3333"
+    }
+  }
+]
