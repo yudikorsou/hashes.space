@@ -1,6 +1,6 @@
 # hashes.space
 
-**A dashboard for local proof-of-work mining setup with visual guidance surrounding communication between miners and computers.**
+**A dashboard for local proof-of-work mining setups with visual guidance between bit, byte and hex communication.
 
 This project is a derivative of [hashes.space](https://hashes.space). Plug in a few ASIC miners on a local network, run the backend on a computer in that network, and the class can watch what normally stays invisible:
 
