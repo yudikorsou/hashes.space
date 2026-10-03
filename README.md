@@ -1,8 +1,8 @@
 # hashes.space
 
-**A dashboard for local proof-of-work mining setups with visual guidance between bit, byte and hex communication.
+**Dashboard for local proof-of-work mining setups with visualization of bit, byte and hex communication.
 
-This project is a derivative of [hashes.space](https://hashes.space). Plug in a few ASIC miners on a local network, run the backend on a computer in that network, and the class can watch what normally stays invisible:
+Connect your ASIC miners on a local network, run the backend on a computer in that network and watch what normally stays invisible:
 
 - **Miners find each other on the network:** *Find ASIC* scans the local network and lists every miner that answers, like a network discovery tool.
 - **A computer talks to a miner:** the dashboard asks each miner over its API (port 4028) how fast it hashes, how hot it runs and which pool it works for.
