@@ -7,7 +7,7 @@ import { FleetPage } from './pages/fleet.page';
 export const routes: Routes = [
   { path: '', component: DashboardPage, title: 'hashes.space' },
   { path: 'asic', component: AsicPage, title: 'Find ASIC · hashes.space' },
-  { path: 'cpu', component: AsicPage, title: 'Find CPU · hashes.space', data: { kind: 'cpu' } },
+  { path: 'cpu', component: AsicPage, title: 'Find CPUs · hashes.space', data: { kind: 'cpu' } },
   { path: 'fleet', component: FleetPage, title: 'Fleet · hashes.space' },
   { path: 'settings', component: MinerSettingsPage, title: 'Miner settings · hashes.space' },
   { path: 'miners', redirectTo: 'settings' },

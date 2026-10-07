@@ -558,8 +558,8 @@
     <span class="sr-only">hashes.space</span>
   </div>
   <nav class="tabs" aria-label="Main">
+    <a href="#cpu" id="tab-cpu">Find CPUs</a>
     <a href="#asic" id="tab-asic">Find ASIC</a>
-    <a href="#cpu" id="tab-cpu">Find CPU</a>
     <a href="#dashboard" id="tab-dashboard">Dashboard</a>
     <a href="#fleet" id="tab-fleet">Fleet</a>
     <a href="#settings" id="tab-settings">Miner settings</a>
@@ -578,7 +578,7 @@
     <section class="s-card">
       <div class="s-card-head">
         <div>
-          <h1>Find CPU</h1>
+          <h1>Find CPUs</h1>
           <p>Every CPU mining rig (XMRig) that is connected to your local network, with the cores and threads it mines on. Click Manage, the dashboard can showcase the stats of one local mining rig's IP at a time.</p>
         </div>
         <button type="button" class="btn" id="cpu-scan-btn">Scan again</button>
@@ -673,7 +673,7 @@
       <p>Everything a miner needs to run, in one place for any brand. Each section says whether it is sent to the miner or only saved here.</p>
     </header>
     <section class="s-card" id="no-miner">
-      <p class="hint">Connect to a miner first: pick one on Find ASIC or Find CPU, which list every miner powered on in your local network. Settings always apply to the one miner this page is connected to.</p>
+      <p class="hint">Connect to a miner first: pick one on Find ASIC or Find CPUs, which list every miner powered on in your local network. Settings always apply to the one miner this page is connected to.</p>
       <a class="back" href="#asic">← Go to Find ASIC</a>
     </section>
     <div id="settings-body" hidden>
@@ -1830,7 +1830,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
         <label class="lfield" for="login-pass">Password <span class="pw"><input id="login-pass" type="${l.isDefault ? 'text' : 'password'}" autocomplete="current-password" spellcheck="false" value="${l.isDefault ? DEFAULT_LOGIN.password : ''}" aria-describedby="login-hint">
           <button type="button" class="show" id="login-show" aria-pressed="${l.isDefault}">${l.isDefault ? 'Hide' : 'Show'}</button></span></label>
         <p class="hint" id="login-hint">${l.isDefault ? 'This miner still has the default login (<b>admin</b> / <b>123456789</b>). Change it under Miner settings → Login after you log in.' : 'Use the login you set for this miner under Miner settings → Login.'}</p>
-        <div class="actions"><button type="submit" class="btn primary">Log in</button>${m.cpu ? '<a class="btn" href="#cpu">Back to Find CPU</a>' : '<a class="btn" href="#asic">Back to Find ASIC</a>'}</div>
+        <div class="actions"><button type="submit" class="btn primary">Log in</button>${m.cpu ? '<a class="btn" href="#cpu">Back to Find CPUs</a>' : '<a class="btn" href="#asic">Back to Find ASIC</a>'}</div>
       </form></section>`;
     mountFan($('login-fan'));
   }
@@ -1897,7 +1897,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     aria-label="${BAR[m.status]}: ${esc(m.host)}. ${esc(m.statusReason)} Open the dashboard">${BAR[m.status]}</button>`;
   // a fan only spins after you managed the miner here (logged in) and it is configured correctly (connected and hashing)
   const spinState = (m) => (unlocked.has(m.host) ? m.status : 'not-hashing');
-  // Find ASIC lists the ASICs, Find CPU the CPU rigs (XMRig): same rows, same Manage and login
+  // Find ASIC lists the ASICs, Find CPUs the CPU rigs (XMRig): same rows, same Manage and login
   const rowHtml = (m) => {
     const on = unlocked.has(m.host), pool = m.poolUrl ? m.poolUrl.replace(/^stratum\+(tcp|ssl|tls):\/\//, '') : 'No pool set up';
     return `<li class="pick${current === m ? ' current' : ''}" data-row="${esc(m.host)}" title="Show ${esc(m.host)} on the dashboard">${iconSpan(m, spinState(m))}
@@ -1938,7 +1938,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // a miner's way into the fleet (backend MinerRegistry.fleetReadiness): 1 log in (Manage) · 2 set it up until it is connected and hashing · ready
   function fleetCheck(ip) {
     const m = byHost(ip);
-    if (!m || !unlocked.has(ip)) return { ip, ready: false, step: 'login', reason: `Log in first: click Manage for this miner on ${m?.cpu ? 'Find CPU' : 'Find ASIC'}.` };
+    if (!m || !unlocked.has(ip)) return { ip, ready: false, step: 'login', reason: `Log in first: click Manage for this miner on ${m?.cpu ? 'Find CPUs' : 'Find ASIC'}.` };
     if (m.status !== 'hashing') return { ip, ready: false, step: 'setup', reason: m.statusReason };
     return { ip, ready: true, step: 'ready', reason: m.statusReason };
   }

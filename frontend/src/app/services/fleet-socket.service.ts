@@ -53,7 +53,7 @@ export class FleetSocketService implements OnDestroy {
 
   /** fleet dashboard: live state of every fleet miner (by id) and their shares */
   readonly fleetMiners = signal<Record<string, Miner>>({});
-  /** IPs of the CPU rigs (XMRig) the last scan found: they live on Find CPU instead of Find ASIC */
+  /** IPs of the CPU rigs (XMRig) the last scan found: they live on Find CPUs instead of Find ASIC */
   readonly cpuHosts = signal<ReadonlySet<string>>(new Set());
   readonly fleetShares$ = new Subject<ShareEvent[]>();
   private fleetWatching = false;

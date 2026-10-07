@@ -33,7 +33,7 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
         <div class="s-card-head">
           <div>
             @if (cpu) {
-              <h1>Find CPU</h1>
+              <h1>Find CPUs</h1>
               <p>Every CPU mining rig (XMRig) that is connected to your local network, with the cores and threads it mines on. Click Manage, the dashboard can showcase the stats of one local mining rig's IP at a time.</p>
             } @else {
               <h1>Find ASIC</h1>
@@ -345,7 +345,7 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
 })
 export class AsicPage implements OnInit, OnDestroy {
   readonly socket = inject(FleetSocketService);
-  /** Find CPU (route data kind: 'cpu') lists the CPU rigs (XMRig); Find ASIC everything else */
+  /** Find CPUs (route data kind: 'cpu') lists the CPU rigs (XMRig); Find ASIC everything else */
   readonly cpu = inject(ActivatedRoute).snapshot.data['kind'] === 'cpu';
   readonly xmrigPorts = 'port 18088 by default';
   private noteCpuHosts(): void {

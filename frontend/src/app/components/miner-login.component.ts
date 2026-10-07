@@ -47,7 +47,7 @@ export const DEFAULT_LOGIN = { username: 'admin', password: '123456789' };
         <div class="actions">
           <button type="submit" class="btn primary" [disabled]="busy() || !username().trim() || !password()">{{ busy() ? 'Logging in…' : 'Log in' }}</button>
           @if (socket.cpuHosts().has(host())) {
-            <a class="btn" routerLink="/cpu">Back to Find CPU</a>
+            <a class="btn" routerLink="/cpu">Back to Find CPUs</a>
           } @else {
             <a class="btn" routerLink="/asic">Back to Find ASIC</a>
           }
