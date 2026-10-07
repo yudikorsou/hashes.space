@@ -1,6 +1,7 @@
 import { ChangeDetectionStrategy, Component, effect, inject, input, signal, untracked } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FleetApiService } from '../services/fleet-api.service';
+import { FleetSocketService } from '../services/fleet-socket.service';
 import { FanComponent } from './fan.component';
 
 /** the login every new miner starts with; the owner changes it under Miner settings → Login */
@@ -45,7 +46,11 @@ export const DEFAULT_LOGIN = { username: 'admin', password: '123456789' };
         }
         <div class="actions">
           <button type="submit" class="btn primary" [disabled]="busy() || !username().trim() || !password()">{{ busy() ? 'Logging in…' : 'Log in' }}</button>
-          <a class="btn" routerLink="/asic">Back to Find ASIC</a>
+          @if (socket.cpuHosts().has(host())) {
+            <a class="btn" routerLink="/cpu">Back to Find CPU</a>
+          } @else {
+            <a class="btn" routerLink="/asic">Back to Find ASIC</a>
+          }
         </div>
       </form>
     </section>
@@ -80,6 +85,7 @@ export const DEFAULT_LOGIN = { username: 'admin', password: '123456789' };
 })
 export class MinerLoginComponent {
   readonly host = input.required<string>();
+  readonly socket = inject(FleetSocketService);
   readonly minerId = input.required<string>();
   readonly defaultLogin = input(false);
   /** prefilled username: the default one while the miner still has it */

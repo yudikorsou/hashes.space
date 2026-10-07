@@ -1,5 +1,5 @@
 import { ChangeDetectionStrategy, Component, OnDestroy, OnInit, computed, effect, inject, signal, untracked } from '@angular/core';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FleetSocketService } from '../services/fleet-socket.service';
 import { FleetApiService, FleetCheck, FleetView, ScanResult } from '../services/fleet-api.service';
 import { MAX_FLEET_ADD, parseIpList } from '../lib/ip-list';
@@ -32,8 +32,13 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
       <section class="s-card">
         <div class="s-card-head">
           <div>
-            <h1>Find ASIC</h1>
-            <p>Every ASIC that is connected to your local network. Click Manage, the dashboard can showcase the stats of one local mining rig's IP at a time.</p>
+            @if (cpu) {
+              <h1>Find CPU</h1>
+              <p>Every CPU mining rig (XMRig) that is connected to your local network, with the cores and threads it mines on. Click Manage, the dashboard can showcase the stats of one local mining rig's IP at a time.</p>
+            } @else {
+              <h1>Find ASIC</h1>
+              <p>Every ASIC that is connected to your local network. Click Manage, the dashboard can showcase the stats of one local mining rig's IP at a time.</p>
+            }
           </div>
           <button type="button" class="btn" [disabled]="scanning()" (click)="scan(true)">{{ scanning() ? 'Scanning…' : 'Scan again' }}</button>
         </div>
@@ -46,7 +51,7 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
               <span class="err">{{ e }}</span>
             } @else {
               @if (result(); as r) {
-                {{ r.miners.length }} {{ r.miners.length === 1 ? 'miner' : 'miners' }} powered on
+                {{ found().length }} {{ cpu ? (found().length === 1 ? 'CPU rig' : 'CPU rigs') : (found().length === 1 ? 'miner' : 'miners') }} powered on
                 @if (r.subnets.length) { · scanned {{ r.subnets.join(', ') }} }
                 · {{ ago(r.scannedAt) }}
               }
@@ -58,9 +63,9 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
           <p class="err" role="alert">{{ err }}</p>
         }
 
-        @if (result()?.miners?.length) {
+        @if (found().length) {
           <ul class="list">
-            @for (m of result()!.miners; track m.ip) {
+            @for (m of found(); track m.ip) {
               <li class="pick" [class.current]="current() === m.ip" (click)="open(m.ip)" [title]="'Show ' + m.ip + ' on the dashboard'">
                 @if (m.cpu) {
                   <app-cpu class="fan" [status]="spinState(m.ip, m.status)" [cpu]="m.cpu" />
@@ -98,6 +103,15 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
           <div class="none">
             <app-fan [status]="'not-hashing'" />
             <div>
+              @if (cpu) {
+                <h2>No CPU rigs found</h2>
+                <p>Nothing answered on XMRig's HTTP API ({{ xmrigPorts }}). Check that:</p>
+                <ul>
+                  <li>XMRig runs with its HTTP API on: <code>"http": {{ '{' }} "enabled": true, "host": "0.0.0.0", "port": 18088 {{ '}' }}</code> in its config.json;</li>
+                  <li>the server has the same access token in <code>XMRIG_ACCESS_TOKEN</code>, and the port in <code>SCAN_XMRIG_PORTS</code>;</li>
+                  <li>this hashes.space server runs on a computer in the same local network as the rigs.</li>
+                </ul>
+              } @else {
               <h2>No miners found</h2>
               <p>Nothing answered on the miner API port (4028). Check that:</p>
               <ul>
@@ -105,11 +119,15 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
                 <li>this hashes.space server runs on a computer in the same local network as the miners;</li>
                 <li>the miners are in another subnet? Add it with <code>SCAN_SUBNETS</code> on the server.</li>
               </ul>
+              }
             </div>
           </div>
         }
       </section>
 
+      @if (cpu) {
+        <p class="fleet-hint">CPU rigs can join a fleet too: set them up here, then add their IP addresses under <a routerLink="/asic" fragment="fleet-title">Generate fleet on Find ASIC</a>.</p>
+      } @else {
       <!-- the fleet: many miners by IP address -->
       <section class="s-card fleet" aria-labelledby="fleet-title">
         <div class="s-card-head">
@@ -225,10 +243,13 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
           <p class="meta">No miners in this fleet yet. Paste their IP addresses above.</p>
         }
       </section>
+      }
     </main>
   `,
   styles: [
     `
+      .fleet-hint { margin: 0; color: var(--muted); font-size: 13.5px; }
+      .fleet-hint a { color: var(--link); }
       .cores { color: var(--text); font-weight: 600; }
       :host { display: block; }
       main { padding: 24px 20px 56px; max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
@@ -324,6 +345,13 @@ import { CpuInfo, MinerStatus, cpuLine } from '../models';
 })
 export class AsicPage implements OnInit, OnDestroy {
   readonly socket = inject(FleetSocketService);
+  /** Find CPU (route data kind: 'cpu') lists the CPU rigs (XMRig); Find ASIC everything else */
+  readonly cpu = inject(ActivatedRoute).snapshot.data['kind'] === 'cpu';
+  readonly xmrigPorts = 'port 18088 by default';
+  private noteCpuHosts(): void {
+    this.socket.cpuHosts.set(new Set((this.result()?.miners ?? []).filter((m) => m.kind === 'cpu' || !!m.cpu).map((m) => m.host!)));
+  }
+  readonly found = computed(() => (this.result()?.miners ?? []).filter((m) => (m.kind === 'cpu' || !!m.cpu) === this.cpu));
   private api = inject(FleetApiService);
   private router = inject(Router);
 
@@ -488,6 +516,7 @@ export class AsicPage implements OnInit, OnDestroy {
     if (this.scanning() || !this.result()) return;
     try {
       this.result.set(await this.api.scan(false));
+      this.noteCpuHosts();
     } catch {
       /* keep the last list */
     }
@@ -498,6 +527,7 @@ export class AsicPage implements OnInit, OnDestroy {
     this.error.set(null);
     try {
       this.result.set(await this.api.scan(refresh));
+      this.noteCpuHosts();
     } catch (e) {
       this.error.set((e as Error).message);
     } finally {

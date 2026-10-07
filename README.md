@@ -4,7 +4,7 @@
 
 Connect your ASIC miners on a local network, run the backend on a computer in that network and watch what normally stays invisible:
 
-- **Miners find each other on the network:** *Find ASIC* scans the local network and lists every miner that answers, like a network discovery tool.
+- **Miners find each other on the network:** *Find ASIC* scans the local network and lists every ASIC that answers, like a network discovery tool; *Find CPU* does the same for CPU mining rigs (XMRig).
 - **A computer talks to a miner:** the dashboard asks each miner over its API (port 4028) how fast it hashes, how hot it runs and which pool it works for.
 - **Proof of work becomes visible:** every share a miner submits flies from its fan into the block being mined, as a string of 0s and 1s. The leading zeros are the proof of work: harder shares carry more zeros.
 - **Right or wrong setup shows at a glance:** a miner's fan only spins when it is configured correctly and its shares really reach the node. A wrong pool, a wrong port or the wrong blockchain stops it, with a plain-language reason.
@@ -82,7 +82,8 @@ frontend/                    Angular 19 standalone components + TypeScript
   src/app/components/fan.component.ts   SVG fan (frame still; the rotor only spins once you manage the miner (log in) and it is connected and hashing, speed follows the hashrate)
   src/app/components/chain-strip.*      3D block cubes, #mining-block target, pulse on hit
   src/app/components/network-bar.*      PoW dropdown (the networks / your node) + own node dialog
-  src/app/pages/asic.page.ts            Find ASIC (route /asic): miners found in the local network + Generate fleet
+  src/app/pages/asic.page.ts            Find ASIC (route /asic): ASICs found in the local network + Generate fleet;
+                                        Find CPU (route /cpu): CPU rigs (XMRig), managed the same way
   src/app/pages/fleet.page.ts           fleet dashboard (route /fleet): every fleet miner as a tile, shares into the block
   src/app/components/fleet-stream.*     fleet share animation, scaled to the fleet size
   src/app/components/miner-login.*      "Log in to 192.168.1.101" on the dashboard (after Manage)
@@ -322,7 +323,7 @@ Any other IP shows as not hashing, because nothing answers there.
 ```
 
 - **Token:** give the backend the same token: `XMRIG_ACCESS_TOKEN=a-long-random-token` (one for all rigs), or per IP: `XMRIG_TOKENS='{"192.168.1.40":"token"}'`.
-- **Find ASIC** also looks for XMRig on the ports in `SCAN_XMRIG_PORTS` (default `18088`) and registers what it finds with the XMRig plugin. Or add a rig to `miners.json`: `{ "id": "home:192.168.1.40", "tenantId": "home", "host": "192.168.1.40", "port": 18088, "firmware": "XMRig", "algo": "randomx" }`.
+- **Find CPU** (route `/cpu`, "Find CPU" in the header) lists the XMRig rigs the scan finds on the ports in `SCAN_XMRIG_PORTS` (default `18088`), registered with the XMRig plugin. It works exactly like Find ASIC: every row is clickable, **Manage** asks for the rig's login, then shows the **Connected** / **Not submitting** / **Not hashing** bar and a **Manage** button for its Miner settings (pools, Turn off / Turn on = pause / resume). Find ASIC lists only the ASICs. To put CPU rigs in a fleet, add their IPs under Generate fleet on Find ASIC. Or add a rig to `miners.json`: `{ "id": "home:192.168.1.40", "tenantId": "home", "host": "192.168.1.40", "port": 18088, "firmware": "XMRig", "algo": "randomx" }`.
 - **What the dashboard reads** (`GET /2/summary`): hashrate (10 s), accepted and rejected shares, the pool, the share difficulty, and the processor: model, cores, threads and how many threads mine.
 - **What it can change** (`restricted: false`): the pools (`PUT /1/config`), and **Turn off / Turn on** under Maintenance, which pause and resume XMRig (`POST /json_rpc`).
 - **How it looks:** instead of a fan, a processor chip with one square per hardware thread. Squares light up for every thread XMRig runs on, and pulse only while the miner is connected and hashing. Find ASIC, the fleet and the dashboard show "16 cores · 32 threads" instead of an ASIC model, and the dashboard adds **Mining threads** and the hashrate **per thread**. Set the work mode to *Low power* in the demo and fewer cores light up.

@@ -396,6 +396,8 @@
   .fleet .meta { margin: 0; color: var(--muted); font-size: 13px; }
   .asic h1 { margin: 0 0 4px; font: 600 22px/1.2 var(--display); letter-spacing: .02em; }
   .asic .meta { margin: 0; color: var(--muted); font-size: 13px; }
+  .fleet-hint { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .fleet-hint a { color: var(--orange); }
   .alist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
   .alist li { display: grid; grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1.6fr) auto; align-items: center; gap: 12px 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
   .alist li.pick { cursor: pointer; transition: border-color .15s, background-color .15s; }
@@ -557,6 +559,7 @@
   </div>
   <nav class="tabs" aria-label="Main">
     <a href="#asic" id="tab-asic">Find ASIC</a>
+    <a href="#cpu" id="tab-cpu">Find CPU</a>
     <a href="#dashboard" id="tab-dashboard">Dashboard</a>
     <a href="#fleet" id="tab-fleet">Fleet</a>
     <a href="#settings" id="tab-settings">Miner settings</a>
@@ -569,6 +572,23 @@
     <span class="demo-tag">Demo miners</span>
   </div>
 </header>
+
+<div id="view-cpu" hidden>
+  <main class="asic">
+    <section class="s-card">
+      <div class="s-card-head">
+        <div>
+          <h1>Find CPU</h1>
+          <p>Every CPU mining rig (XMRig) that is connected to your local network, with the cores and threads it mines on. Click Manage, the dashboard can showcase the stats of one local mining rig's IP at a time.</p>
+        </div>
+        <button type="button" class="btn" id="cpu-scan-btn">Scan again</button>
+      </div>
+      <p class="meta" id="cpu-meta" role="status"></p>
+      <div id="cpu-list"></div>
+    </section>
+    <p class="fleet-hint">CPU rigs can join a fleet too: set them up here, then add their IP addresses under <a href="#asic" data-sec-fleet data-sec-link="fleet-anchor">Generate fleet on Find ASIC</a>.</p>
+  </main>
+</div>
 
 <div id="view-asic" hidden>
   <main class="asic">
@@ -653,7 +673,7 @@
       <p>Everything a miner needs to run, in one place for any brand. Each section says whether it is sent to the miner or only saved here.</p>
     </header>
     <section class="s-card" id="no-miner">
-      <p class="hint">Connect to a miner first: pick one on Find ASIC, which lists every miner powered on in your local network. Settings always apply to the one miner this page is connected to.</p>
+      <p class="hint">Connect to a miner first: pick one on Find ASIC or Find CPU, which list every miner powered on in your local network. Settings always apply to the one miner this page is connected to.</p>
       <a class="back" href="#asic">← Go to Find ASIC</a>
     </section>
     <div id="settings-body" hidden>
@@ -1183,7 +1203,7 @@
         <label class="lfield" for="login-pass">Password <span class="pw"><input id="login-pass" type="${l.isDefault ? 'text' : 'password'}" autocomplete="current-password" spellcheck="false" value="${l.isDefault ? DEFAULT_LOGIN.password : ''}" aria-describedby="login-hint">
           <button type="button" class="show" id="login-show" aria-pressed="${l.isDefault}">${l.isDefault ? 'Hide' : 'Show'}</button></span></label>
         <p class="hint" id="login-hint">${l.isDefault ? 'This miner still has the default login (<b>admin</b> / <b>123456789</b>). Change it under Miner settings → Login after you log in.' : 'Use the login you set for this miner under Miner settings → Login.'}</p>
-        <div class="actions"><button type="submit" class="btn primary">Log in</button><a class="btn" href="#asic">Back to Find ASIC</a></div>
+        <div class="actions"><button type="submit" class="btn primary">Log in</button>${m.cpu ? '<a class="btn" href="#cpu">Back to Find CPU</a>' : '<a class="btn" href="#asic">Back to Find ASIC</a>'}</div>
       </form></section>`;
     mountFan($('login-fan'));
   }
@@ -1231,13 +1251,16 @@
   // ---------- Find ASIC: scan the local network (the backend probes TCP 4028; here: the demo miners) ----------
   let scan = null;              // { at, found: [...] }
   function runScan() {
-    $('scan-btn').disabled = true; $('scan-btn').textContent = 'Scanning…';
-    $('scan-meta').textContent = 'Scanning your local network (192.168.1.0/24)…';
-    if (!scan) $('scan-list').innerHTML = '<div class="scanning"><span class="fan" id="scan-fan"></span>Looking for miners that answer on port 4028…</div>', mountFan($('scan-fan'));
+    ['scan-btn', 'cpu-scan-btn'].forEach((b) => { $(b).disabled = true; $(b).textContent = 'Scanning…'; });
+    $('scan-meta').textContent = $('cpu-meta').textContent = 'Scanning your local network (192.168.1.0/24)…';
+    if (!scan) {
+      $('scan-list').innerHTML = '<div class="scanning"><span class="fan" id="scan-fan"></span>Looking for miners that answer on port 4028…</div>'; mountFan($('scan-fan'));
+      $('cpu-list').innerHTML = '<div class="scanning"><span class="fan" id="cpu-scan-fan"></span>Looking for XMRig rigs that answer on port 18088…</div>'; mountFan($('cpu-scan-fan'));
+    }
     setTimeout(() => {
       // powered on = answers on the network (a rebooting miner doesn't)
       scan = { at: now(), found: miners.filter((m) => m.mode !== 'unreachable' && !(m.rebootUntil > now())).map((m) => m.id) };
-      $('scan-btn').disabled = false; $('scan-btn').textContent = 'Scan again';
+      ['scan-btn', 'cpu-scan-btn'].forEach((b) => { $(b).disabled = false; $(b).textContent = 'Scan again'; });
       renderAsic(); renderFleet();
     }, 900);
   }
@@ -1247,27 +1270,37 @@
     aria-label="${BAR[m.status]}: ${esc(m.host)}. ${esc(m.statusReason)} Open the dashboard">${BAR[m.status]}</button>`;
   // a fan only spins after you managed the miner here (logged in) and it is configured correctly (connected and hashing)
   const spinState = (m) => (unlocked.has(m.host) ? m.status : 'not-hashing');
+  // Find ASIC lists the ASICs, Find CPU the CPU rigs (XMRig): same rows, same Manage and login
+  const rowHtml = (m) => {
+    const on = unlocked.has(m.host), pool = m.poolUrl ? m.poolUrl.replace(/^stratum\+(tcp|ssl|tls):\/\//, '') : 'No pool set up';
+    return `<li class="pick${current === m ? ' current' : ''}" data-row="${esc(m.host)}" title="Show ${esc(m.host)} on the dashboard">${iconSpan(m, spinState(m))}
+      <div class="who"><span class="ip">${esc(m.host)}</span><span class="model">${modelHtml(m)} · ${ALGO[m.algo] ?? m.algo}</span></div>
+      <dl><div><dt>Pool</dt><dd title="${esc(m.poolUrl)}">${esc(pool)}</dd></div></dl>
+      <div class="go">${on ? `${bar(m)}<button type="button" class="btn primary" data-manage-settings="${esc(m.host)}" aria-label="Manage ${esc(m.host)}: Miner settings">Manage</button>`
+        : `<button type="button" class="btn primary" data-connect="${esc(m.host)}" aria-label="Manage ${esc(m.host)}">Manage</button>`}</div></li>`;
+  };
+  function renderList(listId, metaId, found, cpu) {
+    const one = cpu ? 'CPU rig' : 'miner', many = cpu ? 'CPU rigs' : 'miners';
+    $(metaId).textContent = `${found.length} ${found.length === 1 ? one : many} powered on · scanned 192.168.1.0/24`;
+    const el = $(listId);
+    if (!found.length) {
+      el.__html = null;
+      el.innerHTML = cpu
+        ? `<section class="empty"><span class="fan not-hashing" id="${listId}-none"></span><div><h2>No CPU rigs found</h2><p>Nothing answered on XMRig's HTTP API (port 18088 by default). Check that XMRig runs with <code>"http": { "enabled": true, "host": "0.0.0.0", "port": 18088 }</code>, that the backend has its token in <code>XMRIG_ACCESS_TOKEN</code>, and that hashes.space runs in the same local network.</p></div></section>`
+        : `<section class="empty"><span class="fan not-hashing" id="${listId}-none"></span><div><h2>No miners found</h2><p>Nothing answered on the miner API port (4028). Check that the miners are powered on and plugged in, and that hashes.space runs on a computer in the same local network.</p></div></section>`;
+      mountFan($(listId + '-none')); return;
+    }
+    const html = '<ul class="alist">' + found.map(rowHtml).join('') + '</ul>';
+    if (el.__html !== html) { el.innerHTML = html; el.__html = html; el.querySelectorAll('[data-mount]').forEach(mountFan); }
+  }
   function renderAsic() {
     if (!scan) return;
     const found = scan.found.map((id) => miners.find((m) => m.id === id)).filter(Boolean);
-    $('scan-meta').textContent = `${found.length} ${found.length === 1 ? 'miner' : 'miners'} powered on · scanned 192.168.1.0/24`;
-    if (!found.length) {
-      $('scan-list').__html = null;
-      $('scan-list').innerHTML = `<section class="empty"><span class="fan not-hashing" id="none-fan"></span><div><h2>No miners found</h2><p>Nothing answered on the miner API port (4028). Check that the miners are powered on and plugged in, and that hashes.space runs on a computer in the same local network.</p></div></section>`;
-      mountFan($('none-fan')); return;
-    }
-    const html = '<ul class="alist">' + found.map((m) => {
-      const on = unlocked.has(m.host), pool = m.poolUrl ? m.poolUrl.replace(/^stratum\+(tcp|ssl|tls):\/\//, '') : 'No pool set up';
-      return `<li class="pick${current === m ? ' current' : ''}" data-row="${esc(m.host)}" title="Show ${esc(m.host)} on the dashboard">${iconSpan(m, spinState(m))}
-        <div class="who"><span class="ip">${esc(m.host)}</span><span class="model">${modelHtml(m)} · ${ALGO[m.algo] ?? m.algo}</span></div>
-        <dl><div><dt>Pool</dt><dd title="${esc(m.poolUrl)}">${esc(pool)}</dd></div></dl>
-        <div class="go">${on ? `${bar(m)}<button type="button" class="btn primary" data-manage-settings="${esc(m.host)}" aria-label="Manage ${esc(m.host)}: Miner settings">Manage</button>`
-          : `<button type="button" class="btn primary" data-connect="${esc(m.host)}" aria-label="Manage ${esc(m.host)}">Manage</button>`}</div></li>`;
-    }).join('') + '</ul>';
-    const el = $('scan-list'); // only touch the DOM when something changed (steady focus and hover while modes tick)
-    if (el.__html !== html) { el.innerHTML = html; el.__html = html; el.querySelectorAll('[data-mount]').forEach(mountFan); }
+    renderList('scan-list', 'scan-meta', found.filter((m) => !m.cpu), false);
+    renderList('cpu-list', 'cpu-meta', found.filter((m) => !!m.cpu), true);
   }
   $('scan-btn').addEventListener('click', runScan);
+  $('cpu-scan-btn').addEventListener('click', runScan);
 
   // ---------- the fleet (backend MinerRegistry.addToFleet / fleet) ----------
   const fleet = { name: 'My fleet', ids: [] };
@@ -1278,7 +1311,7 @@
   // a miner's way into the fleet (backend MinerRegistry.fleetReadiness): 1 log in (Manage) · 2 set it up until it is connected and hashing · ready
   function fleetCheck(ip) {
     const m = byHost(ip);
-    if (!m || !unlocked.has(ip)) return { ip, ready: false, step: 'login', reason: 'Log in first: click Manage for this miner on Find ASIC.' };
+    if (!m || !unlocked.has(ip)) return { ip, ready: false, step: 'login', reason: `Log in first: click Manage for this miner on ${m?.cpu ? 'Find CPU' : 'Find ASIC'}.` };
     if (m.status !== 'hashing') return { ip, ready: false, step: 'setup', reason: m.statusReason };
     return { ip, ready: true, step: 'ready', reason: m.statusReason };
   }
@@ -1364,6 +1397,7 @@
   $('fleet-list').addEventListener('click', openRow);
   fleetPreview();
   $('scan-list').addEventListener('click', openRow);
+  $('cpu-list').addEventListener('click', openRow);
 
   function renderMiner(rebuild) {
     if (loginFor) { if (rebuild || !$('login-form-dash')) renderLogin(); return; }
@@ -1676,7 +1710,7 @@
     miners.forEach((m) => { [m.status, m.statusReason] = evaluate(m); });
     renderMiner(false);
     if (view === 'settings') renderSettingsHead();
-    if (view === 'asic' && typeof renderFleet === 'function') { renderAsic(); renderFleet(); fleetPreview(); }
+    if ((view === 'asic' || view === 'cpu') && typeof renderFleet === 'function') { renderAsic(); renderFleet(); fleetPreview(); }
     if (view === 'fleet' && typeof renderFleetDash === 'function') renderFleetDash(false);
   }
   setInterval(() => {
@@ -1710,10 +1744,10 @@
   const TIMEZONES = (() => { try { const z = Intl.supportedValuesOf('timeZone'); return ['UTC', ...z.filter((x) => x !== 'UTC')]; } catch { return ['UTC', 'Europe/Amsterdam', 'Europe/London', 'America/New_York', 'Asia/Shanghai', 'Asia/Tokyo']; } })();
 
   function showView(v) {
-    view = ['asic', 'settings', 'dashboard', 'fleet'].includes(v) ? v : 'asic';
-    ['asic', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
+    view = ['asic', 'cpu', 'settings', 'dashboard', 'fleet'].includes(v) ? v : 'asic';
+    ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
     $('chain-area').hidden = !(view === 'dashboard' || view === 'fleet');
-    if (view === 'asic') { if (!scan) runScan(); else renderAsic(); renderFleet(); }
+    if (view === 'asic' || view === 'cpu') { if (!scan) runScan(); else renderAsic(); renderFleet(); }
     else if (view === 'fleet') { renderProjected(); renderMined(false); renderFleetDash(true); }
     else if (view === 'settings') { $('no-miner').hidden = !!current; $('settings-body').hidden = !current; if (current) loadForm(); }
     else { renderProjected(); renderMined(false); renderMiner(true); }
@@ -1765,7 +1799,7 @@
     renderLoginCard();
   }
   $('ls-save').addEventListener('click', saveLogin);
-  $('ls-logout').addEventListener('click', () => { const h = current?.host; if (h) { logout(h); location.hash = '#asic'; } });
+  $('ls-logout').addEventListener('click', () => { const h = current?.host; if (h) { const cpu = !!byHost(h)?.cpu; logout(h); location.hash = cpu ? '#cpu' : '#asic'; } });
   $('login-form').addEventListener('submit', (e) => { e.preventDefault(); saveLogin(); });
 
   // "Your node" on the settings page: the node for this miner's hash function
