@@ -35,6 +35,17 @@ export interface OwnNodeConfig {
   electrumTls?: boolean;
 }
 
+/** The processor of a CPU miner, as XMRig reports it. */
+export interface CpuInfo {
+  brand: string; // "AMD Ryzen 9 7950X 16-Core Processor"
+  cores: number; // physical cores
+  threads: number; // logical processors
+  /** threads the miner runs on right now */
+  miningThreads: number;
+  /** hashrate per mining thread, H/s (newest reading) */
+  threadHashrates?: number[];
+}
+
 export interface ChainBlock {
   height: number;
   hash: string;
@@ -54,6 +65,8 @@ export interface ProjectedBlock {
   index: number; // 0 = the block currently being mined
   nTx: number; // 0 when unknown (Electrum fee histogram)
   vsize: number;
+  /** real size in bytes, when vsize is only the fill level (Monero) */
+  bytes?: number;
   medianFee: number;
   feeRange: number[];
   totalFees: number;
@@ -66,6 +79,10 @@ export interface ChainState {
   blocks: ChainBlock[]; // newest first
   projected: ProjectedBlock[]; // next block first
   updatedAt: number;
+  /** how fees are written, e.g. "nXMR/B" for Monero (default "sat/vB") */
+  feeUnit?: string;
+  /** multiply a fee by this before picking its colour on mempool's sat/vB scale (default 1) */
+  feeColorScale?: number;
 }
 
 /**
@@ -118,6 +135,10 @@ export interface Miner {
   /** name of the driver that talks to it, e.g. "cgminer API" */
   driver?: string;
   firmwareVersion?: string;
+  /** 'cpu' for CPU miners (XMRig): the page shows the processor and its cores instead of an ASIC model */
+  kind?: 'asic' | 'cpu';
+  /** the processor of a CPU miner */
+  cpu?: CpuInfo;
   /** name of the firmware plugin to use (backend/firmware/*.js); empty = the first plugin whose match() says yes */
   firmware?: string;
   /** LED blinking ("Find this miner") until this time, ms */

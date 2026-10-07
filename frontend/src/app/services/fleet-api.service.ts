@@ -1,5 +1,5 @@
 import { Injectable, inject } from '@angular/core';
-import { HashAlgo, Miner, MinerStatus, MinerAction, NetworkInfo, OwnNodeConfig, PoolConfig, PoolStrategy, SettingsGroupId } from '../models';
+import { HashAlgo, Miner, MinerStatus, MinerAction, NetworkInfo, OwnNodeConfig, PoolConfig, PoolStrategy, SettingsGroupId, CpuInfo } from '../models';
 import { FleetSocketService } from './fleet-socket.service';
 
 export interface MinerConfigInput {
@@ -23,6 +23,10 @@ export interface FoundMiner {
   algo?: HashAlgo;
   known?: boolean;
   simulated?: boolean;
+  /** the API port it answered on (XMRig: its HTTP port) */
+  port?: number;
+  kind?: 'asic' | 'cpu';
+  cpu?: CpuInfo;
   /** the miner's mode, once the dashboard reads it: colours its Connected button after you log in */
   status?: MinerStatus;
   statusReason?: string;

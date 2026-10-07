@@ -1,8 +1,9 @@
 import { ChangeDetectionStrategy, Component, computed, input } from '@angular/core';
 import { DecimalPipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Miner, NetworkInfo } from '../models';
+import { CpuInfo, Miner, NetworkInfo, cpuLine } from '../models';
 import { FanComponent } from './fan.component';
+import { CpuComponent } from './cpu.component';
 import { formatAgo, formatDiff, formatHashrate } from '../lib/format';
 import { STATUS_LABEL } from '../lib/status';
 
@@ -14,24 +15,33 @@ import { STATUS_LABEL } from '../lib/status';
 @Component({
   selector: 'app-miner-panel',
   standalone: true,
-  imports: [FanComponent, DecimalPipe, RouterLink],
+  imports: [FanComponent, CpuComponent, DecimalPipe, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <article [class]="'panel ' + miner().status">
       <!-- data-fan is the launch point for this miner's share streams -->
-      <app-fan
-        class="big-fan"
-        [attr.data-fan]="miner().id"
-        [status]="miner().status"
-        [hashrateThs]="effectiveThs()"
-        [nominalThs]="miner().nominalThs"
-      />
+      @if (miner().cpu) {
+        <!-- CPU miner (XMRig): a chip with one square per thread, lit while it mines -->
+        <app-cpu class="big-fan" [attr.data-fan]="miner().id" [status]="miner().status" [cpu]="miner().cpu" />
+      } @else {
+        <app-fan
+          class="big-fan"
+          [attr.data-fan]="miner().id"
+          [status]="miner().status"
+          [hashrateThs]="effectiveThs()"
+          [nominalThs]="miner().nominalThs"
+        />
+      }
 
       <div class="body">
         <header>
           <div class="id">
             <h2>{{ miner().name }}</h2>
-            <p><span class="ip">{{ miner().host }}</span> · {{ miner().model }}</p>
+            @if (miner().cpu; as c) {
+              <p><span class="ip">{{ miner().host }}</span> · <b class="cores">{{ coresLine(c) }}</b> · {{ c.brand }}</p>
+            } @else {
+              <p><span class="ip">{{ miner().host }}</span> · {{ miner().model }}</p>
+            }
           </div>
           @if (miner().status === 'not-hashing') {
             <a class="chip" [routerLink]="['/settings']">{{ label() }}</a>
@@ -45,8 +55,13 @@ import { STATUS_LABEL } from '../lib/status';
 
         <dl>
           <div><dt>Hashrate</dt><dd>{{ hashrate() }}</dd></div>
-          <div><dt>Chip temp</dt><dd>{{ miner().temperatureC ? miner().temperatureC + ' °C' : '–' }}</dd></div>
-          <div><dt>Fan</dt><dd>{{ miner().fanRpm ? (miner().fanRpm | number) + ' rpm' : '–' }}</dd></div>
+          @if (miner().cpu; as c) {
+            <div><dt>Mining threads</dt><dd>{{ c.miningThreads }} <small>of {{ c.threads }}</small></dd></div>
+            <div><dt>Per thread</dt><dd>{{ perThread(c) }}</dd></div>
+          } @else {
+            <div><dt>Chip temp</dt><dd>{{ miner().temperatureC ? miner().temperatureC + ' °C' : '–' }}</dd></div>
+            <div><dt>Fan</dt><dd>{{ miner().fanRpm ? (miner().fanRpm | number) + ' rpm' : '–' }}</dd></div>
+          }
           <div><dt>Shares to your node</dt><dd>{{ miner().sharesAccepted | number }} <small>/ {{ miner().sharesRejected }} rej</small></dd></div>
           <div><dt>Last share</dt><dd>{{ lastShare() }}</dd></div>
           <div><dt>Best diff</dt><dd>{{ bestDiff() }}</dd></div>
@@ -82,6 +97,7 @@ import { STATUS_LABEL } from '../lib/status';
       h2 { margin: 0 0 4px; font: 600 24px/1.1 var(--display); letter-spacing: 0.02em; }
       .id p { margin: 0; color: var(--muted); font-size: 13.5px; }
       .ip { font-family: var(--mono); color: var(--text); }
+      .cores { color: var(--text); font-weight: 600; }
       .chip {
         display: inline-flex;
         align-items: center;
@@ -126,10 +142,23 @@ export class MinerPanelComponent {
   /** a miner that can't hash here (wrong blockchain network, offline, …) does no useful work: show 0 */
   readonly effectiveThs = computed(() => (this.miner().status === 'not-hashing' ? 0 : this.miner().hashrateThs));
   readonly hashrate = computed(() => formatHashrate(this.effectiveThs()));
-  readonly bestDiff = computed(() => (this.miner().bestShareDiff ? formatDiff(this.miner().bestShareDiff) : '–'));
+  // CPU miners (RandomX) count difficulty in hashes; ASICs in Bitcoin units of 2^32 hashes
+  readonly bestDiff = computed(() => (this.miner().bestShareDiff ? formatDiff(this.miner().bestShareDiff * (this.miner().cpu ? 2 ** 32 : 1)) : '–'));
   readonly lastShare = computed(() => formatAgo(this.miner().lastShareAt, this.now()));
   readonly poolHost = computed(() => {
     const url = this.miner().poolUrl;
     return url ? url.replace(/^stratum\+(tcp|ssl|tls):\/\//, '') : 'no pool set up';
   });
+
+  /** "16 cores · 32 threads" */
+  coresLine(c: CpuInfo): string {
+    return cpuLine(c);
+  }
+
+  /** average hashrate of one mining thread */
+  perThread(c: CpuInfo): string {
+    const t = c.threadHashrates?.length ? c.threadHashrates : null;
+    const hs = t ? t.reduce((a, b) => a + b, 0) / t.length : c.miningThreads ? (this.effectiveThs() * 1e12) / c.miningThreads : 0;
+    return hs ? formatHashrate(hs / 1e12) : '–';
+  }
 }

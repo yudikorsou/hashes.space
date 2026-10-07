@@ -6,6 +6,7 @@ import { Miner } from '../models';
 import { NetworkBarComponent } from '../components/network-bar.component';
 import { ChainStripComponent } from '../components/chain-strip.component';
 import { FanComponent } from '../components/fan.component';
+import { CpuComponent } from '../components/cpu.component';
 import { FleetStreamComponent } from '../components/fleet-stream.component';
 import { formatHashrate } from '../lib/format';
 
@@ -18,7 +19,7 @@ import { formatHashrate } from '../lib/format';
 @Component({
   selector: 'app-fleet-page',
   standalone: true,
-  imports: [NetworkBarComponent, ChainStripComponent, FanComponent, FleetStreamComponent, RouterLink],
+  imports: [NetworkBarComponent, ChainStripComponent, FanComponent, CpuComponent, FleetStreamComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <app-network-bar />
@@ -47,16 +48,28 @@ import { formatHashrate } from '../lib/format';
           <li class="hashing"><b>{{ count('hashing') }}</b> connected and hashing</li>
           <li class="not-submitting"><b>{{ count('not-submitting') }}</b> not submitting shares</li>
           <li class="not-hashing"><b>{{ count('not-hashing') }}</b> not hashing</li>
-          <li><b>{{ total() }}</b> fleet hashrate</li>
+          @for (t of total(); track t.algo) {
+            <li><b>{{ t.value }}</b> {{ t.label }}</li>
+          } @empty {
+            <li><b>0 H/s</b> fleet hashrate</li>
+          }
         </ul>
 
         <ul class="grid" [class.dense]="miners().length > 12">
           @for (m of miners(); track m.id) {
             <li [class]="'tile ' + m.status" [class.current]="socket.miner()?.id === m.id">
-              <app-fan class="fan" [attr.data-fleet-fan]="m.id" [status]="socket.unlocked().has(m.host!) ? m.status : 'not-hashing'" [hashrateThs]="m.status === 'not-hashing' ? 0 : m.hashrateThs" [nominalThs]="m.nominalThs" />
+              @if (m.cpu) {
+                <app-cpu class="fan" [attr.data-fleet-fan]="m.id" [status]="socket.unlocked().has(m.host!) ? m.status : 'not-hashing'" [cpu]="m.cpu" />
+              } @else {
+                <app-fan class="fan" [attr.data-fleet-fan]="m.id" [status]="socket.unlocked().has(m.host!) ? m.status : 'not-hashing'" [hashrateThs]="m.status === 'not-hashing' ? 0 : m.hashrateThs" [nominalThs]="m.nominalThs" />
+              }
               <div class="info">
                 <span class="ip">{{ m.host }}</span>
-                <span class="model">{{ m.model }}{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                @if (m.cpu) {
+                  <span class="model"><b class="cores">{{ m.cpu.cores }} cores · {{ m.cpu.miningThreads }}/{{ m.cpu.threads }} threads</b>{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                } @else {
+                  <span class="model">{{ m.model }}{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                }
                 <span class="chip" [title]="m.statusReason">{{ label(m.status) }}</span>
                 <span class="row">
                   <span class="rate">{{ rate(m) }}</span>
@@ -73,6 +86,7 @@ import { formatHashrate } from '../lib/format';
   `,
   styles: [
     `
+      .cores { color: var(--text); font-weight: 600; }
       :host { display: block; }
       main { padding: 24px 20px 56px; max-width: 1200px; margin: 0 auto; display: grid; gap: 18px; }
       h1 { margin: 0 0 4px; font: 600 24px/1.2 var(--display); letter-spacing: 0.02em; }
@@ -141,7 +155,12 @@ export class FleetPage implements OnInit, OnDestroy {
     return this.order().map((id) => live[id]).filter((m): m is Miner => !!m);
   });
   /** the work that counts: miners that are connected and hashing */
-  readonly total = computed(() => formatHashrate(this.miners().filter((m) => m.status === 'hashing').reduce((a, m) => a + (m.hashrateThs || 0), 0)));
+  /** hashrate per hash function of the miners that are connected and hashing (TH/s of SHA-256 and kH/s of RandomX don't add up) */
+  readonly total = computed(() => {
+    const per = new Map<string, number>();
+    for (const m of this.miners()) if (m.status === 'hashing') per.set(m.algo ?? '', (per.get(m.algo ?? '') ?? 0) + (m.hashrateThs || 0));
+    return [...per].map(([algo, v]) => ({ algo, label: this.socket.algoLabel(algo) || 'fleet hashrate', value: formatHashrate(v) }));
+  });
 
   constructor() {
     // Manage: once the miner opens (or its login is asked for), go to the dashboard

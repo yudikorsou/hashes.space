@@ -1,7 +1,7 @@
 import { AfterViewInit, ChangeDetectionStrategy, Component, ElementRef, OnDestroy, computed, effect, inject, input, signal, untracked } from '@angular/core';
 import { FleetApiService } from '../services/fleet-api.service';
 import { Miner } from '../models';
-import { formatHashrate } from '../lib/format';
+import { formatHashrate, hashrateAxis } from '../lib/format';
 import { Point, chartGeometry, hashrateHealth } from '../lib/hashrate-health';
 
 type Range = 'live' | '1h' | '24h';
@@ -13,7 +13,7 @@ const REFRESH_MS: Record<Range, number> = { live: 3_000, '1h': 15_000, '24h': 60
 const TICK_MS: Record<Range, number> = { live: 60_000, '1h': 10 * 60_000, '24h': 4 * 3_600_000 };
 const HEIGHT = 230;
 
-const axisUnit = (v: number) => (v === 0 ? '0' : v >= 1000 ? `${+(v / 1000).toFixed(2)} PH/s` : v < 1 ? `${+(v * 1000).toFixed(0)} GH/s` : `${+v.toFixed(2)} TH/s`);
+const axisUnit = hashrateAxis;
 const clock = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 const clockSec = (t: number) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 

@@ -1,6 +1,6 @@
 # hashes.space
 
-**Dashboard for local proof-of-work mining setups with visualization of bit, byte and hex communication.
+**Dashboard for local proof-of-work mining setups with visualization of bit, byte and hex communication.**
 
 Connect your ASIC miners on a local network, run the backend on a computer in that network and watch what normally stays invisible:
 
@@ -9,11 +9,12 @@ Connect your ASIC miners on a local network, run the backend on a computer in th
 - **Proof of work becomes visible:** every share a miner submits flies from its fan into the block being mined, as a string of 0s and 1s. The leading zeros are the proof of work: harder shares carry more zeros.
 - **Right or wrong setup shows at a glance:** a miner's fan only spins when it is configured correctly and its shares really reach the node. A wrong pool, a wrong port or the wrong blockchain stops it, with a plain-language reason.
 - **The blockchain keeps moving:** a mempool-style strip shows the blocks being mined live, from mempool.space, litecoinspace.org, mempool.guide or your own node.
+- **CPU mining too:** Monero (RandomX) with blocks from xmrchain.net, and CPU miners running [XMRig](https://github.com/xmrig/xmrig). A CPU miner is shown as a processor chip with one square per thread instead of a fan, and as "16 cores · 32 threads" instead of an ASIC model: the class sees how many cores it keeps busy, and every mining thread lights up.
 - **Bring your own firmware:** support for another miner firmware is one JavaScript file in [`backend/firmware/`](backend/firmware/README.md). See *Add your own mining firmware* below.
 
 The page connects to **one miner at a time** by its IP address; *Generate fleet* shows several miners side by side.
 
-- **Any proof of work.** hashes.space is not tied to one hash function. The networks it shows are listed in [`backend/networks.json`](backend/networks.json): it ships with **SHA-256** (Bitcoin, mempool.space), **Scrypt** (Litecoin, litecoinspace.org) and **BLAKE2b** (Bitcoin BLAKE2b, mempool.guide), and you add others (kHeavyHash, Equihash, RandomX, …) with one entry each. Every miner has its own hash function, and it only counts as connected and hashing on a network of that same hash function. Demo miners: **Bitmain Antminer S21** (SHA-256), **Bitmain Antminer L9** (Scrypt), **Goldshell SC Box II** and **Goldshell SC Pro** (BLAKE2b).
+- **Any proof of work.** hashes.space is not tied to one hash function. The networks it shows are listed in [`backend/networks.json`](backend/networks.json): it ships with **SHA-256** (Bitcoin, mempool.space), **Scrypt** (Litecoin, litecoinspace.org), **BLAKE2b** (Bitcoin BLAKE2b, mempool.guide) and **RandomX** (Monero, xmrchain.net), and you add others (kHeavyHash, Equihash, …) with one entry each. Every miner has its own hash function, and it only counts as connected and hashing on a network of that same hash function. Demo miners: **Bitmain Antminer S21** (SHA-256), **Bitmain Antminer L9** (Scrypt), **Goldshell SC Box II** and **Goldshell SC Pro** (BLAKE2b), and two CPU miners running XMRig on Monero: an **AMD Ryzen 9 7950X** (16 cores, 32 threads) and a **Raspberry Pi 5** (4 cores).
 - **Top:** a mempool-style blockchain strip with mempool's block colours. The data comes from any mempool.space-style explorer (mempool.space, litecoinspace.org, mempool.guide, a self-hosted mempool), a node's RPC, or **your own node**.
 - **PoW dropdown** above the blockchain: one entry per network in `networks.json`, each with its hash function badge. **Connect your own node and Electrum server** adds "Your node", for the hash function you pick.
 - **Below:** the connected miner, shown in one of **three modes** that the backend decides every time the miner reports in:
@@ -30,10 +31,12 @@ The page connects to **one miner at a time** by its IP address; *Generate fleet*
 
 ```
 ASIC rigs ──cgminer API (4028)──┐
+XMRig CPU miners ──HTTP API─────┤
 firmware ──POST /api/v1/telemetry┤
 stratum / DATUM ──POST /api/v1/shares┤
                                  ▼
 mempool WS(s)    ─┐    ┌──────────────────┐    WebSocket /ws?token=…    ┌──────────────────┐
+xmrchain API     ─┤
 node RPC         ─┼──▶ │ backend (Node+TS) │ ─────────────────────────▶ │ Angular frontend │
 Electrum server  ┘    └──────────────────┘   chain · 1 miner · shares   └──────────────────┘
 ```
@@ -67,9 +70,10 @@ backend/                     Node.js + TypeScript (one runtime dependency: ws)
   src/miners/auth.ts              miner login: scrypt-hashed passwords, 12 h sessions, lockout after 5 wrong tries
   src/miners/scanner.ts           Find ASIC: finds every miner powered on in the local network (TCP 4028)
   src/miners/pool-writer.ts       "Save & apply": addpool / switchpool / removepool over the cgminer API
+  src/sources/xmrchain-source.ts  Monero from xmrchain.net (or your own explorer): blocks, transaction pool, fees in nXMR/B
   src/miners/drivers.ts           per-brand drivers: what each can apply remotely (cgminer API included)
   src/miners/firmware-plugins.ts  loads firmware plugins from backend/firmware/ (read, settings, actions)
-  firmware/                       one .js file per firmware: _example.js template, intminer.js (Goldshell)
+  firmware/                       one .js file per firmware: _example.js template, intminer.js (Goldshell), xmrig.js (CPU miners)
   src/settings-schema.ts          copy of the shared settings schema, used to validate
   src/ws-server.ts                tenant-scoped WebSocket push (shares batched every 150 ms)
   src/api.ts                      REST API for firmware, agents and the manufacturer
@@ -125,6 +129,7 @@ Each network in `networks.json` has its own `source`:
 |---|---|---|
 | `mempool` | `wsUrl`, e.g. `wss://mempool.space/api/v1/ws` (any mempool.space-style explorer, or your own instance) | mempool's projected block 0 |
 | `node` | `rpcUrl`, `rpcUser`/`rpcPassword` or `cookieFile` (default: `BITCOIN_RPC_*`) | `getblocktemplate` on **your** node: the exact template your miners or DATUM Gateway are working on |
+| `xmrchain` | `apiUrl`, e.g. `https://xmrchain.net/api` (any [onion-monero-blockchain-explorer](https://github.com/moneroexamples/onion-monero-blockchain-explorer), or your own next to your monerod) | Monero's transaction pool, best fee per byte first, filled into blocks of the median block size |
 | `simulated` | `blockSeconds` (optional) | made-up blocks, for chains without an explorer |
 
 `CHAIN_SOURCE=simulated` makes every network simulated, for a classroom without internet.
@@ -269,6 +274,8 @@ Demo miners (`SIMULATE_MINERS=true`), three hash functions:
 | 192.168.1.102 | Bitmain Antminer L9 | Scrypt | 16 GH/s | Hashing, not submitting shares (main pool on the wrong port). "Use my node as main pool" turns it green |
 | 192.168.1.103 | Goldshell SC Box II | BLAKE2b | 1.4 TH/s | Not hashing (powered on, no pool set up) |
 | 192.168.1.104 | Goldshell SC Pro | BLAKE2b | 11 TH/s | Connected and hashing |
+| 192.168.1.105 | AMD Ryzen 9 7950X (XMRig, 16 cores / 32 threads) | RandomX | 22 kH/s | Connected and hashing |
+| 192.168.1.106 | Raspberry Pi 5 (XMRig, 4 cores) | RandomX | 600 H/s | Hashing, not submitting shares (pool on the wrong port) |
 
 Any other IP shows as not hashing, because nothing answers there.
 
@@ -305,6 +312,22 @@ Any other IP shows as not hashing, because nothing answers there.
 - Put the backend behind TLS (nginx or Caddy) so the frontend connects over `wss://`.
 - Whatsminer uses a token-based API; add a driver next to `cgminer-poller.ts`.
 
+
+## CPU miners: XMRig and Monero
+
+[XMRig](https://github.com/xmrig/xmrig) mines Monero (RandomX) on an ordinary computer. It has no cgminer API, so the dashboard reads its **HTTP API** through the firmware plugin [`backend/firmware/xmrig.js`](backend/firmware/xmrig.js). Turn the API on in XMRig's `config.json`:
+
+```json
+"http": { "enabled": true, "host": "0.0.0.0", "port": 18088, "access-token": "a-long-random-token", "restricted": false }
+```
+
+- **Token:** give the backend the same token: `XMRIG_ACCESS_TOKEN=a-long-random-token` (one for all rigs), or per IP: `XMRIG_TOKENS='{"192.168.1.40":"token"}'`.
+- **Find ASIC** also looks for XMRig on the ports in `SCAN_XMRIG_PORTS` (default `18088`) and registers what it finds with the XMRig plugin. Or add a rig to `miners.json`: `{ "id": "home:192.168.1.40", "tenantId": "home", "host": "192.168.1.40", "port": 18088, "firmware": "XMRig", "algo": "randomx" }`.
+- **What the dashboard reads** (`GET /2/summary`): hashrate (10 s), accepted and rejected shares, the pool, the share difficulty, and the processor: model, cores, threads and how many threads mine.
+- **What it can change** (`restricted: false`): the pools (`PUT /1/config`), and **Turn off / Turn on** under Maintenance, which pause and resume XMRig (`POST /json_rpc`).
+- **How it looks:** instead of a fan, a processor chip with one square per hardware thread. Squares light up for every thread XMRig runs on, and pulse only while the miner is connected and hashing. Find ASIC, the fleet and the dashboard show "16 cores · 32 threads" instead of an ASIC model, and the dashboard adds **Mining threads** and the hashrate **per thread**. Set the work mode to *Low power* in the demo and fewer cores light up.
+- **Your node:** a Monero miner needs your RandomX node, e.g. P2Pool: `"nodes": { "randomx": "stratum+tcp://192.168.1.10:3333" }` in `tenants.json`.
+- **Units:** hashrates go down to H/s; Monero fees are shown in nXMR/B (nanonero per byte) and coloured by how many times the base fee they pay.
 
 ## Your own miners
 

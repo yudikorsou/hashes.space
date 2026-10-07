@@ -28,9 +28,9 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
             <div class="cube" [attr.id]="b.index === 0 ? 'mining-block' : null">
               <div class="face front" [style.background]="projectedBg(b)">
                 <div class="txt">
-                  <span class="fee">~{{ b.medianFee | number: '1.0-0' }} sat/vB</span>
-                  <span class="range">{{ b.feeRange[0] | number: '1.0-0' }} - {{ b.feeRange[b.feeRange.length - 1] | number: '1.0-0' }} sat/vB</span>
-                  <span class="size">{{ b.vsize / 1e6 | number: '1.2-2' }} MvB</span>
+                  <span class="fee">~{{ b.medianFee | number: '1.0-0' }} {{ unit() }}</span>
+                  <span class="range">{{ b.feeRange[0] | number: '1.0-0' }} - {{ b.feeRange[b.feeRange.length - 1] | number: '1.0-0' }} {{ unit() }}</span>
+                  <span class="size">{{ b.bytes !== undefined ? sizeLabel(b.bytes) : (b.vsize / 1e6 | number: '1.2-2') + ' MvB' }}</span>
                   <span class="txs">{{ b.nTx ? (b.nTx | number) + ' transactions' : '' }}</span>
                   <span class="time">in ~{{ (b.index + 1) * 10 }} minutes</span>
                 </div>
@@ -66,9 +66,9 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
                   </div>
                 } @else {
                   <div class="txt">
-                    <span class="fee">~{{ b.medianFee | number: '1.0-0' }} sat/vB</span>
-                    <span class="range">{{ b.feeRange[0] | number: '1.0-0' }} - {{ b.feeRange[b.feeRange.length - 1] | number: '1.0-0' }} sat/vB</span>
-                    <span class="size">{{ b.size / 1e6 | number: '1.2-2' }} MB</span>
+                    <span class="fee">~{{ b.medianFee | number: '1.0-0' }} {{ unit() }}</span>
+                    <span class="range">{{ b.feeRange[0] | number: '1.0-0' }} - {{ b.feeRange[b.feeRange.length - 1] | number: '1.0-0' }} {{ unit() }}</span>
+                    <span class="size">{{ sizeLabel(b.size) }}</span>
                     <span class="txs">{{ b.txCount | number }} transactions</span>
                     <span class="time">{{ ago(b.timestamp) }}</span>
                   </div>
@@ -132,10 +132,20 @@ export class ChainStripComponent implements AfterViewInit, OnDestroy {
     this.subs.unsubscribe();
   }
 
+  /** "sat/vB", or the chain's own fee unit (Monero: nXMR/B) */
+  unit(): string {
+    return this.chain()?.feeUnit ?? 'sat/vB';
+  }
+
+  /** 1.62 MB, or 86 kB for small (Monero) blocks */
+  sizeLabel(bytes: number): string {
+    return bytes >= 1e6 ? `${(bytes / 1e6).toFixed(2)} MB` : `${Math.round(bytes / 1e3)} kB`;
+  }
+
   /** mempool: empty part #554b45, filled part in the median-fee colour */
   projectedBg(b: ProjectedBlock): string {
     const empty = 100 - Math.max(4, Math.min(100, (b.vsize / 1_000_000) * 100));
-    const c = feeColor(b.medianFee);
+    const c = feeColor(b.medianFee * (this.chain()?.feeColorScale ?? 1));
     return `linear-gradient(${MEMPOOL_COLORS.projectedEmpty}, ${MEMPOOL_COLORS.projectedEmpty} ${empty}%, ${c} ${empty}%, ${c} 100%)`;
   }
 

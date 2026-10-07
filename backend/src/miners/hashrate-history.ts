@@ -80,7 +80,7 @@ export class HashrateHistory {
     const points: HashratePoint[] = [];
     for (let k = last - spanMs + bucketMs; k <= last; k += bucketMs) {
       const v = d?.reported[range].get(k);
-      const reported = v ? +(v.sum / v.n).toFixed(3) : null;
+      const reported = v ? round4(v.sum / v.n) : null;
       points.push([k, reported, reported === null ? null : this.submitted(d, Math.min(k + bucketMs, now), windowMs)]);
     }
     return { range, bucketMs, windowMs, points };
@@ -108,7 +108,7 @@ export class HashrateHistory {
     const from = Math.floor((end - windowMs) / SHARE_BUCKET) * SHARE_BUCKET;
     for (let k = from; k < end; k += SHARE_BUCKET) work += d.work.get(k) ?? 0;
     const secs = (end - from) / 1000;
-    return +((work * 2 ** 32) / secs / 1e12).toFixed(3);
+    return round4((work * 2 ** 32) / secs / 1e12);
   }
 
   private get(id: string): MinerData {
@@ -116,4 +116,9 @@ export class HashrateHistory {
     if (!d) this.data.set(id, (d = { reported: { live: new Map(), '1h': new Map(), '24h': new Map() }, work: new Map() }));
     return d;
   }
+}
+
+/** 4 significant digits: keeps 11.23 TH/s and 21.85 kH/s (2.185e-8 TH/s) alike */
+function round4(ths: number): number {
+  return ths ? Number(ths.toPrecision(4)) : 0;
 }

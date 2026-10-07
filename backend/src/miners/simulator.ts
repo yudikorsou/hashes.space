@@ -1,6 +1,6 @@
 import { MinerRegistry } from './registry';
 import { DEFAULT_ALGO } from '../networks';
-import { HashAlgo, Miner, MinerAction, MinerSettings, PoolConfig, SettingsGroupId } from '../types';
+import { HashAlgo, Miner, MinerAction, MinerSettings, PoolConfig, SettingsGroupId, CpuInfo } from '../types';
 import { ApplyResult } from './pool-writer';
 import { MinerDriver } from './drivers';
 import { defaultSettings } from '../settings-schema';
@@ -58,6 +58,8 @@ function demoHistory(ths: number, mode: SimMode, index: number): (t: number) => 
  *   192.168.1.102  Bitmain Antminer L9   16 GH/s    Scrypt    hashing, not submitting shares (pool on the wrong port)
  *   192.168.1.103  Goldshell SC Box II   1.4 TH/s   BLAKE2b   not hashing (powered on, no pool set up)
  *   192.168.1.104  Goldshell SC Pro      11 TH/s    BLAKE2b   connected and hashing
+ *   192.168.1.105  AMD Ryzen 9 7950X     22 kH/s    RandomX   connected and hashing (XMRig, 32 threads on 16 cores)
+ *   192.168.1.106  Raspberry Pi 5        600 H/s    RandomX   hashing, not submitting shares (XMRig, 4 cores, wrong port)
  * Switch the network on the dashboard: a miner only hashes usefully on a network of its own hash function.
  * Connect to one of these IPs on the dashboard to see its mode.
  *   ok       connected and hashing (right node, right chain) -> green, fan spins
@@ -65,12 +67,22 @@ function demoHistory(ths: number, mode: SimMode, index: number): (t: number) => 
  *   wrong    hashing, not submitting shares (other pool)   -> orange, fan spins
  *   offline  not hashing (no pool set up)                  -> red, fan stopped
  */
-const MODELS: [string, string, number, SimMode, HashAlgo][] = [
+const MODELS: [string, string, number, SimMode, HashAlgo, { cores: number; threads: number }?][] = [
   ['192.168.1.101', 'Bitmain Antminer S21', 200, 'ok', 'sha256'],
   ['192.168.1.102', 'Bitmain Antminer L9', 0.016, 'idle', 'scrypt'],
   ['192.168.1.103', 'Goldshell SC Box II', 1.4, 'offline', 'blake2b'],
   ['192.168.1.104', 'Goldshell SC Pro', 11, 'ok', 'blake2b'],
+  // CPU miners (XMRig): 22 kH/s and 600 H/s, written in TH/s like every hashrate here
+  ['192.168.1.105', 'AMD Ryzen 9 7950X 16-Core Processor', 22e-9, 'ok', 'randomx', { cores: 16, threads: 32 }],
+  ['192.168.1.106', 'Raspberry Pi 5 (Cortex-A76)', 0.6e-9, 'idle', 'randomx', { cores: 4, threads: 4 }],
 ];
+
+/** how many threads a simulated XMRig runs at this work mode, and what each one hashes (H/s) */
+function cpuThreads(cpu: CpuInfo, factor: number, ths: number): CpuInfo {
+  const miningThreads = factor <= 0 ? 0 : Math.max(1, Math.min(cpu.threads, Math.round(cpu.threads * Math.min(1, factor))));
+  const per = miningThreads ? (ths * 1e12) / miningThreads : 0;
+  return { ...cpu, miningThreads, threadHashrates: Array.from({ length: miningThreads }, () => Math.round(per * (0.9 + Math.random() * 0.2))) };
+}
 
 /**
  * Creates a demo fleet for tenants that have no real miners registered and
@@ -86,10 +98,10 @@ export class MinerSimulator {
   start(): void {
     for (const t of this.registry.allTenants()) {
       if (this.registry.list(t.id).length) continue;
-      MODELS.forEach(([host, model, ths, mode, algo], i) => {
+      MODELS.forEach(([host, model, ths, mode, algo, cpu], i) => {
         const id = `${t.id}:${host}`;
-        // pick a vardiff that gives ~0.3–1 share/s so the stream is lively
-        const diff = Math.max(256, 2 ** Math.round(Math.log2((ths * 1e12) / (0.6 * 2 ** 32))));
+        // pick a vardiff that gives ~0.3–1 share/s so the stream is lively (CPU miners: a fraction of 2^32 hashes)
+        const diff = Math.max(cpu ? 0 : 256, 2 ** Math.round(Math.log2((ths * 1e12) / (0.6 * 2 ** 32))));
         this.ids.push({ id, tenantId: t.id, diff, mode });
         // your node for THIS miner's hash function (a SHA-256 miner needs your SHA-256 node)
         const node = this.registry.nodes(t.id)[algo] ?? `stratum+tcp://${t.expectedPoolHosts[0] ?? 'localhost'}:23334`;
@@ -111,7 +123,8 @@ export class MinerSimulator {
           algo,
           driver: 'simulator',
           capabilities: this.driver.capabilities,
-          firmwareVersion: 'sim-2026.09',
+          firmwareVersion: cpu ? 'XMRig 6.22 (simulated)' : 'sim-2026.09',
+          ...(cpu && { kind: 'cpu' as const, cpu: { brand: model, cores: cpu.cores, threads: cpu.threads, miningThreads: cpu.threads } }),
           nominalThs: ths,
           pools,
           poolUrl: pools[0]?.url,
@@ -230,12 +243,12 @@ export class MinerSimulator {
       if (m.rebootUntil && now < m.rebootUntil) continue; // no answer while rebooting
       if (m.poweredOff) {
         // turned off: the control board still answers, the hashboards and fans are off
-        this.registry.upsert({ id: s.id, tenantId: s.tenantId, lastSeenAt: now, hashrateThs: 0, fanRpm: 0, temperatureC: 30 });
+        this.registry.upsert({ id: s.id, tenantId: s.tenantId, lastSeenAt: now, hashrateThs: 0, fanRpm: 0, temperatureC: 30, ...(m.cpu && { cpu: { ...m.cpu, miningThreads: 0, threadHashrates: [] } }) });
         continue;
       }
       if (s.mode === 'offline') {
         // switched on and answering, but with no pool it does no work
-        this.registry.upsert({ id: s.id, tenantId: s.tenantId, lastSeenAt: now, hashrateThs: 0, fanRpm: 0, temperatureC: 34 });
+        this.registry.upsert({ id: s.id, tenantId: s.tenantId, lastSeenAt: now, hashrateThs: 0, fanRpm: 0, temperatureC: 34, ...(m.cpu && { cpu: { ...m.cpu, miningThreads: 0, threadHashrates: [] } }) });
         continue;
       }
       const jitter = 0.94 + Math.random() * 0.1;
@@ -245,9 +258,11 @@ export class MinerSimulator {
         id: s.id,
         tenantId: s.tenantId,
         lastSeenAt: now,
-        hashrateThs: +ths.toFixed(3),
+        hashrateThs: Number(ths.toPrecision(4)),
         fanRpm: r.fanRpm ? Math.round(r.fanRpm * (0.97 + Math.random() * 0.06)) : 0,
         temperatureC: r.temperatureC + Math.round(Math.random() * 2),
+        // CPU miners: the work mode decides how many threads XMRig runs (low power = half of them)
+        ...(m.cpu && { cpu: cpuThreads(m.cpu, r.factor, ths) }),
       });
     }
   }

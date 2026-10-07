@@ -27,7 +27,21 @@ export function formatHashrate(ths: number): string {
   if (ths >= 1e6) return `${(ths / 1e6).toFixed(2)} EH/s`;
   if (ths >= 1e3) return `${(ths / 1e3).toFixed(2)} PH/s`;
   if (ths >= 1) return `${ths.toFixed(ths >= 100 ? 1 : 2)} TH/s`;
-  return `${(ths * 1e3).toFixed(0)} GH/s`;
+  // ASICs in GH/s; CPU miners (RandomX) in MH/s, kH/s or H/s
+  const h = ths * 1e12;
+  if (h >= 1e9) return `${(h / 1e9).toFixed(h >= 1e11 ? 0 : 1)} GH/s`;
+  if (h >= 1e6) return `${(h / 1e6).toFixed(2)} MH/s`;
+  if (h >= 1e3) return `${(h / 1e3).toFixed(2)} kH/s`;
+  return `${h.toFixed(0)} H/s`;
+}
+
+/** chart axis label for a hashrate in TH/s: round numbers, H/s up to PH/s */
+export function hashrateAxis(ths: number): string {
+  if (ths === 0) return '0';
+  const units: [number, string][] = [[1e15, 'PH/s'], [1e12, 'TH/s'], [1e9, 'GH/s'], [1e6, 'MH/s'], [1e3, 'kH/s'], [1, 'H/s']];
+  const h = ths * 1e12;
+  const [f, u] = units.find(([f]) => h >= f) ?? units[units.length - 1];
+  return `${+(h / f).toFixed(2)} ${u}`;
 }
 
 export function formatDiff(d: number): string {

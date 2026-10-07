@@ -9,6 +9,7 @@ import path from 'path';
  * validated with, which blockchain it is and where its blocks come from:
  *   mempool    a mempool.space-style WebSocket (mempool.space, litecoinspace.org, mempool.guide, your own mempool)
  *   node       a node's JSON-RPC (Bitcoin Core / Knots style: getblocktemplate, getblock)
+ *   xmrchain   a Monero onion-blockchain-explorer API (xmrchain.net or your own), fed by a synced monerod
  *   simulated  made-up blocks, for classrooms without internet or chains without an explorer
  * A miner only counts as "Connected and hashing" on a network of its own hash function.
  */
@@ -21,9 +22,11 @@ export interface NetworkConfig {
   label: string;
   chain: string;
   ticker: string;
-  source: 'mempool' | 'node' | 'simulated';
+  source: 'mempool' | 'node' | 'xmrchain' | 'simulated';
   /** mempool: the WebSocket, e.g. wss://mempool.space/api/v1/ws */
   wsUrl?: string;
+  /** xmrchain: an onion-monero-blockchain-explorer API, e.g. https://xmrchain.net/api */
+  apiUrl?: string;
   /** shown as the data source, e.g. "mempool.space" */
   sourceLabel?: string;
   /** block page link prefix, e.g. https://mempool.space/block/ */
@@ -71,8 +74,9 @@ function load(): NetworkConfig[] {
       : !/^[a-z0-9-]{1,32}$/.test(n.id ?? '') || n.id === 'own' ? 'id must be 1–32 lowercase letters, digits or "-" (not "own")'
       : seen.has(n.id) ? 'id used twice'
       : !/^[a-z0-9-]{1,32}$/.test(n.algo ?? '') ? 'algo must be 1–32 lowercase letters, digits or "-"'
-      : !['mempool', 'node', 'simulated'].includes(n.source) ? 'source must be mempool, node or simulated'
+      : !['mempool', 'node', 'xmrchain', 'simulated'].includes(n.source) ? 'source must be mempool, node, xmrchain or simulated'
       : n.source === 'mempool' && !/^wss?:\/\//.test(n.wsUrl ?? '') ? 'a mempool source needs a wsUrl (wss://…/api/v1/ws)'
+      : n.source === 'xmrchain' && !/^https?:\/\//.test(n.apiUrl ?? '') ? 'an xmrchain source needs an apiUrl (https://xmrchain.net/api)'
       : null;
     if (problem) console.warn(`[networks] skipped ${n?.id ?? '?'}: ${problem}`);
     else seen.add(n.id);

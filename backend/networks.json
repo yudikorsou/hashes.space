@@ -32,5 +32,17 @@
     "wsUrl": "wss://mempool.guide/api/v1/ws",
     "sourceLabel": "mempool.guide",
     "explorer": "https://mempool.guide/block/"
+  },
+  {
+    "id": "monero",
+    "algo": "randomx",
+    "label": "RandomX",
+    "chain": "Monero",
+    "ticker": "XMR",
+    "source": "xmrchain",
+    "apiUrl": "https://xmrchain.net/api",
+    "sourceLabel": "xmrchain.net",
+    "explorer": "https://xmrchain.net/block/",
+    "blockSeconds": 120
   }
 ]

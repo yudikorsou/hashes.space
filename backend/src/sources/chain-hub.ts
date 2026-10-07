@@ -4,6 +4,7 @@ import { ChainSource } from './chain-source';
 import { MempoolSource } from './mempool-source';
 import { NodeSource } from './node-source';
 import { SimulatedSource } from './simulated-source';
+import { XmrchainSource } from './xmrchain-source';
 import { ElectrumSource } from './electrum-source';
 import { OwnSource } from './own-source';
 import { ChainBlock, ChainState, NetworkId, NetworkInfo, OwnNodeConfig } from '../types';
@@ -37,11 +38,13 @@ export class ChainHub extends EventEmitter {
       const src: ChainSource =
         kind === 'node'
           ? new NodeSource({ ...config.node, ...(n.rpcUrl && { rpcUrl: n.rpcUrl, rpcUser: n.rpcUser, rpcPassword: n.rpcPassword, cookieFile: n.cookieFile }) }, n.sourceLabel ?? `${n.chain} node`)
+          : kind === 'xmrchain'
+            ? new XmrchainSource(n.apiUrl!, n.sourceLabel ?? new URL(n.apiUrl!).host)
           : kind === 'simulated'
             ? new SimulatedSource(`Simulated ${n.chain} chain`, undefined, Math.max(20_000, (n.blockSeconds ?? 600) * 125))
             : new MempoolSource(n.wsUrl!, n.sourceLabel ?? new URL(n.wsUrl!).host);
       this.add(n.id, src);
-      return { id: n.id, algo: n.algo, label: n.label, chain: n.chain, ticker: n.ticker, source: src.getState().source, explorerBlockUrl: kind === 'mempool' ? n.explorer : undefined };
+      return { id: n.id, algo: n.algo, label: n.label, chain: n.chain, ticker: n.ticker, source: src.getState().source, explorerBlockUrl: kind === 'mempool' || kind === 'xmrchain' ? n.explorer : undefined };
     });
   }
 

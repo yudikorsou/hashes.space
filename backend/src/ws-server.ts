@@ -1,3 +1,4 @@
+import { DEFAULT_ALGO } from './networks';
 import http from 'http';
 import { URL } from 'url';
 import WebSocket, { WebSocketServer } from 'ws';
@@ -154,6 +155,17 @@ export class PushServer {
       }
       c.minerId = miner.id; // replaces any miner this page was connected to before
       c.session = session;
+      // open the miner on a network of its own hash function (a Monero CPU miner on Monero, not on Bitcoin);
+      // switching the dropdown afterwards still shows what happens on the wrong network
+      const nets = this.hub.networks(c.tenant.id);
+      const algo = miner.algo ?? DEFAULT_ALGO;
+      if (nets.find((n) => n.id === c.network)?.algo !== algo) {
+        const fit = nets.find((n) => n.algo === algo && n.id !== 'own') ?? nets.find((n) => n.algo === algo);
+        if (fit) {
+          c.network = fit.id;
+          this.sendChain(c);
+        }
+      }
       this.applyNetwork(c);
       this.send(c, { type: 'watching', miner: this.registry.get(miner.id) ?? miner });
     } catch (e) {

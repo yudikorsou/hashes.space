@@ -42,13 +42,18 @@ module.exports = {
   hashrateThs: 11.2,          // required: what the miner hashes now, in TH/s
   sharesAccepted: 11371,      // total accepted shares; every increase flies into the block on the dashboard
   sharesRejected: 4,
-  shareDifficulty: 16384,     // the pool's share difficulty
+  shareDifficulty: 16384,     // the pool's share difficulty, in Bitcoin units (1 = 2^32 hashes); divide a Monero pool's difficulty by 2^32
   poolUrl: 'stratum+tcp://192.168.1.10:23335', // the pool it works for now: decides "connected to your node"
   pools: [{ url, user }],     // the pools set on the miner
   temperatureC: 89,
   fanRpm: 3260,
   model: 'Goldshell SC Pro',
   firmwareVersion: 'myfw 1.2',
+  // CPU miners: shown by their processor and cores instead of an ASIC model
+  kind: 'cpu',
+  cpu: { brand: 'AMD Ryzen 9 7950X', cores: 16, threads: 32, miningThreads: 32 },
+  algo: 'randomx',   // the hash function the miner reports
+  paused: false,
 }
 ```
 
@@ -72,6 +77,7 @@ A plugin runs inside the backend with the same rights as the backend: it can rea
 
 - [`_example.js`](_example.js): the commented template.
 - [`intminer.js`](intminer.js): Goldshell miners on intminer firmware. It names the miners and allows only reboot remotely, because stock intminer keeps its API read-only.
+- [`xmrig.js`](xmrig.js): CPU miners running XMRig. It reads XMRig's HTTP API instead of the cgminer API, reports the processor's cores and threads (`kind: 'cpu'`, `cpu: {...}`), converts XMRig's share difficulty to Bitcoin units, and can pause, resume and change pools.
 
 ## Teaching with plugins
 

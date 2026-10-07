@@ -15,6 +15,11 @@ export interface FoundMiner {
   known?: boolean;
   /** true for the built-in demo miners */
   simulated?: boolean;
+  /** the API port it answered on (4028 for cgminer, the HTTP port for XMRig) */
+  port?: number;
+  /** 'cpu' for CPU miners (XMRig) */
+  kind?: 'asic' | 'cpu';
+  cpu?: { brand: string; cores: number; threads: number; miningThreads: number };
   /** the miner's mode, once the dashboard reads it (shown on its Connected button after you log in) */
   status?: MinerStatus;
   statusReason?: string;
@@ -36,20 +41,29 @@ export interface ScanResult {
  * subnet of this computer it tries TCP 4028 (the cgminer-compatible API most
  * firmwares expose) on every address, then asks the ones that answer who they are.
  */
-export async function scanLocalNetwork(opts: { port?: number; connectTimeoutMs?: number; concurrency?: number; extraSubnets?: string[] } = {}): Promise<ScanResult> {
+export async function scanLocalNetwork(opts: { port?: number; xmrigPorts?: number[]; connectTimeoutMs?: number; concurrency?: number; extraSubnets?: string[] } = {}): Promise<ScanResult> {
   const started = Date.now();
   const port = opts.port ?? 4028;
   const subnets = [...new Set([...localSubnets(), ...(opts.extraSubnets ?? [])])];
   const targets = subnets.flatMap((s) => Array.from({ length: 254 }, (_, i) => `${s}.${i + 1}`));
 
   const open: string[] = [];
+  const openHttp: [string, number][] = [];
+  const xmrigPorts = opts.xmrigPorts ?? [];
   await pool(targets, opts.concurrency ?? 96, async (ip) => {
     if (await portOpen(ip, port, opts.connectTimeoutMs ?? 350)) open.push(ip);
+    for (const p of xmrigPorts) if (await portOpen(ip, p, opts.connectTimeoutMs ?? 350)) openHttp.push([ip, p]);
   });
 
   const miners: FoundMiner[] = [];
   await pool(open, 16, async (ip) => {
     const m = await identify(ip, port);
+    if (m) miners.push(m);
+  });
+  // CPU miners: XMRig's HTTP API (GET /2/summary)
+  await pool(openHttp, 16, async ([ip, p]) => {
+    if (miners.some((m) => m.ip === ip)) return;
+    const m = await identifyXmrig(ip, p);
     if (m) miners.push(m);
   });
 
@@ -95,6 +109,39 @@ async function identify(ip: string, port: number): Promise<FoundMiner | null> {
     };
   } catch {
     return null; // port open, but not a miner API
+  }
+}
+
+/** XMRig answers GET /2/summary on its HTTP port with its version, algorithm and CPU */
+export async function identifyXmrig(ip: string, port: number): Promise<FoundMiner | null> {
+  try {
+    let token = process.env.XMRIG_ACCESS_TOKEN || '';
+    try {
+      token = JSON.parse(process.env.XMRIG_TOKENS || '{}')[ip] || token;
+    } catch {
+      /* ignore a broken XMRIG_TOKENS */
+    }
+    const res = await fetch(`http://${ip}:${port}/2/summary`, { headers: token ? { authorization: `Bearer ${token}` } : {}, signal: AbortSignal.timeout(2500) });
+    if (!res.ok) return null;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s: any = await res.json();
+    if (!/xmrig/i.test(String(s?.ua ?? '')) && !(s?.hashrate && s?.cpu)) return null;
+    const hs = Number(s.hashrate?.total?.[0] ?? s.hashrate?.total?.[1] ?? 0) || 0;
+    const threads = Array.isArray(s.hashrate?.threads) ? s.hashrate.threads.length : 0;
+    const algo = String(s.algo ?? '').startsWith('rx/') ? 'randomx' : undefined;
+    return {
+      ip,
+      port,
+      kind: 'cpu',
+      model: String(s.cpu?.brand ?? 'CPU miner').replace(/\s+/g, ' ').trim(),
+      hashrateThs: s.paused ? 0 : hs / 1e12,
+      poolUrl: s.connection?.pool ? `stratum+tcp://${s.connection.pool}` : undefined,
+      firmware: `XMRig ${s.version ?? ''}`.trim(),
+      algo,
+      cpu: { brand: String(s.cpu?.brand ?? 'CPU').replace(/\s+/g, ' ').trim(), cores: Number(s.cpu?.cores) || threads || 1, threads: Number(s.cpu?.threads) || threads || 1, miningThreads: s.paused ? 0 : threads },
+    };
+  } catch {
+    return null;
   }
 }
 

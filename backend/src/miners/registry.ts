@@ -139,7 +139,7 @@ export class MinerRegistry extends EventEmitter {
           .filter((m) => m.status === 'hashing')
           .reduce<Partial<Record<HashAlgo, number>>>((acc, m) => {
             const a = m.algo ?? DEFAULT_ALGO;
-            acc[a] = +((acc[a] ?? 0) + (m.hashrateThs || 0)).toFixed(2);
+            acc[a] = Number(((acc[a] ?? 0) + (m.hashrateThs || 0)).toPrecision(4));
             return acc;
           }, {}),
       },

@@ -50,6 +50,8 @@ export const config = {
     port: Number(env('SCAN_PORT', '4028')),
     /** extra /24 networks to scan besides this computer's own, e.g. "192.168.2,10.0.5" */
     extraSubnets: (env('SCAN_SUBNETS', '') ?? '').split(',').map((x) => x.trim().replace(/^(\d+\.\d+\.\d+)\.\d+(\/24)?$/, '$1')).filter((x) => /^\d+\.\d+\.\d+$/.test(x)),
+    /** HTTP ports where XMRig's API may answer (CPU miners), e.g. "18088,8080"; empty = don't look */
+    xmrigPorts: (env('SCAN_XMRIG_PORTS', '18088') ?? '').split(',').map((x) => Number(x.trim())).filter((x) => x > 0 && x < 65536),
     /** reuse a scan for this long unless ?refresh=1 */
     cacheMs: Number(env('SCAN_CACHE_MS', '15000')),
   },
@@ -76,7 +78,7 @@ export function loadTenants(): Tenant[] {
       name: 'hashes.space',
       apiKey: 'demo-key',
       accentColor: '#f7931a',
-      nodes: { sha256: 'stratum+tcp://datum.local:23334', scrypt: 'stratum+tcp://datum.local:23336', blake2b: 'stratum+tcp://datum.local:23335' },
+      nodes: { sha256: 'stratum+tcp://datum.local:23334', scrypt: 'stratum+tcp://datum.local:23336', blake2b: 'stratum+tcp://datum.local:23335', randomx: 'stratum+tcp://p2pool.local:3333' },
       expectedPoolHosts: ['127.0.0.1', 'localhost', 'datum'],
     },
   ]);

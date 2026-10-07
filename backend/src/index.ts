@@ -55,8 +55,18 @@ let lastScan: ScanResult | undefined;
 let running: Promise<ScanResult> | undefined;
 const scan = async (tenantId: string, refresh: boolean): Promise<ScanResult> => {
   if (refresh || !lastScan || Date.now() - lastScan.scannedAt > config.scan.cacheMs) {
-    running ??= scanLocalNetwork({ port: config.scan.port, extraSubnets: config.scan.extraSubnets }).finally(() => (running = undefined));
+    running ??= scanLocalNetwork({ port: config.scan.port, xmrigPorts: config.scan.xmrigPorts, extraSubnets: config.scan.extraSubnets }).finally(() => (running = undefined));
     lastScan = await running;
+  }
+  // CPU miners found on XMRig's HTTP port: register them with that port and the XMRig plugin,
+  // so Manage reads them right away (the default is the cgminer API on 4028)
+  for (const f of lastScan.miners) {
+    if (f.kind !== 'cpu' || registry.byHost(tenantId, f.ip)) continue;
+    try {
+      registry.upsert({ id: `${tenantId}:${f.ip}`, tenantId, host: f.ip, port: f.port, name: f.ip, model: f.model, firmware: 'XMRig', firmwareVersion: f.firmware, kind: 'cpu', algo: f.algo ?? 'randomx', cpu: f.cpu });
+    } catch {
+      /* IP taken: leave it */
+    }
   }
   const known = new Set(registry.list(tenantId).map((m) => m.host));
   // each miner's live mode from the registry (the dashboard reads every miner it knows)
@@ -68,7 +78,7 @@ const scan = async (tenantId: string, refresh: boolean): Promise<ScanResult> => 
   const sims: FoundMiner[] = registry
     .list(tenantId)
     .filter((m) => !!m.host && simulator.handles(m.id) && (m.rebootUntil ?? 0) < Date.now())
-    .map((m) => ({ ip: m.host!, model: m.model, hashrateThs: m.hashrateThs, poolUrl: m.poolUrl, algo: m.algo, firmware: m.firmwareVersion, simulated: true }));
+    .map((m) => ({ ip: m.host!, model: m.model, hashrateThs: m.hashrateThs, poolUrl: m.poolUrl, algo: m.algo, firmware: m.firmwareVersion, kind: m.kind, cpu: m.cpu, simulated: true }));
   const real = lastScan.miners.filter((f) => !sims.some((s) => s.ip === f.ip)).map((f) => ({ ...f, known: known.has(f.ip) }));
   const miners = [...sims.map((s) => ({ ...s, known: true })), ...real].map(withStatus).sort((a, b) => a.ip.localeCompare(b.ip, undefined, { numeric: true }));
   return { ...lastScan, miners };

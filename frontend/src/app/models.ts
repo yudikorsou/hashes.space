@@ -56,6 +56,8 @@ export interface ProjectedBlock {
   index: number; // 0 = the block currently being mined
   nTx: number; // 0 when unknown (Electrum fee histogram)
   vsize: number;
+  /** real size in bytes, when vsize is only the fill level (Monero) */
+  bytes?: number;
   medianFee: number;
   feeRange: number[];
   totalFees: number;
@@ -68,6 +70,10 @@ export interface ChainState {
   blocks: ChainBlock[]; // newest first
   projected: ProjectedBlock[]; // next block first
   updatedAt: number;
+  /** how fees are written, e.g. "nXMR/B" for Monero (default "sat/vB") */
+  feeUnit?: string;
+  /** multiply a fee by this before picking its colour on mempool's sat/vB scale (default 1) */
+  feeColorScale?: number;
 }
 
 /**
@@ -80,6 +86,22 @@ export interface ChainState {
  *   not-hashing     red     "Not hashing, go to miner settings" unreachable, 0 hashrate or no pool; fan stopped
  */
 export type MinerStatus = 'hashing' | 'not-submitting' | 'not-hashing';
+
+/** The processor of a CPU miner, as XMRig reports it. */
+export interface CpuInfo {
+  brand: string;
+  cores: number;
+  threads: number;
+  /** threads the miner runs on right now */
+  miningThreads: number;
+  /** hashrate per mining thread, H/s */
+  threadHashrates?: number[];
+}
+
+/** "16 cores · 32 threads" */
+export function cpuLine(c: CpuInfo): string {
+  return `${c.cores} ${c.cores === 1 ? 'core' : 'cores'} · ${c.threads} ${c.threads === 1 ? 'thread' : 'threads'}`;
+}
 
 /** One pool slot as on a Bitmain / Goldshell "Miner configuration" page. */
 export interface PoolConfig {
@@ -120,6 +142,9 @@ export interface Miner {
   /** name of the driver that talks to it, e.g. "cgminer API" */
   driver?: string;
   firmwareVersion?: string;
+  /** 'cpu' for CPU miners (XMRig): shown by processor and cores instead of an ASIC model */
+  kind?: 'asic' | 'cpu';
+  cpu?: CpuInfo;
   /** LED blinking ("Find this miner") until this time, ms */
   locateUntil?: number;
   /** rebooting until this time, ms */

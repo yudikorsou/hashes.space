@@ -6,7 +6,8 @@ import { MAX_FLEET_ADD, parseIpList } from '../lib/ip-list';
 import { STATUS_SHORT } from '../lib/status';
 import { formatHashrate } from '../lib/format';
 import { FanComponent } from '../components/fan.component';
-import { MinerStatus } from '../models';
+import { CpuComponent } from '../components/cpu.component';
+import { CpuInfo, MinerStatus, cpuLine } from '../models';
 
 /**
  * Find ASIC: the first stop before connecting. Lists every miner that is
@@ -24,7 +25,7 @@ import { MinerStatus } from '../models';
 @Component({
   selector: 'app-asic-page',
   standalone: true,
-  imports: [FanComponent, RouterLink],
+  imports: [FanComponent, CpuComponent, RouterLink],
   changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     <main>
@@ -61,10 +62,19 @@ import { MinerStatus } from '../models';
           <ul class="list">
             @for (m of result()!.miners; track m.ip) {
               <li class="pick" [class.current]="current() === m.ip" (click)="open(m.ip)" [title]="'Show ' + m.ip + ' on the dashboard'">
-                <app-fan class="fan" [status]="spinState(m.ip, m.status)" [hashrateThs]="m.hashrateThs" [nominalThs]="m.hashrateThs || 1" />
+                @if (m.cpu) {
+                  <app-cpu class="fan" [status]="spinState(m.ip, m.status)" [cpu]="m.cpu" />
+                } @else {
+                  <app-fan class="fan" [status]="spinState(m.ip, m.status)" [hashrateThs]="m.hashrateThs" [nominalThs]="m.hashrateThs || 1" />
+                }
                 <div class="who">
                   <span class="ip">{{ m.ip }}</span>
-                  <span class="model">{{ m.model }}{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                  @if (m.cpu) {
+                    <!-- a CPU miner: how many cores it has to keep busy, instead of an ASIC model -->
+                    <span class="model"><b class="cores">{{ coresLine(m.cpu) }}</b> · {{ m.cpu.brand }}{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                  } @else {
+                    <span class="model">{{ m.model }}{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                  }
                 </div>
                 <dl>
                   <div class="pool"><dt>Pool</dt><dd [title]="m.poolUrl ?? ''">{{ pool(m.poolUrl) }}</dd></div>
@@ -179,10 +189,18 @@ import { MinerStatus } from '../models';
           <ul class="list">
             @for (m of fleet()!.miners; track m.id) {
               <li [class]="'pick ' + m.status" [class.current]="current() === m.host" (click)="open(m.host!)" [title]="'Show ' + m.host + ' on the dashboard'">
-                <app-fan class="fan" [status]="spinState(m.host!, m.status)" [hashrateThs]="m.status === 'not-hashing' ? 0 : m.hashrateThs" [nominalThs]="m.nominalThs" />
+                @if (m.cpu) {
+                  <app-cpu class="fan" [status]="spinState(m.host!, m.status)" [cpu]="m.cpu" />
+                } @else {
+                  <app-fan class="fan" [status]="spinState(m.host!, m.status)" [hashrateThs]="m.status === 'not-hashing' ? 0 : m.hashrateThs" [nominalThs]="m.nominalThs" />
+                }
                 <div class="who">
                   <span class="ip">{{ m.host }}</span>
-                  <span class="model">{{ m.name !== m.host ? m.name + ' · ' : '' }}{{ m.model }}{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                  @if (m.cpu) {
+                    <span class="model">{{ m.name !== m.host ? m.name + ' · ' : '' }}<b class="cores">{{ coresLine(m.cpu) }}</b> · {{ m.cpu.brand }}{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                  } @else {
+                    <span class="model">{{ m.name !== m.host ? m.name + ' · ' : '' }}{{ m.model }}{{ m.algo ? ' · ' + socket.algoLabel(m.algo) : '' }}</span>
+                  }
                 </div>
                 <div class="state">
                   <span class="chip">{{ statusLabel[m.status] }}</span>
@@ -211,6 +229,7 @@ import { MinerStatus } from '../models';
   `,
   styles: [
     `
+      .cores { color: var(--text); font-weight: 600; }
       :host { display: block; }
       main { padding: 24px 20px 56px; max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
       .fleet h2 { margin: 0 0 4px; font: 600 20px/1.2 var(--display); letter-spacing: 0.02em; }
@@ -499,6 +518,11 @@ export class AsicPage implements OnInit, OnDestroy {
   /** a fan only spins after you managed the miner here (logged in) and it is configured correctly (connected and hashing) */
   spinState(ip: string, status?: MinerStatus): MinerStatus {
     return this.socket.unlocked().has(ip) ? (status ?? 'not-hashing') : 'not-hashing';
+  }
+
+  /** "16 cores · 32 threads" for a CPU miner */
+  coresLine(c: CpuInfo): string {
+    return cpuLine(c);
   }
 
   open(ip: string): void {

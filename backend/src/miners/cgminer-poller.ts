@@ -1,6 +1,6 @@
 import net from 'net';
 import { MinerRegistry } from './registry';
-import { Miner } from '../types';
+import { CpuInfo, Miner } from '../types';
 
 /** What one poll of a miner returns. Firmware plugins (backend/firmware/*.js) return the same shape from read(). */
 export interface MinerReading {
@@ -8,7 +8,8 @@ export interface MinerReading {
   /** total shares the pool accepted since the miner started (the dashboard animates the increase) */
   sharesAccepted?: number;
   sharesRejected?: number;
-  /** the pool's current share difficulty */
+  /** the pool's current share difficulty, in Bitcoin units (1 = 2^32 hashes); Monero pools count
+   *  in hashes, so divide those by 2^32 */
   shareDifficulty?: number;
   poolUrl?: string;
   pools?: { url: string; user: string }[];
@@ -16,6 +17,13 @@ export interface MinerReading {
   fanRpm?: number;
   model?: string;
   firmwareVersion?: string;
+  /** CPU miners: the processor and how many threads mine */
+  kind?: 'asic' | 'cpu';
+  cpu?: CpuInfo;
+  /** the hash function the miner reports, e.g. "randomx" (overrides the configured one) */
+  algo?: string;
+  /** the miner paused itself or was paused from the dashboard */
+  paused?: boolean;
 }
 export type MinerReader = (m: Miner) => Promise<MinerReading>;
 
@@ -93,6 +101,10 @@ export class CgminerPoller {
       sharesRejected: r.sharesRejected,
       fanRpm: r.fanRpm,
       temperatureC: r.temperatureC,
+      kind: r.kind,
+      cpu: r.cpu,
+      algo: r.algo,
+      poweredOff: r.paused,
     });
 
     // Turn the accepted-counter delta into individual share events (capped).
