@@ -1,14 +1,16 @@
 <!--CSS-->
   /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
-  .mstats { max-width: 1100px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
+  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 20px; }
+  @media (max-width: 900px) { .mstats { grid-template-columns: 1fr; } }
   .mstats[hidden] { display: none !important; }
-  .mcard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 18px 14px; display: grid; gap: 10px; min-width: 0; }
+  .mcard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .mcard .plot { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
   .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
   .mcard .kpis dt { font: 600 14px/1.2 var(--sans); color: var(--link); text-transform: none; letter-spacing: 0; }
   .mcard .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
   .mcard svg { width: 100%; height: auto; display: block; overflow: visible; }
   .mcard svg text { font-family: var(--sans); }
-  .mcard .more { justify-self: center; color: var(--link); text-decoration: none; font: 500 14px/1 var(--sans); padding: 6px 8px; }
+  .mcard .more { align-self: center; color: var(--link); text-decoration: none; font: 500 14px/1 var(--sans); padding: 6px 8px; }
   .mcard .more:hover { text-decoration: underline; }
   .mcard .key { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
   .mcard .key i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
@@ -19,6 +21,16 @@
   @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mcard .kpis dd { font-size: 17px; } }
 <!--HTML-->
 <section class="mstats" id="mining-stats" aria-label="Mining on Bitcoin BLAKE2b" hidden>
+  <article class="mcard" aria-labelledby="hr-title">
+    <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
+    <dl class="kpis">
+      <div><dt>Hashrate (1w)</dt><dd id="ms-hash">–</dd></div>
+      <div><dt>Difficulty</dt><dd id="ms-diff">–</dd></div>
+    </dl>
+    <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
+    <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i>Hashrate (7-day average)</li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
+    <a class="more" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
+  </article>
   <article class="mcard" aria-labelledby="pools-title">
     <h2 class="sr-only" id="pools-title">Mining pools, last week</h2>
     <dl class="kpis">
@@ -26,18 +38,8 @@
       <div><dt>Blocks (1w)</dt><dd id="ms-blocks">–</dd></div>
       <div><dt>Pools Count</dt><dd id="ms-pools">–</dd></div>
     </dl>
-    <svg id="ms-pie" viewBox="0 0 600 330" role="img" aria-label="Blocks per mining pool, last week"></svg>
+    <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <a class="more" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
-  </article>
-  <article class="mcard" aria-labelledby="hr-title">
-    <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
-    <dl class="kpis">
-      <div><dt>Hashrate (1w)</dt><dd id="ms-hash">–</dd></div>
-      <div><dt>Difficulty</dt><dd id="ms-diff">–</dd></div>
-    </dl>
-    <svg id="ms-chart" viewBox="0 0 600 330" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
-    <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i>Hashrate (7-day average)</li><li><i style="background:#d6336c"></i>Difficulty</li></ul>
-    <a class="more" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
   <p class="msource" id="ms-source"></p>
 </section>
@@ -102,7 +104,7 @@
   function tip(e, html) { let t = $('mtip'); if (!t) { t = document.createElement('div'); t.id = 'mtip'; t.className = 'mtip'; document.body.appendChild(t); } if (!html) { t.hidden = true; return; } t.hidden = false; t.innerHTML = html; t.style.left = Math.min(innerWidth - 250, e.clientX + 12) + 'px'; t.style.top = e.clientY + 12 + 'px'; }
   function drawPie(m) {
     const svg = $('ms-pie'); svg.replaceChildren();
-    const cx = 330, cy = 165, R = 140, R0 = 46, total = m.pools.reduce((a, p) => a + p.blocks, 0) || 1;
+    const cx = 300, cy = 170, R = 150, R0 = 48, total = m.pools.reduce((a, p) => a + p.blocks, 0) || 1;
     let a = -Math.PI / 2; const labels = [];
     m.pools.forEach((p, i) => {
       const share = p.blocks / total, a0 = a, a1 = a + share * Math.PI * 2; a = a1;
@@ -126,7 +128,7 @@
     for (const right of [true, false]) {
       const side = labels.filter((l) => l.right === right).sort((p, q) => p.y - q.y);
       side.forEach((l, k) => { if (k && l.y < side[k - 1].y + 16) l.y = side[k - 1].y + 16; });
-      const over = side.length ? side[side.length - 1].y - 322 : 0; if (over > 0) side.forEach((l) => (l.y -= over));
+      const over = side.length ? side[side.length - 1].y - 332 : 0; if (over > 0) side.forEach((l) => (l.y -= over));
       side.forEach((l, k) => { if (k && l.y < side[k - 1].y + 16) l.y = side[k - 1].y + 16; if (l.y < 10) l.y = 10 + k * 16; });
       side.forEach((l) => {
         const x0 = cx + R * Math.cos(l.mid), y0 = cy + R * Math.sin(l.mid), x1 = cx + (R + 14) * Math.cos(l.mid), xe = right ? cx + R + 34 : cx - R - 34;
@@ -138,7 +140,7 @@
   function niceStep(max, n) { const raw = max / n, p = 10 ** Math.floor(Math.log10(raw)), f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 3 ? 3 : f <= 5 ? 5 : 10) * p; }
   function drawChart(m) {
     const svg = $('ms-chart'); svg.replaceChildren();
-    const L = 78, Rt = 530, T = 14, B = 290, hs = m.hashrates, ds = m.difficulty;
+    const L = 72, Rt = 548, T = 12, B = 280, hs = m.hashrates, ds = m.difficulty;
     if (!hs.length) return;
     const t0 = hs[0][0], t1 = Math.max(hs[hs.length - 1][0], ds.length ? ds[ds.length - 1][0] : 0);
     const X = (t) => L + ((t - t0) / (t1 - t0 || 1)) * (Rt - L);
