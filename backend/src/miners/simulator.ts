@@ -54,8 +54,6 @@ function demoHistory(ths: number, mode: SimMode, index: number): (t: number) => 
 
 /**
  * Demo miners, each on its own IP address and hash function: [IP, model, nominal TH/s, mode, hash function].
- *   192.168.1.101  Bitmain Antminer S21  200 TH/s   SHA-256   connected and hashing
- *   192.168.1.102  Bitmain Antminer L9   16 GH/s    Scrypt    hashing, not submitting shares (pool on the wrong port)
  *   192.168.1.103  Goldshell SC Box II   1.4 TH/s   BLAKE2b   not hashing (powered on, no pool set up)
  *   192.168.1.104  Goldshell SC Pro      11 TH/s    BLAKE2b   connected and hashing
  *   192.168.1.105  AMD Ryzen 9 7950X     22 kH/s    RandomX   connected and hashing (XMRig, 32 threads on 16 cores)
@@ -68,8 +66,6 @@ function demoHistory(ths: number, mode: SimMode, index: number): (t: number) => 
  *   offline  not hashing (no pool set up)                  -> red, fan stopped
  */
 const MODELS: [string, string, number, SimMode, HashAlgo, { cores: number; threads: number }?][] = [
-  ['192.168.1.101', 'Bitmain Antminer S21', 200, 'ok', 'sha256'],
-  ['192.168.1.102', 'Bitmain Antminer L9', 0.016, 'idle', 'scrypt'],
   ['192.168.1.103', 'Goldshell SC Box II', 1.4, 'offline', 'blake2b'],
   ['192.168.1.104', 'Goldshell SC Pro', 11, 'ok', 'blake2b'],
   // CPU miners (XMRig): 22 kH/s and 600 H/s, written in TH/s like every hashrate here

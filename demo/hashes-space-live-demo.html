@@ -649,7 +649,7 @@
     <button type="button" class="dd-trigger" id="net-trigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="net-label net-current"></button>
     <ul class="dd-menu" id="net-menu" role="listbox" aria-labelledby="net-label" hidden></ul>
   </div>
-  <button type="button" class="own-btn" id="own-btn">Connect your own node and Electrum server</button>
+  <button type="button" class="own-btn" id="own-btn">Connect node</button>
 </section>
 <section class="strip" aria-label="Blockchain">
   <div class="half projected" id="projected"></div>
@@ -1468,8 +1468,6 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const now = () => Date.now();
   // the networks (backend networks.json): any proof-of-work hash function, plus "own" (your own node)
   const NETWORKS = [
-    { id: 'sha256', algo: 'sha256', label: 'SHA-256', chain: 'Bitcoin', ticker: 'BTC', source: 'mempool.space' },
-    { id: 'scrypt', algo: 'scrypt', label: 'Scrypt', chain: 'Litecoin', ticker: 'LTC', source: 'litecoinspace.org' },
     { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool.guide' },
     { id: 'monero', algo: 'randomx', label: 'RandomX', chain: 'Monero', ticker: 'XMR', source: 'xmrchain.net' },
   ];
@@ -1515,7 +1513,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   };
   const chains = { sha256: mkChain(estimateTip(), BTC_POOLS), scrypt: { ...mkChain(estimateLtcTip(), LTC_POOLS), minutes: 2.5 }, blake2b: mkChain(estimateTip(), B2_POOLS), monero: mkXmrChain(estimateXmrTip()) };
   const projFor = (c) => (c.xmr ? mkXmrProjected() : mkProjected());
-  let netId = 'sha256';
+  let netId = 'blake2b';
   const chain = () => chains[netId];
   const network = () => NETWORKS.find((n) => n.id === netId);
   const mkProjected = () => Array.from({ length: 6 }, (_, index) => {
@@ -1675,7 +1673,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     $('net-menu').innerHTML = NETWORKS.map((o, i) => `<li role="option" id="net-opt-${i}" data-net="${o.id}" aria-selected="${o.id === netId}" class="${i === activeOpt ? 'active' : ''}">
       <span class="algo ${o.algo}">${o.label}</span><span class="dd-text"><b>${o.id === 'own' ? 'Your node' : o.chain} <em>${o.ticker}</em></b><small>${esc(describe(o))}</small></span>${o.id === netId ? TICK : '<span></span>'}</li>`).join('');
     $('net-menu').setAttribute('aria-activedescendant', 'net-opt-' + activeOpt);
-    $('own-btn').textContent = NETWORKS.some((o) => o.id === 'own') ? 'Your node and Electrum server' : 'Connect your own node and Electrum server';
+    $('own-btn').textContent = NETWORKS.some((o) => o.id === 'own') ? 'Your node and Electrum server' : 'Connect node';
   }
   const menuOpen = () => !$('net-menu').hidden;
   function openMenu() { activeOpt = Math.max(0, NETWORKS.findIndex((o) => o.id === netId)); $('net-menu').hidden = false; $('net-trigger').setAttribute('aria-expanded', 'true'); renderNetworks(); }
@@ -1714,7 +1712,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     e.preventDefault();
     const res = $('own-result'); res.className = 'result';
     const rpc = $('own-rpc').value.trim(), eh = $('own-ehost').value.trim(), ep = $('own-eport').value.trim();
-    const algo = $('own-algo').value || 'sha256';
+    const algo = $('own-algo').value || DEFAULT_ALGO;
     if (!rpc && !eh) { res.textContent = 'Enter your node’s RPC address, an Electrum server, or both.'; return; }
     if (rpc && !/^(https?:\/\/)?[a-z0-9.-]+(:\d+)?\/?$/i.test(rpc)) { res.textContent = `"${rpc}" is not a node address. Use the form http://192.168.1.20:8332`; return; }
     if (ep && (+ep < 1 || +ep > 65535)) { res.textContent = 'The Electrum port must be between 1 and 65535.'; return; }
@@ -1742,9 +1740,9 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // ---------- simulated network: every miner has its own IP (backend MinerSimulator) ----------
   // your node per hash function (account.nodes): a miner must point at the node for ITS hash function
   const NODES = { sha256: 'stratum+tcp://datum.local:23334', scrypt: 'stratum+tcp://datum.local:23336', blake2b: 'stratum+tcp://datum.local:23335', randomx: 'stratum+tcp://p2pool.local:3333' };
-  const ALGO = { sha256: 'SHA-256', scrypt: 'Scrypt', blake2b: 'BLAKE2b', kheavyhash: 'kHeavyHash', equihash: 'Equihash', randomx: 'RandomX' };
+  const ALGO = { blake2b: 'BLAKE2b', kheavyhash: 'kHeavyHash', equihash: 'Equihash', randomx: 'RandomX' };
   const CHAIN = { sha256: 'Bitcoin', scrypt: 'Litecoin', blake2b: 'Bitcoin BLAKE2b', kheavyhash: 'Kaspa', equihash: 'Zcash', randomx: 'Monero' };
-  const DEFAULT_ALGO = 'sha256';
+  const DEFAULT_ALGO = 'blake2b';
   // the hash-function pickers (Miner settings, your own node)
   const algoOptions = (sel) => Object.entries(ALGO).map(([a, l]) => `<option value="${a}"${a === sel ? ' selected' : ''}>${l}</option>`).join('');
   $('own-algo').innerHTML = algoOptions(DEFAULT_ALGO);
@@ -1762,11 +1760,9 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const stripScheme = (u) => u.replace(/^stratum\+(tcp|ssl|tls):\/\//, '');
   const worker = (i) => 'bc1qexampleaddress.rig' + String(i + 1).padStart(2, '0');
   // mode: ok = connected and hashing (right node, right chain) · idle = right host, wrong port · offline = on, but no pool set up
-  // demo miners of three hash functions (backend MinerSimulator): Antminer S21 200 TH/s SHA-256 (connected and hashing) ·
-  // Antminer L9 16 GH/s Scrypt (pool on the wrong port) · Goldshell SC Box II 1.4 TH/s BLAKE2b (no pool set up) ·
+  // demo miners (backend MinerSimulator): Goldshell SC Box II 1.4 TH/s BLAKE2b (no pool set up) ·
   // Goldshell SC Pro 11 TH/s BLAKE2b (connected and hashing)
-  const SIM = [['192.168.1.101', 'Bitmain Antminer S21', 200, 'ok', 'sha256'], ['192.168.1.102', 'Bitmain Antminer L9', 0.016, 'idle', 'scrypt'],
-    ['192.168.1.103', 'Goldshell SC Box II', 1.4, 'offline', 'blake2b'], ['192.168.1.104', 'Goldshell SC Pro', 11, 'ok', 'blake2b'],
+  const SIM = [['192.168.1.103', 'Goldshell SC Box II', 1.4, 'offline', 'blake2b'], ['192.168.1.104', 'Goldshell SC Pro', 11, 'ok', 'blake2b'],
     // CPU miners running XMRig on Monero (RandomX): 22 kH/s on 16 cores / 32 threads, and 600 H/s on 4 cores (pool on the wrong port)
     ['192.168.1.105', 'AMD Ryzen 9 7950X 16-Core Processor', 22e-9, 'ok', 'randomx', { cores: 16, threads: 32 }],
     ['192.168.1.106', 'Raspberry Pi 5 (Cortex-A76)', 0.6e-9, 'idle', 'randomx', { cores: 4, threads: 4 }]];
@@ -2361,9 +2357,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   setInterval(telemetry, 3000);
   setInterval(tickStatus, 1000);
   setInterval(() => { Object.values(chains).forEach((c) => { if (!c.live) c.projected = projFor(c); }); if (!chain().live) renderProjected(); }, 6000);
-  setInterval(() => mineBlock('sha256'), 110_000);
   setInterval(() => mineBlock('blake2b'), 117_000);
-  setInterval(() => mineBlock('scrypt'), 45_000);
   setInterval(() => mineBlock('monero'), 40_000);
   setInterval(() => renderMined(false), 30_000);
 

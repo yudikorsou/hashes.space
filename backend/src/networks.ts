@@ -41,13 +41,11 @@ export interface NetworkConfig {
 }
 
 const BUILT_IN: NetworkConfig[] = [
-  { id: 'sha256', algo: 'sha256', label: 'SHA-256', chain: 'Bitcoin', ticker: 'BTC', source: 'mempool', wsUrl: 'wss://mempool.space/api/v1/ws', sourceLabel: 'mempool.space', explorer: 'https://mempool.space/block/' },
+  { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool', wsUrl: 'wss://mempool.guide/api/v1/ws', sourceLabel: 'mempool.guide', explorer: 'https://mempool.guide/block/' },
 ];
 
 /** labels for hash functions without a network in networks.json (a miner can still be set to them) */
 const KNOWN_ALGOS: Record<string, string> = {
-  sha256: 'SHA-256',
-  scrypt: 'Scrypt',
   blake2b: 'BLAKE2b',
   kheavyhash: 'kHeavyHash',
   equihash: 'Equihash',
@@ -64,7 +62,7 @@ function load(): NetworkConfig[] {
   try {
     list = JSON.parse(fs.readFileSync(file, 'utf8'));
   } catch (e) {
-    if (fs.existsSync(file)) console.warn(`[networks] could not read ${file}: ${(e as Error).message}. Using Bitcoin SHA-256 only.`);
+    if (fs.existsSync(file)) console.warn(`[networks] could not read ${file}: ${(e as Error).message}. Using Bitcoin BLAKE2b only.`);
     return BUILT_IN;
   }
   const seen = new Set<string>();

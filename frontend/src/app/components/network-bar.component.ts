@@ -76,7 +76,7 @@ interface OwnForm {
       </div>
 
       <button type="button" class="connect" (click)="open()">
-        {{ hasOwn() ? 'Your node and Electrum server' : 'Connect your own node and Electrum server' }}
+        {{ hasOwn() ? 'Your node and Electrum server' : 'Connect node' }}
       </button>
     </section>
 

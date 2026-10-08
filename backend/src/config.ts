@@ -78,7 +78,7 @@ export function loadTenants(): Tenant[] {
       name: 'hashes.space',
       apiKey: 'demo-key',
       accentColor: '#f7931a',
-      nodes: { sha256: 'stratum+tcp://datum.local:23334', scrypt: 'stratum+tcp://datum.local:23336', blake2b: 'stratum+tcp://datum.local:23335', randomx: 'stratum+tcp://p2pool.local:3333' },
+      nodes: { blake2b: 'stratum+tcp://datum.local:23335', randomx: 'stratum+tcp://p2pool.local:3333' },
       expectedPoolHosts: ['127.0.0.1', 'localhost', 'datum'],
     },
   ]);

@@ -14,7 +14,7 @@ Connect your ASIC miners on a local network, run the backend on a computer in th
 
 The page connects to **one miner at a time** by its IP address; *Generate fleet* shows several miners side by side.
 
-- **Any proof of work.** hashes.space is not tied to one hash function. The networks it shows are listed in [`backend/networks.json`](backend/networks.json): it ships with **SHA-256** (Bitcoin, mempool.space), **Scrypt** (Litecoin, litecoinspace.org), **BLAKE2b** (Bitcoin BLAKE2b, mempool.guide) and **RandomX** (Monero, xmrchain.net), and you add others (kHeavyHash, Equihash, …) with one entry each. Every miner has its own hash function, and it only counts as connected and hashing on a network of that same hash function. Demo miners: **Bitmain Antminer S21** (SHA-256), **Bitmain Antminer L9** (Scrypt), **Goldshell SC Box II** and **Goldshell SC Pro** (BLAKE2b), and two CPU miners running XMRig on Monero: an **AMD Ryzen 9 7950X** (16 cores, 32 threads) and a **Raspberry Pi 5** (4 cores).
+- **Any proof of work.** hashes.space is not tied to one hash function. The networks it shows are listed in [`backend/networks.json`](backend/networks.json): it ships with **BLAKE2b** (Bitcoin BLAKE2b, mempool.guide) and **RandomX** (Monero, xmrchain.net), and you add others (SHA-256 from mempool.space, Scrypt from litecoinspace.org, kHeavyHash, …) with one entry each. Every miner has its own hash function, and it only counts as connected and hashing on a network of that same hash function. Demo miners: **Goldshell SC Box II** and **Goldshell SC Pro** (BLAKE2b), and two CPU miners running XMRig on Monero: an **AMD Ryzen 9 7950X** (16 cores, 32 threads) and a **Raspberry Pi 5** (4 cores).
 - **Top:** a mempool-style blockchain strip with mempool's block colours. The data comes from any mempool.space-style explorer (mempool.space, litecoinspace.org, mempool.guide, a self-hosted mempool), a node's RPC, or **your own node**.
 - **PoW dropdown** above the blockchain: one entry per network in `networks.json`, each with its hash function badge. **Connect your own node and Electrum server** adds "Your node", for the hash function you pick.
 - **Below:** the connected miner, shown in one of **three modes** that the backend decides every time the miner reports in:
@@ -271,8 +271,6 @@ Demo miners (`SIMULATE_MINERS=true`), three hash functions:
 
 | IP | Miner | Hash function | Rated | Mode |
 |---|---|---|---|---|
-| 192.168.1.101 | Bitmain Antminer S21 | SHA-256 | 200 TH/s | Connected and hashing |
-| 192.168.1.102 | Bitmain Antminer L9 | Scrypt | 16 GH/s | Hashing, not submitting shares (main pool on the wrong port). "Use my node as main pool" turns it green |
 | 192.168.1.103 | Goldshell SC Box II | BLAKE2b | 1.4 TH/s | Not hashing (powered on, no pool set up) |
 | 192.168.1.104 | Goldshell SC Pro | BLAKE2b | 11 TH/s | Connected and hashing |
 | 192.168.1.105 | AMD Ryzen 9 7950X (XMRig, 16 cores / 32 threads) | RandomX | 22 kH/s | Connected and hashing |
