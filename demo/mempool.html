@@ -1,0 +1,2640 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>hashes.space Mempool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Single dark theme using the mempool colour palette (as on mempool.guide) */
+  :root {
+    color-scheme: dark;
+    --bg: #11131f; --surface: #1d1f31;
+    --line: #2d3348; --line-strong: #454d68;
+    --text: #ffffff; --muted: #9ea4bc; --muted-2: #4a5263;
+    --orange: #f7931a; --matrix: #3ce26b; --link: #1bd8f4;
+    --good: #3ccf6e; --warn: #f2b53c; --bad: #ff4d4d;
+    --display: 'Chakra Petch', 'Segoe UI', system-ui, sans-serif;
+    --sans: 'IBM Plex Sans', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'IBM Plex Mono', ui-monospace, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: var(--bg); color: var(--text); font: 400 14px/1.45 var(--sans); margin: 0; }
+  button { font: inherit; }
+
+  /* top bar */
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brand .fan { width: 34px; }
+  /* wordmark: "hashes" solid, the dot is a mined block (mempool purple→blue), "space" in the same gradient light */
+  .wordmark { display: inline-flex; align-items: baseline; font: 700 22px/1 var(--display); letter-spacing: -0.01em; white-space: nowrap; }
+  .wm-hashes { color: var(--text); }
+  .wm-dot { display: inline-block; width: 7px; height: 7px; margin: 0 3px 0 2px; border-radius: 1.5px; background: linear-gradient(135deg, #9339f4, #105fb0); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08); transform: translateY(-1px); }
+  .wm-space { font-weight: 500; background: linear-gradient(90deg, #b58cff, #1bd8f4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .source { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 500 12.5px/1 var(--sans); color: var(--muted); }
+  .source .mono { font-family: var(--mono); }
+  .sep { opacity: .5; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 0 3px rgba(242,181,60,.22); }
+  .dot.live { background: var(--good); box-shadow: 0 0 0 3px rgba(60,207,110,.22); }
+  .demo-tag { font: 600 10.5px/1 var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--warn); border: 1px solid rgba(242,181,60,.4); padding: 4px 7px; border-radius: 3px; }
+
+  /* blockchain strip */
+  .strip { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 26px 0 18px; background: var(--bg); border-bottom: 1px solid var(--line); overflow: hidden; }
+  .half { display: flex; gap: 40px; min-width: 0; overflow: hidden; padding: 0 40px 0 20px; }
+  .projected { justify-content: flex-end; }
+  .mined { justify-content: flex-start; padding: 0 20px 0 48px; }
+  .divider { align-self: stretch; width: 0; border-left: 2px dashed rgba(255,255,255,.35); }
+  .block-wrap { flex: 0 0 auto; display: grid; gap: 8px; justify-items: center; color: inherit; text-decoration: none; }
+  .above, .below { font: 500 12px/1 var(--sans); color: var(--muted); min-height: 12px; white-space: nowrap; }
+  .height { font-size: 15px; font-weight: 600; color: var(--link); }
+  .mining .above { color: var(--text); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  /* 3D block: front face + mempool-style dark top and left faces */
+  .cube { --s: 125px; --d: 16px; position: relative; width: var(--s); height: var(--s); margin: var(--d) 0 0 var(--d); }
+  .face { position: absolute; }
+  .front { inset: 0; }
+  .top { left: 0; top: calc(var(--d) * -1); width: var(--s); height: var(--d); transform-origin: bottom left; transform: skewX(45deg); background: #232838; }
+  .side { left: calc(var(--d) * -1); top: 0; width: var(--d); height: var(--s); transform-origin: top right; transform: skewY(45deg); background: #191c27; }
+  .txt { height: 100%; display: grid; grid-template-rows: auto auto 1fr auto auto; justify-items: center; align-items: center; padding: 12px 6px 10px; font: 400 12px/1.25 var(--sans); color: #fff; text-align: center; }
+  .txt .fee { font-weight: 600; font-size: 13px; }
+  .txt .range { color: rgba(255,255,255,.8); font-size: 11px; }
+  .txt .size { font-weight: 700; font-size: 18px; }
+  .txt .txs, .txt .time { font-size: 11.5px; }
+  .fleet-shares { font: 500 12px/1 var(--mono); color: var(--matrix); }
+  .fleet-shares b { font-weight: 700; }
+  .cube.hit { animation: hit .45s ease-out; }
+  @keyframes hit { 0% { box-shadow: 0 0 0 0 rgba(60,226,107,.7); } 100% { box-shadow: 0 0 0 12px rgba(60,226,107,0); } }
+  .enter { animation: enter .9s cubic-bezier(.2,.8,.2,1); }
+  @keyframes enter { from { transform: translateX(-150px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* fan */
+  .fan { display: block; width: 68px; aspect-ratio: 1; flex: none; --fan-color: #ffffff; }
+  .fan svg { width: 100%; height: 100%; overflow: visible; display: block; }
+  .fan .frame circle, .fan .rotor path { fill: none; stroke: var(--fan-color); stroke-linejoin: round; stroke-linecap: round; }
+  .fan .rotor path { stroke-width: 2.8; }
+  .fan .hub { fill: var(--fan-color); }
+  .fan .hub-cut { fill: var(--surface); }
+  .brand .fan .hub-cut { fill: var(--bg); }
+  .brand .fan .rotor { animation: none; }
+  .fan .rotor { transform-box: view-box; transform-origin: 50px 50px; animation: spin .55s linear infinite; }
+  .fan.hashing { filter: drop-shadow(0 0 6px rgba(255,255,255,.45)); }
+  /* the fan only spins while the miner is correctly hashing and submitting shares (the scan indicator spins too) */
+  .fan:not(.hashing) .rotor { animation: none; }
+  /* CPU miner (XMRig): a chip with one square per thread; mining threads light up, and only pulse while connected and hashing */
+  .fan.cpu .pin { fill: #fff; opacity: .85; } .fan.cpu .die { fill: none; stroke: #fff; stroke-width: 3.2; }
+  .fan.cpu .core { fill: #fff; opacity: .16; } .fan.cpu .core.on { opacity: .55; }
+  .fan.cpu.hashing { filter: drop-shadow(0 0 6px rgba(60,226,107,.35)); }
+  .fan.cpu.hashing .core.on { fill: var(--matrix); opacity: 1; animation: core-work 1.1s ease-in-out infinite; }
+  @keyframes core-work { 50% { opacity: .45; } }
+  @media (prefers-reduced-motion: reduce) { .fan.cpu.hashing .core.on { animation: none; } }
+  .cores { color: var(--text); font-weight: 600; }
+  .scanning .fan .rotor { animation: spin .55s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* body */
+  main { padding: 22px 20px 48px; max-width: 1440px; margin: 0 auto; display: grid; gap: 22px; }
+  h2 { margin: 0; font: 600 20px/1 var(--display); letter-spacing: .02em; }
+  button:focus-visible { outline: 2px solid var(--orange); outline-offset: 2px; }
+
+
+  /* nav tabs */
+  .tabs { display: flex; gap: 4px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
+  .tabs a { white-space: nowrap; font: 500 13.5px/1 var(--sans); color: var(--muted); text-decoration: none; padding: 8px 12px; border-radius: 6px; }
+  .tabs a:hover { color: var(--text); background: var(--surface); }
+  .tabs a.on { color: var(--text); background: var(--surface); box-shadow: inset 0 -2px 0 var(--link); }
+  .tabs a:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+
+  /* miner settings: general interface for any ASIC (same classes as the Angular app) */
+  .s-card { scroll-margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .s-card-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 8px 16px; }
+  .s-card-head h2 { margin: 0 0 4px; font: 600 18px/1.2 var(--display); letter-spacing: .02em; }
+  .s-card-head p { margin: 0; color: var(--muted); font-size: 13px; max-width: 62ch; line-height: 1.5; }
+  .s-cap { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; font: 600 11px/1 var(--sans); letter-spacing: .04em; text-transform: uppercase; color: var(--good); }
+  .s-cap::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .s-cap.saved-only { color: var(--muted); }
+  .s-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px 16px; }
+  .s-field { display: grid; gap: 6px; align-content: start; font: 500 12px/1.25 var(--sans); color: var(--muted); }
+  .s-field.wide { grid-column: 1 / -1; }
+  .s-help { font: 400 12px/1.4 var(--sans); color: var(--muted); }
+  .s-err { font: 500 12px/1.3 var(--sans); color: var(--bad); }
+  .s-unit { position: relative; display: block; }
+  .s-unit span { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); font: 500 12px var(--mono); color: var(--muted); pointer-events: none; }
+  .s-unit input { padding-right: 44px !important; }
+  .s-toggle { display: flex; align-items: flex-start; gap: 10px; font: 500 13.5px/1.35 var(--sans); color: var(--text); cursor: pointer; grid-column: 1 / -1; }
+  .s-toggle input { width: 18px; height: 18px; margin: 1px 0 0; accent-color: var(--link); flex: none; }
+  .s-toggle small { display: block; color: var(--muted); font: 400 12px/1.4 var(--sans); margin-top: 2px; }
+  .s-card input:not([type="checkbox"]):not([type="radio"]), .s-card select { width: 100%; font: 400 13px/1.2 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line-strong); border-radius: 6px; padding: 9px 10px; }
+  .settings .s-card select { font-family: var(--sans); }
+  @media (min-width: 900px) { .s-field.sel { grid-column: span 2; } }
+  .s-card input::placeholder { color: var(--muted-2); }
+  .s-card input:focus, .s-card select:focus { outline: none; border-color: var(--link); box-shadow: 0 0 0 3px rgba(27,216,244,.22); }
+  .s-card .invalid { border-color: var(--bad) !important; }
+  .s-caution { margin: 0; padding: 10px 12px; border-left: 3px solid var(--warn); background: rgba(242,181,60,.08); border-radius: 4px; font-size: 13px; color: var(--text); }
+  .s-group-err { margin: 0; color: var(--bad); font-size: 13px; }
+  .s-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .s-result { margin: 0 auto 0 0; font-size: 13px; color: var(--orange); max-width: 60ch; }
+  .s-result.ok { color: var(--good); }
+  .btn.danger { color: var(--bad); }
+  .btn.danger.solid { background: var(--bad); border-color: var(--bad); color: #1a0505; }
+  .summary { --state: var(--good); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; padding: 16px 20px; background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--state); border-radius: 8px; }
+  .summary.not-submitting { --state: var(--orange); }
+  .summary.not-hashing { --state: var(--bad); }
+  .summary h2 { margin: 0 0 4px; font: 600 20px/1.1 var(--display); }
+  .summary p { margin: 0; color: var(--muted); }
+  .summary .reason { margin-top: 6px; font-size: 13px; }
+  #settings-body { display: grid; gap: 20px; }
+  .settings > *, #settings-body > * { min-width: 0; }
+  .summary .now { flex-wrap: wrap; gap: 12px 24px; }
+  #settings-body[hidden] { display: none; }
+  .s-layout { display: grid; grid-template-columns: 180px minmax(0,1fr); gap: 20px; align-items: start; }
+  .toc { position: sticky; top: 16px; display: grid; gap: 2px; }
+  .toc button { text-align: left; font: 500 13.5px/1 var(--sans); color: var(--muted); background: none; border: 0; border-left: 2px solid var(--line); padding: 10px 12px; cursor: pointer; }
+  .toc button:hover { color: var(--text); border-left-color: var(--link); }
+  .toc button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .cards { display: grid; gap: 16px; min-width: 0; }
+  .pool-err { grid-column: 2 / -1; margin: -2px 0 4px; color: var(--bad); font-size: 12.5px; }
+  .act-list { list-style: none; margin: 0; padding: 0; display: grid; }
+  .act-list li { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px 20px; padding: 14px 0; border-top: 1px solid var(--line); }
+  .act-list li:first-child { border-top: 0; padding-top: 0; }
+  .act-list b { display: block; font: 600 14px/1.3 var(--sans); }
+  .act-list small { display: block; color: var(--muted); font-size: 12.5px; line-height: 1.45; max-width: 60ch; }
+  .confirm { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 13px; }
+  .confirm span { max-width: 44ch; }
+  .act-list li.pw { align-items: flex-end; }
+  .pw-form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px; }
+  .pw-form .s-field { width: 180px; }
+  .locate { color: var(--warn); font-weight: 600; }
+  .s-cap.off { color: var(--bad); }
+  .s-cap[hidden] { display: none; }
+  @media (max-width: 900px) {
+    .s-layout { grid-template-columns: 1fr; }
+    .toc { position: static; display: flex; flex-wrap: wrap; gap: 6px; }
+    .toc button { border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; }
+  }
+  @media (max-width: 640px) {
+    .s-card { padding: 16px; }
+    .s-grid { grid-template-columns: 1fr; }
+    .pool-err { grid-column: 1 / -1; }
+  }
+  /* miner settings */
+  .settings { max-width: 1200px; margin: 0 auto; padding: 24px 20px 56px; display: grid; gap: 20px; }
+  .page-head h1 { margin: 0 0 6px; font: 600 24px/1.1 var(--display); letter-spacing: .02em; }
+  .page-head p { margin: 0; color: var(--muted); max-width: 65ch; }
+  .state { color: var(--state); font: 600 11px/1.3 var(--sans); text-transform: uppercase; letter-spacing: .05em; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; gap: 22px; }
+  .panel-head { --state: var(--good); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px 24px; padding-bottom: 16px; border-bottom: 1px solid var(--line); }
+  .panel-head h2 { margin: 0 0 4px; font: 600 20px/1.1 var(--display); }
+  .panel-head p { margin: 0; color: var(--muted); }
+  .now { display: flex; gap: 24px; margin: 0; }
+  .now dt { font: 500 10.5px/1 var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  .now dd { margin: 0; font: 500 13px/1.2 var(--mono); }
+  fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 12px; min-width: 0; }
+  legend { font: 600 12px/1 var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 12px; padding: 0; }
+  .node-hint { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px dashed var(--line-strong); border-radius: 6px; font-size: 13px; }
+  code { font: 500 12.5px/1.2 var(--mono); color: var(--text); }
+  .pool-grid { display: grid; grid-template-columns: 112px minmax(0,2.2fr) minmax(0,1.6fr) minmax(0,.6fr); gap: 8px 10px; align-items: center; }
+  .col-head { font: 500 11px/1 var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
+  .slot { font: 600 13px/1.2 var(--sans); display: grid; }
+  .slot small { font-weight: 400; color: var(--muted); font-size: 11.5px; }
+  .field { position: relative; }
+  .tag { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); font: 600 10px/1 var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--good); pointer-events: none; }
+  .error { grid-column: 2 / -1; margin: -2px 0 4px; color: var(--bad); font-size: 12.5px; }
+  .hint { margin: 0; color: var(--muted); font-size: 12.5px; max-width: 70ch; }
+  .settings select, .settings input:not([type="checkbox"]):not([type="radio"]) { width: 100%; font: 400 13px/1.2 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line-strong); border-radius: 6px; padding: 9px 10px; }
+  .settings input::placeholder { color: var(--muted-2); }
+  .settings input:focus { outline: none; border-color: var(--link); box-shadow: 0 0 0 3px rgba(27,216,244,.22); }
+  .settings input.invalid { border-color: var(--bad); }
+  .field:has(.tag:not([hidden])) input { padding-right: 84px !important; }
+  .conn-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px,1fr)); gap: 10px; }
+  .conn-grid label { display: grid; gap: 6px; font: 500 12px/1.2 var(--sans); color: var(--muted); }
+  .actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .result { margin: 0 auto 0 0; font-size: 13px; color: var(--orange); max-width: 60ch; }
+  .result.ok { color: var(--good); }
+  .btn { font: 600 13px/1 var(--sans); padding: 10px 14px; border-radius: 6px; cursor: pointer; border: 1px solid var(--line-strong); color: var(--text); background: transparent; }
+  .btn:hover:not(:disabled) { border-color: var(--link); }
+  .btn:disabled { opacity: .6; cursor: progress; }
+  .btn.primary { background: #105fb0; border-color: #105fb0; }
+  .btn.primary:hover:not(:disabled) { background: #1a6fc4; }
+  .back { color: var(--link); text-decoration: none; font-size: 13px; justify-self: start; }
+  .back:hover { text-decoration: underline; }
+  @media (max-width: 900px) {
+    .conn-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
+  @media (max-width: 640px) {
+    .settings { padding-inline: 16px; }
+    .pool-grid { grid-template-columns: 1fr 1fr; }
+    .col-head { display: none; }
+    .slot, .field, .error { grid-column: 1 / -1; }
+    .slot { margin-top: 8px; }
+    .panel { padding: 16px; }
+  }
+  .legend { margin: 0; max-width: 70ch; font: 400 13px/1.55 var(--sans); color: var(--muted); }
+  .legend b { color: var(--text); font-weight: 500; }
+
+  #streams, #fleet-streams { position: fixed; inset: 0; pointer-events: none; z-index: 50; }
+  /* fleet dashboard */
+  .fleetdash { padding: 24px 20px 56px; max-width: 1200px; margin: 0 auto; display: grid; gap: 18px; }
+  .fleetdash h1 { margin: 0 0 4px; font: 600 24px/1.2 var(--display); letter-spacing: .02em; }
+  .fhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 10px 20px; }
+  .fhead p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 70ch; }
+  .fhead a.btn { text-decoration: none; }
+  .fgrid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .fgrid.dense { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+  .tile { --state: var(--good); position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: 12px; padding: 14px 14px 14px 16px;
+    background: var(--surface); border: 1px solid var(--line); border-left: 3px solid var(--state); border-radius: 8px; }
+  .tile.not-submitting { --state: var(--orange); } .tile.not-hashing { --state: var(--bad); }
+  .tile.current { border-color: var(--state); }
+  .tile .fan { width: 52px; } .dense .tile .fan { width: 40px; }
+  .tile .info { display: grid; gap: 3px; min-width: 0; }
+  .tile .ip { font: 500 15px/1.2 var(--mono); }
+  .tile .model { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tile .chip { display: inline-flex; align-items: center; gap: 6px; margin-top: 3px; color: var(--state); font: 600 11px/1.2 var(--sans); text-transform: uppercase; letter-spacing: .06em; }
+  .tile .chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--state); flex: none; }
+  .tile .rate { font: 500 13px/1.2 var(--mono); white-space: nowrap; }
+  .tile .row { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+  .tile .manage { font: 600 12px/1 var(--sans); color: var(--link); background: none; border: 0; padding: 4px 0 4px 4px; cursor: pointer; }
+  .tile .manage:hover { text-decoration: underline; }
+  .tile .manage:focus-visible { outline: 2px solid var(--link); border-radius: 4px; }
+  .fleetdash .empty .cta { display: inline-block; margin-top: 14px; text-decoration: none; }
+  @media (max-width: 720px) {
+    .fleetdash { padding-inline: 16px; }
+    .fgrid, .fgrid.dense { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
+    .tile { grid-template-columns: 1fr; justify-items: start; gap: 8px; padding: 12px; }
+    .tile .fan { width: 40px; }
+  }
+
+  @media (max-width: 720px) {
+    .cube { --s: 92px; }
+    .txt { padding: 8px 4px; }
+    .txt .range, .txt .txs { display: none; }
+    .txt .size { font-size: 15px; }
+    .half { gap: 28px; }
+    .half { gap: 24px; }
+    main { padding-inline: 16px; }
+    .topbar { padding-inline: 16px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .fan .rotor, .enter, .cube.hit { animation: none; }
+  }
+
+  dl { margin: 0; display: grid; }
+  dt { font: 500 10.5px/1 var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  dd { margin: 0; font: 500 13px/1.2 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  dd small { color: var(--muted); font-size: 11px; }
+  .state { color: var(--state); font: 600 11px/1.3 var(--sans); text-transform: uppercase; letter-spacing: .05em; }
+  .ghost { color: var(--text); background: var(--surface); border: 1px solid var(--line); padding: 7px 10px; border-radius: 4px; cursor: pointer; font: 500 12.5px/1 var(--sans); }
+  .ghost:hover { border-color: var(--line-strong); }
+  /* hash function picker */
+  .netbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--bg); }
+  .netbar .nlabel { font: 600 12px/1 var(--sans); letter-spacing: .06em; color: var(--muted); } /* "PoW" keeps its own capitals */
+  .dd { position: relative; }
+  .dd-trigger, .dd-menu li { display: grid; grid-template-columns: auto minmax(0,1fr) auto; align-items: center; gap: 12px; text-align: left; color: var(--text); }
+  .dd-trigger { min-width: 300px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--surface); cursor: pointer; }
+  .dd-trigger:hover { border-color: var(--link); }
+  .dd-trigger[aria-expanded="true"] { border-color: var(--orange); }
+  .dd-trigger[aria-expanded="true"] .chev { transform: rotate(180deg); }
+  .dd-trigger:focus-visible, .own-btn:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .dd-text { display: grid; gap: 2px; min-width: 0; }
+  .dd-text b { font: 600 14px/1.15 var(--display); letter-spacing: .02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dd-text b em { font: 500 11px/1 var(--mono); font-style: normal; color: var(--muted); margin-left: 4px; }
+  .dd-text small { font: 400 12px/1.25 var(--sans); color: var(--muted); }
+  .chev, .tick { width: 12px; height: 12px; color: var(--muted); transition: transform .15s; }
+  .tick { color: var(--orange); }
+  .algo { font: 600 11px/1 var(--mono); letter-spacing: .04em; padding: 6px 8px; border-radius: 4px; white-space: nowrap; color: #1a1206; background: #f7931a; }
+  .algo { color: #e8ebf5; background: #3b4463; } /* any other hash function */
+  .algo.sha256, .algo.blake2b { color: #1a1206; background: #f7931a; } /* Bitcoin orange */
+  .algo.scrypt { color: #0b1530; background: #bfc8dc; } /* Litecoin silver */
+  .dd-menu { position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; min-width: 100%; width: max-content; max-width: calc(100vw - 32px); margin: 0; padding: 6px; list-style: none; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+  .dd-menu li { padding: 10px; border-radius: 6px; cursor: pointer; }
+  .dd-menu li.active { background: rgba(247,147,26,.10); }
+  .dd-menu li[aria-selected="true"] b { color: var(--orange); }
+  .own-btn { margin-left: auto; font: 600 13px/1 var(--sans); color: var(--link); background: none; border: 1px dashed var(--line-strong); border-radius: 6px; padding: 10px 14px; cursor: pointer; }
+  .own-btn:hover { border-color: var(--link); }
+  dialog { width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); padding: 0; color: var(--text); background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; }
+  dialog::backdrop { background: rgba(5,6,12,.7); }
+  dialog form { display: grid; gap: 16px; padding: 22px; }
+  dialog h2 { margin: 0; font: 600 20px/1.2 var(--display); }
+  dialog .muted { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+  .radios { display: flex; flex-wrap: wrap; gap: 16px; }
+  .radios label { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
+  .radios small { color: var(--muted); }
+  .ogrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .ogrid label { display: grid; gap: 6px; font: 500 12px/1.2 var(--sans); color: var(--muted); }
+  .ogrid .wide { grid-column: 1 / -1; }
+  .ogrid .check { display: flex; align-items: center; gap: 8px; align-self: end; padding-bottom: 10px; color: var(--text); font-size: 13px; }
+  dialog input[type="text"], dialog input[type="password"], dialog input[type="number"] { width: 100%; font: 400 13px/1.2 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line-strong); border-radius: 6px; padding: 9px 10px; }
+  dialog input::placeholder { color: var(--muted-2); }
+  dialog input:focus { outline: none; border-color: var(--link); box-shadow: 0 0 0 3px rgba(27,216,244,.22); }
+  .oactions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .oactions .spacer { flex: 1; }
+  .btn.danger { color: var(--bad); }
+  .algo-pick { display: grid; gap: 6px; font: 500 12px/1.2 var(--sans); color: var(--muted); }
+  .algo-pick select { font: 400 13px/1.2 var(--sans); color: var(--text); background: var(--bg); border: 1px solid var(--line-strong); border-radius: 6px; padding: 9px 10px; }
+  .algo-note { margin: 0; padding: 10px 12px; border: 1px dashed var(--line-strong); border-radius: 6px; font-size: 13px; color: var(--text); }
+  @media (max-width: 720px) {
+    .netbar { padding-inline: 16px; }
+    .own-btn { margin-left: 0; width: 100%; }
+    .dd, .dd-trigger { width: 100%; min-width: 0; }
+    .ogrid { grid-template-columns: 1fr; }
+  }
+  /* single-miner dashboard */
+  .dash { padding: 24px 20px 56px; max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
+  /* Find ASIC: miners powered on in the local network */
+  .asic { padding: 24px 20px 56px; max-width: 1100px; margin: 0 auto; display: grid; gap: 20px; }
+  /* miner login on the dashboard (Angular MinerLoginComponent) */
+  .login-card { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 28px; align-items: start; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  .login-card .fan { width: 110px; opacity: .55; }
+  .login-card form { display: grid; gap: 14px; max-width: 460px; }
+  .login-card h2 { margin: 0 0 4px; font: 600 22px/1.2 var(--display); letter-spacing: .02em; }
+  .login-card .ip { font-family: var(--mono); }
+  .login-card .sub, .login-card .hint { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.5; }
+  .login-card .hint b { color: var(--text); font-family: var(--mono); font-weight: 500; }
+  .login-card .err { margin: 0; color: var(--bad); font-size: 13.5px; }
+  .login-card .lfield { display: grid; gap: 6px; font-size: 13px; color: var(--muted); }
+  .login-card input { width: 100%; box-sizing: border-box; font: 500 15px/1.2 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line-strong); border-radius: 6px; padding: 10px 12px; }
+  .login-card input:focus { outline: none; border-color: var(--link); box-shadow: 0 0 0 3px rgba(27,216,244,.22); }
+  .login-card input[aria-invalid="true"] { border-color: var(--bad); }
+  .login-card .pw { position: relative; display: block; } .login-card .pw input { padding-right: 64px; }
+  .login-card .show { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); font: 600 12px/1 var(--sans); color: var(--link); background: none; border: 0; padding: 6px 8px; cursor: pointer; }
+  .login-card .actions { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-start; border: 0; padding: 0; margin: 0; } .login-card .actions a.btn { text-decoration: none; }
+  .login-warn { margin: 0; padding: 10px 14px; border: 1px solid rgba(242,181,60,.45); border-radius: 8px; background: rgba(242,181,60,.08); font-size: 13.5px; color: var(--text); }
+  .login-warn b { color: var(--warn); } .login-warn code { font-family: var(--mono); } .login-warn a { color: var(--link); margin-left: 4px; }
+  .alist .go button.btn.connected { cursor: pointer; }
+  /* after logging in, the bar follows the miner's mode */
+  .btn.connected.not-submitting { background: var(--orange); border-color: var(--orange); color: #1f1203; }
+  .btn.connected.not-submitting:hover { background: #f9a83f; border-color: var(--orange); }
+  .btn.connected.not-hashing { background: var(--bad); border-color: var(--bad); color: #1a0505; }
+  .btn.connected.not-hashing:hover { background: #ff7070; border-color: var(--bad); }
+  @media (max-width: 640px) { .login-card { grid-template-columns: 1fr; padding: 18px; } .login-card .fan { width: 72px; } }
+  .fleet h2 { margin: 0 0 4px; font: 600 20px/1.2 var(--display); letter-spacing: .02em; }
+  .tally { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px; font-size: 13px; color: var(--muted); }
+  .tally li { --state: var(--line-strong); display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 999px; }
+  .tally li b { color: var(--text); font: 600 13px/1 var(--mono); }
+  .tally li.hashing, .alist li.hashing { --state: var(--good); }
+  .tally li.not-submitting, .alist li.not-submitting { --state: var(--orange); }
+  .tally li.not-hashing, .alist li.not-hashing { --state: var(--bad); }
+  .tally li:is(.hashing, .not-submitting, .not-hashing)::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--state); }
+  .add { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 3fr); gap: 12px 16px; align-items: start; }
+  .add textarea { width: 100%; box-sizing: border-box; resize: vertical; min-height: 76px; font: 500 14px/1.45 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line-strong); border-radius: 6px; padding: 9px 11px; }
+  .add textarea:focus { outline: none; border-color: var(--link); box-shadow: 0 0 0 3px rgba(27,216,244,.22); }
+  .add textarea::placeholder { color: var(--muted-2); }
+  .add .bad { color: var(--bad); } .add .s-help b { color: var(--text); }
+  .add-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+  .add-actions .s-result { margin: 0; }
+  .checks { grid-column: 1 / -1; list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .checks[hidden] { display: none; }
+  .checks li { --state: var(--muted); display: grid; grid-template-columns: 22px auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); font-size: 13px; }
+  .checks li.ready { --state: var(--good); } .checks li.setup { --state: var(--orange); } .checks li.login { --state: var(--link); }
+  .checks .mark { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--state); color: var(--state); font: 700 11px/1 var(--sans); }
+  .checks .ip { font: 500 14px/1.2 var(--mono); }
+  .checks .what { color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .checks .what b { color: var(--state); font-weight: 600; }
+  .btn.small { padding: 6px 10px; font-size: 12px; min-width: 0; }
+  .alist .fstate { display: grid; gap: 4px; min-width: 0; }
+  .alist .chip { display: inline-flex; align-items: center; gap: 7px; font: 600 11.5px/1 var(--sans); text-transform: uppercase; letter-spacing: .06em; color: var(--state); }
+  .alist .chip::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--state); flex: none; }
+  .alist .why { color: var(--muted); font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .alist .go .btn.icon { min-width: 0; width: 38px; padding-inline: 0; color: var(--muted); }
+  .alist .go .btn.icon:hover { color: var(--bad); border-color: var(--bad); }
+  .fleet .meta { margin: 0; color: var(--muted); font-size: 13px; }
+  .asic h1 { margin: 0 0 4px; font: 600 22px/1.2 var(--display); letter-spacing: .02em; }
+  .asic .meta { margin: 0; color: var(--muted); font-size: 13px; }
+  .fleet-hint { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .fleet-hint a { color: var(--orange); }
+  .alist { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+  .alist li { display: grid; grid-template-columns: auto minmax(0, 1.2fr) minmax(0, 1.6fr) auto; align-items: center; gap: 12px 18px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  .alist li.pick { cursor: pointer; transition: border-color .15s, background-color .15s; }
+  .alist li.pick:hover { border-color: var(--line-strong); background: color-mix(in srgb, var(--text) 3%, var(--bg)); }
+  .alist li.current, .alist li.current:hover { border-color: var(--link); background: color-mix(in srgb, var(--link) 7%, var(--bg)); box-shadow: inset 3px 0 0 var(--link); }
+  .alist .fan { width: 40px; }
+  .alist .who { display: grid; gap: 3px; min-width: 0; }
+  .alist .ip { font: 500 16px/1.2 var(--mono); }
+  .alist .model { color: var(--muted); font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .alist dl { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; }
+  .alist dt { font: 500 10.5px/1 var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  .alist dd { margin: 0; font: 500 13.5px/1.2 var(--mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .alist .go { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+  .alist .go { min-width: 274px; }
+  .tally[hidden] { display: none; }
+  .alist .go .btn.connected { min-width: 158px; }
+  .alist .go .btn { min-width: 108px; text-align: center; }
+  .alist .go a.btn { text-decoration: none; }
+  .btn.connected { display: inline-flex; align-items: center; justify-content: center; gap: 8px; background: var(--good); border-color: var(--good); color: #06180d; }
+  .btn.connected::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .btn.connected:hover { background: #5edb88; border-color: var(--good); }
+  .btn.connected:focus-visible { outline: 2px solid var(--good); outline-offset: 2px; }
+  .scanning { display: flex; align-items: center; gap: 12px; padding: 18px 4px; color: var(--muted); font-size: 13.5px; }
+  .scanning .fan { width: 32px; }
+  .empty .cta { display: inline-block; margin-top: 14px; text-decoration: none; }
+  @media (max-width: 720px) {
+    .asic { padding-inline: 16px; }
+    .add { grid-template-columns: 1fr; }
+    .checks li { grid-template-columns: 22px minmax(0, 1fr) auto; }
+    .checks .what { grid-column: 2 / -1; grid-row: 2; white-space: normal; }
+    .alist .fstate { grid-column: 1 / -1; }
+    .alist li { grid-template-columns: auto minmax(0, 1fr); }
+    .alist dl, .alist .go { grid-column: 1 / -1; }
+    .alist .go { justify-content: flex-start; min-width: 0; }
+  }
+
+  .mpanel { --state: var(--good); display: grid; grid-template-columns: auto minmax(0,1fr); gap: 28px; align-items: center; padding: 24px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+  .mpanel.not-submitting { --state: var(--orange); }
+  .mpanel.not-hashing { --state: var(--bad); }
+  /* hashrate health chart (same as the Angular HashrateChartComponent) */
+  .hr-card { padding: 20px 24px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; display: grid; gap: 14px; }
+  .hr-card header { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px 20px; }
+  .hr-card h2 { margin: 0 0 6px; font: 600 18px/1.2 var(--display); letter-spacing: .02em; }
+  .hr-health { --state: var(--muted); margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; font-size: 13.5px; color: var(--muted); }
+  .hr-health b { color: var(--state); font: 600 12px/1 var(--sans); text-transform: uppercase; letter-spacing: .07em; }
+  .hr-health .icon { color: var(--state); font-weight: 700; width: 12px; text-align: center; }
+  .hr-health.good { --state: var(--good); } .hr-health.warn { --state: var(--warn); } .hr-health.bad { --state: var(--bad); }
+  .hr-ranges { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
+  .hr-ranges button { font: 600 12.5px/1 var(--sans); color: var(--muted); background: transparent; border: 0; padding: 8px 12px; cursor: pointer; }
+  .hr-ranges button + button { border-left: 1px solid var(--line-strong); }
+  .hr-ranges button.on { color: var(--text); background: var(--line); }
+  .hr-ranges button:focus-visible { outline: 2px solid var(--link); outline-offset: -2px; }
+  .hr-stats { margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; }
+  .hr-stats dt { font: 500 10.5px/1 var(--sans); color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+  .hr-stats dd { margin: 0; font: 500 15px/1.2 var(--mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .hr-plot { position: relative; min-width: 0; }
+  .hr-plot svg { display: block; width: 100%; height: auto; overflow: visible; touch-action: pan-y; }
+  .hr-plot svg:focus-visible { outline: 2px solid var(--link); outline-offset: 4px; border-radius: 4px; }
+  .hr-plot .grid { stroke: var(--line); stroke-width: 1; }
+  .hr-plot text { font: 400 11px var(--mono); fill: var(--muted); }
+  .hr-plot .ytick { text-anchor: end; } .hr-plot .xtick { text-anchor: middle; } .hr-plot .rated-label { text-anchor: end; }
+  .hr-plot .rated { stroke: var(--muted); stroke-width: 1; opacity: .7; }
+  .hr-plot .line { fill: none; stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .hr-plot .line.rep { stroke: #0ba5bf; } .hr-plot .line.sub { stroke: #a26bf5; }
+  .hr-plot .live-dot { fill: #0ba5bf; stroke: var(--surface); stroke-width: 2; animation: hr-pulse 1.6s ease-in-out infinite; }
+  .hr-pulse { width: 7px; height: 7px; border-radius: 50%; background: var(--bad); animation: hr-pulse 1.6s ease-in-out infinite; }
+  @keyframes hr-pulse { 50% { opacity: .3; } }
+  @media (prefers-reduced-motion: reduce) { .hr-pulse, .hr-plot .live-dot { animation: none; } }
+  .hr-ranges button { display: inline-flex; align-items: center; gap: 6px; }
+  .hr-key { display: inline-block; width: 14px; height: 2px; border-radius: 1px; flex: none; }
+  .hr-key.rep { background: #0ba5bf; } .hr-key.sub { background: #a26bf5; } .hr-key.rated { background: var(--muted); opacity: .7; height: 1px; }
+  .hr-stats dt { display: flex; align-items: center; gap: 6px; }
+  .hr-legend { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 12.5px; color: var(--muted); }
+  .hr-legend li { display: inline-flex; align-items: center; gap: 7px; } .hr-legend small { font-size: 11.5px; opacity: .8; }
+  .hr-tip .row { display: flex; align-items: center; gap: 7px; } .hr-tip { gap: 4px; font-size: 12px; color: var(--muted); }
+  .hr-plot .cross { stroke: var(--muted); stroke-width: 1; }
+  .hr-plot .dot { stroke: var(--surface); stroke-width: 2; } .hr-plot .dot.rep { fill: #0ba5bf; } .hr-plot .dot.sub { fill: #a26bf5; }
+  .hr-tip { position: absolute; top: 4px; transform: translateX(10px); pointer-events: none; display: grid; gap: 2px; padding: 7px 10px; background: var(--bg); border: 1px solid var(--line-strong); border-radius: 6px; white-space: nowrap; }
+  .hr-tip[hidden] { display: none; }
+  .hr-tip.flip { transform: translateX(calc(-100% - 10px)); }
+  .hr-tip b { font: 600 13.5px/1.2 var(--mono); color: var(--text); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  @media (max-width: 720px) { .hr-card { padding: 16px; } .hr-stats { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  .mpanel.not-hashing dd { color: var(--muted); }
+  .mpanel .fan { width: 150px; }
+  .mbody { display: grid; gap: 14px; min-width: 0; }
+  .mhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-start; gap: 10px 20px; }
+  .mhead h2 { margin: 0 0 4px; font: 600 24px/1.1 var(--display); letter-spacing: .02em; }
+  .mhead p { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .ip { font-family: var(--mono); color: var(--text); }
+  .pill { display: inline-flex; align-items: center; gap: 8px; font: 600 12px/1 var(--sans); text-transform: uppercase; letter-spacing: .07em; color: var(--state); padding: 8px 12px; border-radius: 999px; background: color-mix(in srgb, var(--state) 12%, transparent); }
+  .pill::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--state); flex: none; }
+  a.pill { text-decoration: underline; text-underline-offset: 3px; }
+  a.pill:focus-visible { outline: 2px solid var(--state); outline-offset: 3px; }
+  .reason { margin: 0; color: var(--muted); font-size: 13.5px; }
+  .mpanel dl { grid-template-columns: repeat(auto-fit, minmax(130px,1fr)); gap: 14px 12px; }
+  .mpanel dd { font-size: 15px; }
+  .mfoot { display: flex; justify-content: space-between; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); font: 400 12px/1.2 var(--mono); color: var(--muted); }
+  .mfoot span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mfoot a { color: var(--link); text-decoration: none; font: 400 13px var(--sans); white-space: nowrap; }
+  .mfoot a:hover { text-decoration: underline; }
+
+  .modes { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; }
+  #miner-slot { display: grid; gap: 20px; }
+  .modes li { --state: var(--good); padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; color: var(--muted); opacity: .55; }
+  .modes li b { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: var(--state); font: 600 12px/1.2 var(--sans); text-transform: uppercase; letter-spacing: .05em; }
+  .modes li b::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--state); flex: none; }
+  .modes li.on { opacity: 1; border-color: var(--state); background: color-mix(in srgb, var(--state) 6%, transparent); }
+  .modes .not-submitting { --state: var(--orange); }
+  .modes .not-hashing { --state: var(--bad); }
+
+  .empty { display: grid; grid-template-columns: auto 1fr; gap: 24px; align-items: center; padding: 28px; border: 1px dashed var(--line-strong); border-radius: 8px; }
+  .empty .fan { width: 90px; }
+  .empty h2 { margin: 0 0 6px; font: 600 20px/1.2 var(--display); }
+  .empty p { margin: 0; color: var(--muted); max-width: 62ch; }
+  .demo-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+  .panel-head.not-submitting { --state: var(--orange); }
+  .panel-head.not-hashing { --state: var(--bad); }
+  .readonly { display: grid; gap: 6px; font: 500 12px/1.2 var(--sans); color: var(--muted); align-content: start; }
+  .readonly span { font: 500 13px/1.2 var(--mono); color: var(--text); padding: 9px 0; }
+  .readonly a { color: var(--link); text-decoration: none; font-size: 12px; }
+
+  @media (max-width: 720px) {
+    .dash { padding-inline: 16px; }
+    .mpanel { grid-template-columns: 1fr; justify-items: center; padding: 18px; }
+    .mbody { width: 100%; }
+    .mpanel .fan { width: 110px; }
+    .modes { grid-template-columns: 1fr; }
+    .empty { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  }
+  /* Find Mempool: only the blockchain */
+  #miner-slot, .fleet-shares { display: none !important; }
+</style>
+
+</head>
+<body>
+
+<template id="fan-tpl">
+  <svg viewBox="0 0 100 100" aria-hidden="true">
+    <g class="frame">
+      <circle cx="50" cy="50" r="40" stroke-width="4.2"></circle>
+      <circle cx="12" cy="12" r="4.6" stroke-width="3"></circle>
+      <circle cx="88" cy="12" r="4.6" stroke-width="3"></circle>
+      <circle cx="12" cy="88" r="4.6" stroke-width="3"></circle>
+      <circle cx="88" cy="88" r="4.6" stroke-width="3"></circle>
+    </g>
+    <g class="rotor"><g transform="translate(50 50)">
+      <path transform="rotate(0)" d="M -4.5,-8.5 C -10,-17 -9,-27 -1.5,-35.5 Q 12,-34 17.5,-24.5 C 10,-22 6,-16 5,-9"></path>
+      <path transform="rotate(72)" d="M -4.5,-8.5 C -10,-17 -9,-27 -1.5,-35.5 Q 12,-34 17.5,-24.5 C 10,-22 6,-16 5,-9"></path>
+      <path transform="rotate(144)" d="M -4.5,-8.5 C -10,-17 -9,-27 -1.5,-35.5 Q 12,-34 17.5,-24.5 C 10,-22 6,-16 5,-9"></path>
+      <path transform="rotate(216)" d="M -4.5,-8.5 C -10,-17 -9,-27 -1.5,-35.5 Q 12,-34 17.5,-24.5 C 10,-22 6,-16 5,-9"></path>
+      <path transform="rotate(288)" d="M -4.5,-8.5 C -10,-17 -9,-27 -1.5,-35.5 Q 12,-34 17.5,-24.5 C 10,-22 6,-16 5,-9"></path>
+      <circle r="10.5" class="hub"></circle>
+      <polygon class="hub-cut" points="0,-5.6 5.3,-1.7 3.3,4.5 -3.3,4.5 -5.3,-1.7"></polygon>
+    </g></g>
+  </svg>
+</template>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="fan" data-fan-static></span>
+    <span class="wordmark" aria-hidden="true"><span class="wm-hashes">hashes</span><span class="wm-dot"></span><span class="wm-space">space</span></span>
+    <span class="sr-only">hashes.space</span>
+  </div>
+  <nav class="tabs" aria-label="Main">
+    <a href="#cpu" id="tab-cpu" hidden>Find CPUs</a>
+    <a href="#asic" id="tab-asic" hidden>Find ASIC</a>
+    <a href="#dashboard" id="tab-dashboard">Find Mempool</a>
+    <a href="#fleet" id="tab-fleet" hidden>Fleet</a>
+    <a href="#settings" id="tab-settings" hidden>Miner settings</a>
+  </nav>
+  <div class="source">
+    <span class="dot" id="live-dot"></span>
+    <span id="src-label">Connecting…</span>
+    <span class="sep">·</span>
+    <span class="mono" id="tip">tip –</span>
+    
+  </div>
+</header>
+
+<div id="view-cpu" hidden>
+  <main class="asic">
+    <section class="s-card">
+      <div class="s-card-head">
+        <div>
+          <h1>Find CPUs</h1>
+          <p>Every CPU mining rig (XMRig) that is connected to your local network, with the cores and threads it mines on. Click Manage, the dashboard can showcase the stats of one local mining rig's IP at a time.</p>
+        </div>
+        <button type="button" class="btn" id="cpu-scan-btn">Scan again</button>
+      </div>
+      <p class="meta" id="cpu-meta" role="status"></p>
+      <div id="cpu-list"></div>
+    </section>
+    <p class="fleet-hint">CPU rigs can join a fleet too: set them up here, then add their IP addresses under <a href="#asic" data-sec-fleet data-sec-link="fleet-anchor">Generate fleet on Find ASIC</a>.</p>
+  </main>
+</div>
+
+<div id="view-asic" hidden>
+  <main class="asic">
+    <section class="s-card">
+      <div class="s-card-head">
+        <div>
+          <h1>Find ASIC</h1>
+          <p>Every ASIC that is connected to your local network. Click Manage, the dashboard can showcase the stats of one local mining rig's IP at a time.</p>
+        </div>
+        <button type="button" class="btn" id="scan-btn">Scan again</button>
+      </div>
+      <p class="meta" id="scan-meta" role="status"></p>
+      <div id="scan-list"></div>
+    </section>
+
+    <!-- the fleet: many miners by IP address (Angular AsicPage fleet section) -->
+    <section class="s-card fleet" id="sec-fleet-anchor" aria-labelledby="fleet-title">
+      <div class="s-card-head">
+        <div>
+          <h2 id="fleet-title">Generate fleet</h2>
+          <p>First set up every miner: click <b>Manage</b>, log in, and configure it until it shows <b>Connected</b>. Then paste their IP addresses (also miners in another subnet) and click Generate. You get a fleet dashboard with all of them: each miner's shares fly into the block being mined.</p>
+        </div>
+        <a class="btn" href="#fleet" id="open-fleet" hidden>Open fleet dashboard</a>
+      </div>
+      <ul class="tally" id="fleet-tally" aria-label="Fleet summary" hidden></ul>
+      <form class="add" id="fleet-form" novalidate>
+        <label class="s-field" for="fleet-name">Fleet name
+          <input id="fleet-name" type="text" maxlength="60" autocomplete="off" value="My fleet">
+        </label>
+        <label class="s-field" for="fleet-ips">IP addresses
+          <textarea id="fleet-ips" rows="3" spellcheck="false" autocomplete="off" placeholder="192.168.1.101, 192.168.1.102&#10;192.168.1.110-120" aria-describedby="fleet-ips-help"></textarea>
+          <span class="s-help" id="fleet-ips-help"></span>
+        </label>
+        <ol class="checks" id="fleet-checks" aria-label="Miners for the fleet" hidden></ol>
+        <div class="add-actions">
+          <button type="submit" class="btn primary" id="fleet-add" disabled>Generate</button>
+          <button type="button" class="btn" id="fleet-add-found" hidden></button>
+          <p class="s-result" id="fleet-result" role="status"></p>
+        </div>
+      </form>
+      <div id="fleet-list"></div>
+    </section>
+  </main>
+</div>
+
+<!-- blockchain on top of the dashboard and the fleet dashboard -->
+<div id="chain-area" hidden>
+<section class="netbar" aria-labelledby="net-label">
+  <span class="nlabel" id="net-label" title="Proof of Work: the hash function and blockchain your miner works on">PoW</span>
+  <div class="dd" id="net-dd">
+    <button type="button" class="dd-trigger" id="net-trigger" aria-haspopup="listbox" aria-expanded="false" aria-labelledby="net-label net-current"></button>
+    <ul class="dd-menu" id="net-menu" role="listbox" aria-labelledby="net-label" hidden></ul>
+  </div>
+  <button type="button" class="own-btn" id="own-btn" hidden>Connect node</button>
+</section>
+<section class="strip" aria-label="Blockchain">
+  <div class="half projected" id="projected"></div>
+  <div class="divider" aria-hidden="true"></div>
+  <div class="half mined" id="mined"></div>
+</section>
+
+</div>
+
+<div id="view-fleet" hidden>
+<main class="fleetdash" id="fleetdash"></main>
+</div>
+
+<div id="view-dashboard" hidden>
+<main class="dash">
+  <div id="miner-slot" hidden></div>
+
+  <div class="demo-row">
+    <p class="legend"><b>How to read it.</b> Pick a proof-of-work blockchain above: <b>Bitcoin BLAKE2b</b> (BLAKE2b, from mempool.guide) or <b>Monero</b> (RandomX, from xmrchain.net). On the left are the blocks waiting in the mempool, the next one first: transactions sorted by the fee they pay, filled up to a full block. On the right are the blocks that were just mined. When a miner finds a block, the first waiting block moves across the line and becomes the newest block in the chain. The colour of a block shows its fees: the warmer, the more the transactions in it pay.</p>
+  </div>
+</main>
+</div>
+
+<div id="view-settings" hidden>
+  <main class="settings">
+    <header class="page-head">
+      <h1>Miner settings</h1>
+      <p>Everything a miner needs to run, in one place for any brand. Each section says whether it is sent to the miner or only saved here.</p>
+    </header>
+    <section class="s-card" id="no-miner">
+      <p class="hint">Connect to a miner first: pick one on Find ASIC or Find CPUs, which list every miner powered on in your local network. Settings always apply to the one miner this page is connected to.</p>
+      <a class="back" href="#asic">← Go to Find ASIC</a>
+    </section>
+    <div id="settings-body" hidden>
+      <div class="summary" id="summary">
+        <div>
+          <h2 id="f-title"></h2>
+          <p><span class="ip" id="f-ip"></span> · <span id="f-model"></span> · <span class="state" id="f-state"></span></p>
+          <p class="reason" id="f-reason"></p>
+        </div>
+        <dl class="now">
+          <div><dt>Mining on now</dt><dd id="f-now"></dd></div>
+          <div><dt>Hashrate</dt><dd id="f-hash"></dd></div>
+          <div><dt>Settings sent through</dt><dd>simulator</dd></div>
+          <div><dt>Firmware</dt><dd>sim-2026.09</dd></div>
+        </dl>
+      </div>
+      <div class="s-layout">
+        <nav class="toc" id="toc" aria-label="Settings sections"></nav>
+        <div class="cards" id="cards">
+          <section class="s-card" id="sec-pools" aria-labelledby="h-pools">
+            <div class="s-card-head">
+              <div><h2 id="h-pools">Pools</h2><p>Where the miner sends its work: a main pool, and a failover pool it switches to only if the main pool goes down.</p></div>
+              <span class="s-cap">Applies to the miner</span>
+            </div>
+            <div class="node-hint">
+              <span>Your <span id="node-algo"></span> node: <code id="node-url"></code></span>
+              <button type="button" class="btn" id="use-node">Use my node as main pool</button>
+            </div>
+            <form class="pool-grid" id="pool-grid" novalidate role="group" aria-label="Pool addresses"></form>
+            <p class="hint">The worker is usually your Bitcoin address followed by a dot and the miner name. The password is almost always <code>x</code>.</p>
+            <div class="s-actions">
+              <p class="s-result" id="f-result" role="status"></p>
+              <button type="button" class="btn" id="f-save">Save</button>
+              <button type="button" class="btn primary" id="f-apply">Save &amp; apply</button>
+            </div>
+          </section>
+
+          <section class="s-card" id="sec-miner" aria-labelledby="h-miner">
+            <div class="s-card-head">
+              <div><h2 id="h-miner">Miner</h2><p>How the dashboard knows and reaches this miner. The IP address identifies it: every miner on your network has its own.</p></div>
+              <span class="s-cap saved-only">Dashboard only</span>
+            </div>
+            <div class="s-grid">
+              <label class="s-field" for="rig-name">Name <input id="rig-name" type="text"></label>
+              <div class="s-field readonly">IP address <span id="f-ip2"></span><a href="#asic">Connect to another miner</a></div>
+              <label class="s-field" for="rig-algo">Hash function <select id="rig-algo"></select><span class="s-help">The proof of work this miner computes.</span></label>
+              <label class="s-field" for="rig-ths">Rated hashrate <span class="s-unit"><input id="rig-ths" type="number" min="0" step="0.001"><span id="rig-ths-unit">TH/s</span></span></label>
+              <label class="s-field" for="rig-port">API port <input id="rig-port" type="number" min="1" max="65535"><span class="s-help">Usually 4028 (cgminer API).</span></label>
+            </div>
+            <div class="s-actions">
+              <p class="s-result" id="m-result" role="status"></p>
+              <button type="button" class="btn primary" id="m-save">Save</button>
+            </div>
+          </section>
+
+          <section class="s-card" id="sec-login" aria-labelledby="h-login">
+            <div class="s-card-head">
+              <div><h2 id="h-login">Login</h2><p>The username and password that protect this miner. Nobody can open it here and change its pool or settings without them.</p></div>
+              <span class="s-cap" id="login-cap"></span>
+            </div>
+            <p class="s-caution" id="login-caution" hidden>This miner still uses the default login <b>admin</b> / <b>123456789</b>. Anyone on your network who knows it could change your pool. Pick your own password.</p>
+            <form class="s-grid" id="login-form" novalidate>
+              <label class="s-field" for="ls-user">Username <input id="ls-user" type="text" autocomplete="username" spellcheck="false" maxlength="32"><span class="s-help">Leave empty to keep it.</span></label>
+              <label class="s-field" for="ls-cur">Current password <input id="ls-cur" type="password" autocomplete="current-password"></label>
+              <label class="s-field" for="ls-new">New password <input id="ls-new" type="password" autocomplete="new-password"><span class="s-help">At least 8 characters, not the default one.</span></label>
+              <label class="s-field" for="ls-rep">Repeat new password <input id="ls-rep" type="password" autocomplete="new-password"></label>
+              <button type="submit" hidden></button>
+            </form>
+            <div class="s-actions">
+              <p class="s-result" id="ls-result" role="status"></p>
+              <button type="button" class="btn" id="ls-logout" title="This browser logs out of this miner; Find ASIC shows Manage again">Log out of this miner</button>
+              <button type="button" class="btn primary" id="ls-save">Change login</button>
+            </div>
+          </section>
+
+          <div id="group-cards" class="cards"></div>
+
+          <section class="s-card" id="sec-maintenance" aria-labelledby="h-maintenance">
+            <div class="s-card-head">
+              <div><h2 id="h-maintenance">Maintenance</h2><p>Find the miner in the rack, restart it, turn it off or on, or start over with factory settings.</p></div>
+              <span class="s-cap" id="led-cap" hidden>LED blinking</span><span class="s-cap off" id="off-cap" hidden>Turned off</span>
+            </div>
+            <ul class="act-list" id="act-list"></ul>
+            <p class="s-result" id="a-result" role="status"></p>
+          </section>
+
+          <a class="back" href="#dashboard">← Back to dashboard</a>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<dialog id="own-dlg" aria-labelledby="own-title">
+  <form id="own-form" novalidate>
+    <h2 id="own-title">Connect your own node and Electrum server</h2>
+    <p class="muted">Stream a blockchain from your own node. Pick the hash function its chain is mined with, then enter the node, an Electrum server (Electrs, Fulcrum), or both: the node gives full block details and the block your miners work on, Electrum adds the mempool.</p>
+    <label class="algo-pick" for="own-algo">Hash function of your node's chain <select id="own-algo"></select></label>
+    <fieldset>
+      <legend>Node (Bitcoin Core or Bitcoin Knots)</legend>
+      <div class="ogrid">
+        <label class="wide" for="own-rpc">RPC address <input id="own-rpc" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="http://192.168.1.20:8332"></label>
+        <label for="own-user">RPC user <input id="own-user" type="text" autocomplete="off" spellcheck="false"></label>
+        <label for="own-pass">RPC password <input id="own-pass" type="password" autocomplete="new-password"></label>
+      </div>
+    </fieldset>
+    <fieldset>
+      <legend>Electrum server</legend>
+      <div class="ogrid">
+        <label class="wide" for="own-ehost">Address <input id="own-ehost" type="text" autocomplete="off" spellcheck="false" placeholder="192.168.1.20"></label>
+        <label for="own-eport">Port <input id="own-eport" type="number" min="1" max="65535" placeholder="50001"></label>
+        <label class="check"><input id="own-etls" type="checkbox"> Use SSL</label>
+      </div>
+    </fieldset>
+    <p class="hint">The server connects to the addresses you enter, so your node must be reachable from it (for example through Tailscale, WireGuard or Tor). This demo can't reach your network: it checks what you type and then simulates the connection.</p>
+    <p class="result" id="own-result" role="status"></p>
+    <div class="oactions">
+      <button type="button" class="btn danger" id="own-remove" hidden>Disconnect my node</button>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="own-cancel">Cancel</button>
+      <button type="submit" class="btn primary">Test and connect</button>
+    </div>
+  </form>
+</dialog>
+
+<canvas id="streams" aria-hidden="true"></canvas>
+<canvas id="fleet-streams" aria-hidden="true"></canvas>
+
+<script>
+/* ===== shared animation + format code, compiled from frontend/src/app/lib/*.ts ===== */
+/** the most addresses one paste may add (a /23 worth) */
+const MAX_FLEET_ADD = 512;
+const OCTET = '(25[0-5]|2[0-4]\\d|1?\\d?\\d)';
+const IP_RE = new RegExp(`^${OCTET}\\.${OCTET}\\.${OCTET}\\.${OCTET}$`);
+const RANGE_RE = new RegExp(`^${OCTET}\\.${OCTET}\\.${OCTET}\\.${OCTET}-(?:${OCTET}\\.${OCTET}\\.${OCTET}\\.)?${OCTET}$`);
+function parseIpList(text) {
+    const entries = String(text ?? '')
+        .split(/[\s,;]+/)
+        .map((e) => e.trim().replace(/^https?:\/\//i, '').replace(/\/.*$/, ''))
+        .filter(Boolean);
+    const seen = new Set();
+    const ips = [];
+    const invalid = [];
+    const duplicates = [];
+    const add = (ip) => {
+        if (seen.has(ip)) {
+            if (!duplicates.includes(ip))
+                duplicates.push(ip);
+            return;
+        }
+        seen.add(ip);
+        ips.push(ip);
+    };
+    for (const entry of entries) {
+        const clean = entry.replace(/:\d+$/, ''); // "192.168.1.5:4028" → the IP
+        if (IP_RE.test(clean)) {
+            add(clean.split('.').map(Number).join('.')); // "192.168.001.005" → "192.168.1.5"
+            continue;
+        }
+        if (RANGE_RE.test(clean)) {
+            const [from, to] = clean.split('-');
+            const base = from.split('.').map(Number);
+            const toParts = to.split('.').map(Number);
+            if (toParts.length === 4 && toParts.slice(0, 3).join('.') !== base.slice(0, 3).join('.')) {
+                invalid.push({ entry, reason: 'a range must stay within one x.x.x.0–255 block' });
+                continue;
+            }
+            const end = toParts[toParts.length - 1];
+            if (end < base[3]) {
+                invalid.push({ entry, reason: 'the range ends before it starts' });
+                continue;
+            }
+            for (let i = base[3]; i <= end; i++)
+                add(`${base[0]}.${base[1]}.${base[2]}.${i}`);
+            continue;
+        }
+        invalid.push({ entry, reason: 'not an IP address' });
+    }
+    return { ips, invalid, duplicates };
+}
+
+/** Hex share hash -> string of bits ("0010…"). */
+function hexToBits(hex, maxBits = 256) {
+    let out = '';
+    for (const c of hex.slice(0, Math.ceil(maxBits / 4)))
+        out += parseInt(c, 16).toString(2).padStart(4, '0');
+    return out.slice(0, maxBits);
+}
+/** Number of leading zero bits — the proof-of-work of a share. */
+function leadingZeroBits(hex) {
+    const bits = hexToBits(hex);
+    const i = bits.indexOf('1');
+    return i === -1 ? bits.length : i;
+}
+/**
+ * The bit string rendered for one share: the last 24 leading zeros, the first 1,
+ * then 11 more bits. Long enough to read as "matrix" code, short enough to fly.
+ */
+function shareBits(hex, zerosShown = 24, tail = 12) {
+    const bits = hexToBits(hex);
+    const lz = leadingZeroBits(hex);
+    return bits.slice(Math.max(0, lz - zerosShown), lz + tail);
+}
+function formatHashrate(ths) {
+    if (!ths)
+        return '0 H/s';
+    if (ths >= 1e6)
+        return `${(ths / 1e6).toFixed(2)} EH/s`;
+    if (ths >= 1e3)
+        return `${(ths / 1e3).toFixed(2)} PH/s`;
+    if (ths >= 1)
+        return `${ths.toFixed(ths >= 100 ? 1 : 2)} TH/s`;
+    // ASICs in GH/s; CPU miners (RandomX) in MH/s, kH/s or H/s
+    const h = ths * 1e12;
+    if (h >= 1e9)
+        return `${(h / 1e9).toFixed(h >= 1e11 ? 0 : 1)} GH/s`;
+    if (h >= 1e6)
+        return `${(h / 1e6).toFixed(2)} MH/s`;
+    if (h >= 1e3)
+        return `${(h / 1e3).toFixed(2)} kH/s`;
+    return `${h.toFixed(0)} H/s`;
+}
+function formatDiff(d) {
+    const units = ['', 'K', 'M', 'G', 'T', 'P'];
+    let i = 0;
+    while (d >= 1000 && i < units.length - 1) {
+        d /= 1000;
+        i++;
+    }
+    return `${d >= 100 || i === 0 ? d.toFixed(0) : d.toFixed(1)}${units[i]}`;
+}
+function formatAgo(ms, now = Date.now()) {
+    if (!ms)
+        return 'never';
+    const s = Math.max(0, Math.round((now - ms) / 1000));
+    if (s < 60)
+        return `${s}s ago`;
+    if (s < 3600)
+        return `${Math.floor(s / 60)}m ago`;
+    return `${Math.floor(s / 3600)}h ago`;
+}
+function formatBtc(sats) {
+    return `${(sats / 1e8).toFixed(3)} BTC`;
+}
+/**
+ * mempool.space colour scheme.
+ * Projected blocks: fee colour of the median fee (green → orange → magenta),
+ * empty part #554b45. Mined blocks: purple → blue, empty part #2d3348.
+ */
+const MEMPOOL_COLORS = {
+    projectedEmpty: '#554b45',
+    minedEmpty: '#2d3348',
+    mined: ['#9339f4', '#105fb0'],
+};
+const FEE_LEVELS = [1, 2, 3, 4, 5, 6, 8, 10, 12, 15, 20, 30, 40, 50, 60, 70, 80, 90, 100, 125, 150, 175, 200, 250, 300, 350, 400, 500, 600, 700, 800, 900, 1000, 1200, 1400, 1600, 1800, 2000];
+const FEE_COLORS = [
+    '557d00', '5d7d01', '637d02', '6d7d04', '757d05', '7d7d06', '867d08', '8c7d09', '957d0b', '9b7d0c',
+    'a67d0e', 'aa7d0f', 'b27d10', 'bb7d11', 'bf7d12', 'bf7815', 'bf7319', 'be6c1e', 'be6820', 'bd6125',
+    'bd5c28', 'bc552d', 'bc4f30', 'bc4a34', 'bb4339', 'bb3d3c', 'bb373f', 'ba3243', 'b92b48', 'b9254b',
+    'b8214d', 'b71d4f', 'b61951', 'b41453', 'b30e55', 'b10857', 'b00259', 'ae005b',
+];
+/** sat/vB → mempool.space fee colour */
+function feeColor(rate) {
+    let i = FEE_LEVELS.findIndex((level) => rate < level);
+    i = i === -1 ? FEE_COLORS.length - 1 : Math.max(0, i - 1);
+    return '#' + FEE_COLORS[Math.min(i, FEE_COLORS.length - 1)];
+}
+
+/**
+ * Framework-agnostic canvas renderer that flies strings of 0s and 1s from a
+ * miner's fan into the block currently being mined.
+ *
+ *  - one full-viewport <canvas> (pointer-events: none) holds every stream
+ *  - each stream follows a cubic Bézier: up out of the fan, then into the block
+ *  - the head glyph glows, the tail fades; leading zeros stay fixed (they are
+ *    the proof-of-work), the bits after them flicker like "matrix" code
+ *  - rejected shares turn red and crumble half-way
+ *  - lucky shares (much higher difficulty than usual) get an orange head
+ *
+ * The render loop runs only while streams are in flight.
+ */
+const DEFAULT_THEME = {
+    color: '60, 226, 107',
+    head: '#dcffe6',
+    luckyHead: '#ffb347',
+    reject: '255, 92, 92',
+    font: '600 12px "IBM Plex Mono", ui-monospace, monospace',
+    spacing: 11,
+};
+class ShareStreamRenderer {
+    constructor(canvas, theme = {}, maxStreams = 60) {
+        this.canvas = canvas;
+        this.maxStreams = maxStreams;
+        this.streams = [];
+        this.raf = 0;
+        this.dpr = 1;
+        this.reducedMotion = false;
+        this.frame = (now) => {
+            const { ctx, dpr, theme } = this;
+            ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+            ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            ctx.font = theme.font;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            this.streams = this.streams.filter((s) => this.draw(s, now));
+            this.raf = this.streams.length ? requestAnimationFrame(this.frame) : 0;
+            if (!this.raf)
+                ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        };
+        this.ctx = canvas.getContext('2d');
+        this.theme = { ...DEFAULT_THEME, ...theme };
+        this.reducedMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        this.resize();
+    }
+    resize() {
+        this.dpr = Math.min(2, window.devicePixelRatio || 1);
+        this.canvas.width = Math.round(window.innerWidth * this.dpr);
+        this.canvas.height = Math.round(window.innerHeight * this.dpr);
+        this.canvas.style.width = `${window.innerWidth}px`;
+        this.canvas.style.height = `${window.innerHeight}px`;
+    }
+    get active() {
+        return this.streams.length;
+    }
+    launch(from, target, bits, opts = {}) {
+        if (this.reducedMotion) {
+            opts.onArrive?.();
+            return;
+        }
+        const to = target();
+        const dy = Math.max(120, from.y - to.y);
+        const jitter = (n) => (Math.random() - 0.5) * n;
+        const p0 = { x: from.x + jitter(6), y: from.y };
+        const c1 = { x: from.x + jitter(80), y: from.y - dy * 0.55 };
+        const c2 = { x: to.x + jitter(120), y: to.y + dy * 0.45 };
+        const len = approxLength(p0, c1, c2, to);
+        const chars = bits.split('');
+        const lz = bits.indexOf('1');
+        this.streams.push({
+            p0,
+            c1,
+            c2,
+            target,
+            chars,
+            fixed: lz === -1 ? chars.length : lz + 1,
+            born: performance.now(),
+            dur: 900 + Math.min(900, len * 1.1) + Math.random() * 250,
+            gap: this.theme.spacing / Math.max(1, len),
+            accepted: opts.accepted !== false,
+            lucky: !!opts.lucky,
+            arrived: false,
+            onArrive: opts.onArrive,
+        });
+        if (this.streams.length > this.maxStreams)
+            this.streams.splice(0, this.streams.length - this.maxStreams);
+        if (!this.raf)
+            this.raf = requestAnimationFrame(this.frame);
+    }
+    destroy() {
+        cancelAnimationFrame(this.raf);
+        this.raf = 0;
+        this.streams = [];
+    }
+    /** returns false when the stream is finished */
+    draw(s, now) {
+        const { ctx, theme } = this;
+        const p = (now - s.born) / s.dur;
+        const tail = s.chars.length * s.gap;
+        // ease-out on the head so the stream "leaps" out of the fan and settles into the block
+        let head = easeOutCubic(Math.min(1, p)) * (1 + tail) + Math.max(0, p - 1) * 0.9;
+        const to = s.target();
+        let fade = 1;
+        let fall = 0;
+        if (!s.accepted && head > 0.55) {
+            s.deadAt ?? (s.deadAt = now);
+            head = 0.55;
+            const d = (now - s.deadAt) / 500;
+            fade = 1 - d;
+            fall = d * d * 60;
+            if (fade <= 0)
+                return false;
+        }
+        if (s.accepted && !s.arrived && head >= 1) {
+            s.arrived = true;
+            s.onArrive?.();
+        }
+        if (head - tail >= 1)
+            return false;
+        const rgb = s.accepted ? theme.color : theme.reject;
+        for (let i = s.chars.length - 1; i >= 0; i--) {
+            const t = head - i * s.gap;
+            if (t < 0 || t > 1)
+                continue;
+            if (i >= s.fixed && Math.random() < 0.04)
+                s.chars[i] = s.chars[i] === '0' ? '1' : '0';
+            const pt = bezier(s.p0, s.c1, s.c2, to, t);
+            const y = pt.y + (fall ? fall * (0.4 + ((i * 37) % 10) / 10) : 0);
+            // shrink into the block as the glyph reaches it
+            const sink = t > 0.93 ? (1 - t) / 0.07 : 1;
+            const k = 1 - i / s.chars.length;
+            const alpha = Math.max(0, (0.18 + 0.82 * k ** 1.6) * fade * sink);
+            if (i === 0) {
+                ctx.shadowColor = s.lucky ? theme.luckyHead : `rgb(${rgb})`;
+                ctx.shadowBlur = 12;
+                ctx.fillStyle = s.accepted ? (s.lucky ? theme.luckyHead : theme.head) : `rgb(${rgb})`;
+                ctx.globalAlpha = fade * sink;
+            }
+            else {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = `rgba(${rgb}, ${alpha})`;
+                ctx.globalAlpha = 1;
+            }
+            ctx.fillText(s.chars[i], pt.x, y);
+        }
+        ctx.shadowBlur = 0;
+        ctx.globalAlpha = 1;
+        return true;
+    }
+}
+function bezier(p0, c1, c2, p1, t) {
+    const u = 1 - t;
+    const a = u * u * u;
+    const b = 3 * u * u * t;
+    const c = 3 * u * t * t;
+    const d = t * t * t;
+    return { x: a * p0.x + b * c1.x + c * c2.x + d * p1.x, y: a * p0.y + b * c1.y + c * c2.y + d * p1.y };
+}
+function approxLength(p0, c1, c2, p1) {
+    let len = 0;
+    let prev = p0;
+    for (let i = 1; i <= 16; i++) {
+        const pt = bezier(p0, c1, c2, p1, i / 16);
+        len += Math.hypot(pt.x - prev.x, pt.y - prev.y);
+        prev = pt;
+    }
+    return len;
+}
+function easeOutCubic(t) {
+    return 1 - (1 - t) ** 3;
+}
+
+/**
+ * General miner settings for ANY ASIC.
+ *
+ * The groups below are what the web interfaces of Bitmain (Antminer), MicroBT
+ * (WhatsMiner), Goldshell, iBeLink and Canaan (Avalon) have in common: the
+ * settings a miner needs to run. Pools and the miner's name/hash function live
+ * in their own section (they drive the three modes); everything else is here.
+ *
+ * This one file defines the fields, their defaults and their checks. It is used
+ * by the backend (validation), the Angular settings page and the demo, so all
+ * three always agree. Keep it free of Angular / Node imports.
+ */
+const custom = (v) => v['mode'] === 'custom';
+const isStatic = (v) => v['dhcp'] === false;
+const SETTINGS_GROUPS = [
+    {
+        id: 'performance',
+        title: 'Performance',
+        summary: 'How hard the miner works. Pick a preset, or Custom to set power, frequency and voltage yourself.',
+        fields: [
+            {
+                key: 'mode',
+                label: 'Work mode',
+                type: 'select',
+                options: [
+                    { value: 'sleep', label: 'Sleep (stop hashing, fans idle)' },
+                    { value: 'low', label: 'Low power (efficient, less hashrate)' },
+                    { value: 'normal', label: 'Normal (factory setting)' },
+                    { value: 'high', label: 'High performance (more hashrate and heat)' },
+                    { value: 'custom', label: 'Custom' },
+                ],
+            },
+            { key: 'powerTargetW', label: 'Power target', type: 'number', unit: 'W', min: 100, max: 20000, step: 10, showIf: custom, help: 'The firmware keeps power use at or below this.' },
+            { key: 'frequencyMHz', label: 'Chip frequency', type: 'number', unit: 'MHz', min: 50, max: 1500, step: 5, optional: true, showIf: custom, help: 'Leave empty to let the firmware choose.' },
+            { key: 'voltageV', label: 'Hashboard voltage', type: 'number', unit: 'V', min: 10, max: 16, step: 0.05, optional: true, showIf: custom, help: 'Leave empty to let the firmware choose.' },
+            { key: 'autotune', label: 'Autotuning', type: 'toggle', showIf: custom, help: 'Let the firmware tune each chip for the best hashrate per watt.' },
+        ],
+    },
+    {
+        id: 'cooling',
+        title: 'Cooling',
+        summary: 'Fans and temperature limits. The miner slows down at the throttle temperature and stops at the shutdown temperature.',
+        fields: [
+            {
+                key: 'fanMode',
+                label: 'Fan control',
+                type: 'select',
+                options: [
+                    { value: 'auto', label: 'Automatic (keep the chips at a target temperature)' },
+                    { value: 'manual', label: 'Fixed fan speed' },
+                    { value: 'immersion', label: 'Immersion or hydro cooling (no fans)' },
+                ],
+            },
+            { key: 'targetTempC', label: 'Target chip temperature', type: 'number', unit: '°C', min: 40, max: 90, step: 1, showIf: (v) => v['fanMode'] === 'auto' },
+            { key: 'fanSpeedPct', label: 'Fan speed', type: 'number', unit: '%', min: 10, max: 100, step: 5, showIf: (v) => v['fanMode'] === 'manual' },
+            { key: 'minFans', label: 'Fans required to hash', type: 'number', min: 0, max: 4, step: 1, showIf: (v) => v['fanMode'] !== 'immersion', help: 'The miner won’t start with fewer working fans.' },
+            { key: 'hotTempC', label: 'Throttle at', type: 'number', unit: '°C', min: 60, max: 100, step: 1 },
+            { key: 'dangerTempC', label: 'Shut down at', type: 'number', unit: '°C', min: 70, max: 115, step: 1 },
+        ],
+        check: (v) => (Number(v['hotTempC']) >= Number(v['dangerTempC']) ? 'The throttle temperature must be lower than the shutdown temperature.' : null),
+    },
+    {
+        id: 'network',
+        title: 'Network',
+        summary: 'How the miner gets its IP address. With DHCP your router hands one out; with a static address it never changes.',
+        caution: (v, host) => isStatic(v) && v['ip'] && v['ip'] !== host
+            ? `After applying, the miner moves to ${v['ip']}. The dashboard follows it there.`
+            : v['dhcp'] === true
+                ? 'With DHCP the router may give the miner another IP address after a restart. Reconnect to the new one if the miner disappears.'
+                : null,
+        fields: [
+            { key: 'dhcp', label: 'Get an IP address automatically (DHCP)', type: 'toggle' },
+            { key: 'ip', label: 'IP address', type: 'ipv4', placeholder: '192.168.1.101', showIf: isStatic },
+            { key: 'netmask', label: 'Subnet mask', type: 'ipv4', placeholder: '255.255.255.0', showIf: isStatic },
+            { key: 'gateway', label: 'Gateway', type: 'ipv4', placeholder: '192.168.1.1', showIf: isStatic },
+            { key: 'dns1', label: 'DNS server', type: 'ipv4', placeholder: '1.1.1.1', showIf: isStatic },
+            { key: 'dns2', label: 'Second DNS server', type: 'ipv4', placeholder: '9.9.9.9', optional: true, showIf: isStatic },
+            { key: 'hostname', label: 'Hostname', type: 'hostname', placeholder: 'miner-01', optional: true, help: 'The name the miner shows on your network.' },
+        ],
+    },
+    {
+        id: 'security',
+        title: 'Security',
+        summary: 'Who may talk to the miner. The dashboard needs read and write API access to change settings.',
+        caution: (v) => v['apiAccess'] !== 'read-write' ? 'With this API setting the dashboard can still read the miner but can no longer change its settings.' : null,
+        fields: [
+            {
+                key: 'apiAccess',
+                label: 'Miner API (port 4028)',
+                type: 'select',
+                options: [
+                    { value: 'read-write', label: 'Read and write (the dashboard can change settings)' },
+                    { value: 'read', label: 'Read only (status only)' },
+                    { value: 'off', label: 'Off' },
+                ],
+            },
+            { key: 'apiAllowedIps', label: 'Allowed to use the API', type: 'iplist', placeholder: '192.168.1.0/24', optional: true, help: 'IP addresses or ranges, separated by commas. Leave empty for your whole local network.' },
+            { key: 'ssh', label: 'SSH access', type: 'toggle', help: 'Remote command-line access. Leave it off unless you need it.' },
+        ],
+    },
+    {
+        id: 'system',
+        title: 'System',
+        summary: 'Clock settings the miner uses for its logs and pool connection.',
+        fields: [
+            { key: 'timezone', label: 'Time zone', type: 'timezone' },
+            { key: 'ntpServer', label: 'Time server (NTP)', type: 'hostname', placeholder: 'pool.ntp.org' },
+        ],
+    },
+];
+const MINER_ACTIONS = [
+    { id: 'locate', label: 'Find this miner', help: 'Blinks the miner’s LED for 60 seconds so you can spot it in the rack.' },
+    { id: 'reboot', label: 'Reboot', help: 'Restarts the miner. It stops hashing for about a minute.', confirm: 'Reboot the miner now? It stops hashing for about a minute.' },
+    {
+        id: 'power-off',
+        label: 'Turn off',
+        help: 'Switches off the hashboards and fans. The miner stops hashing but stays reachable on your network, so you can turn it on again here.',
+        confirm: 'Turn the miner off? It stops hashing until you turn it on again.',
+        danger: true,
+        onlyWhen: 'on',
+    },
+    { id: 'power-on', label: 'Turn on', help: 'The miner is turned off. Turning it on starts the hashboards and fans again; it hashes again after about a minute.', onlyWhen: 'off' },
+    {
+        id: 'factory-reset',
+        label: 'Restore factory settings',
+        help: 'Clears pools and every setting on this page, sets the login back to admin / 123456789 and restarts the miner.',
+        confirm: 'Restore factory settings? The pools are cleared, so the miner stops hashing until you set them up again.',
+        danger: true,
+    },
+];
+const POOL_STRATEGIES = [
+    { value: 'failover', label: 'Failover: use Pool 1, switch to the next pool only if it goes down' },
+    { value: 'load-balance', label: 'Load balance: share the hashrate over all pools' },
+];
+function defaultSettings() {
+    return {
+        performance: { mode: 'normal', powerTargetW: null, frequencyMHz: null, voltageV: null, autotune: true },
+        cooling: { fanMode: 'auto', targetTempC: 65, fanSpeedPct: 80, minFans: 4, hotTempC: 85, dangerTempC: 95 },
+        network: { dhcp: true, ip: '', netmask: '255.255.255.0', gateway: '', dns1: '', dns2: '', hostname: '' },
+        security: { apiAccess: 'read-write', apiAllowedIps: '', ssh: false },
+        system: { timezone: 'UTC', ntpServer: 'pool.ntp.org' },
+    };
+}
+const IPV4 = /^(?:(?:25[0-5]|2[0-4]\d|1?\d?\d)\.){3}(?:25[0-5]|2[0-4]\d|1?\d?\d)$/;
+const HOSTNAME = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i;
+const TZ = /^(UTC|[A-Za-z]+(?:\/[A-Za-z0-9_+-]+)+)$/;
+/** Check (and clean) the values of one group. The same rules run in the browser and on the server. */
+function checkGroup(group, raw) {
+    const values = { ...raw };
+    const fieldErrors = {};
+    for (const f of group.fields) {
+        let v = raw[f.key];
+        if (f.showIf && !f.showIf(values))
+            continue;
+        const empty = v === undefined || v === null || (typeof v === 'string' && v.trim() === '');
+        if (f.type === 'toggle') {
+            values[f.key] = v === true || v === 'true';
+            continue;
+        }
+        if (empty) {
+            values[f.key] = f.type === 'number' ? null : '';
+            if (!f.optional)
+                fieldErrors[f.key] = `Enter ${article(f.label)}.`;
+            continue;
+        }
+        if (typeof v === 'string')
+            v = v.trim();
+        switch (f.type) {
+            case 'number': {
+                const n = Number(v);
+                if (!Number.isFinite(n))
+                    fieldErrors[f.key] = 'Enter a number.';
+                else if (f.min !== undefined && n < f.min)
+                    fieldErrors[f.key] = `Use ${f.min}${f.unit ? ' ' + f.unit : ''} or more.`;
+                else if (f.max !== undefined && n > f.max)
+                    fieldErrors[f.key] = `Use ${f.max}${f.unit ? ' ' + f.unit : ''} or less.`;
+                values[f.key] = Number.isFinite(n) ? n : v;
+                break;
+            }
+            case 'select':
+                if (!f.options?.some((o) => o.value === v))
+                    fieldErrors[f.key] = 'Pick one of the options.';
+                values[f.key] = v;
+                break;
+            case 'ipv4':
+                if (!IPV4.test(String(v)))
+                    fieldErrors[f.key] = 'Use the form 192.168.1.101.';
+                values[f.key] = v;
+                break;
+            case 'hostname':
+                if (!HOSTNAME.test(String(v)))
+                    fieldErrors[f.key] = 'Use letters, numbers, dots and dashes only.';
+                values[f.key] = v;
+                break;
+            case 'timezone':
+                if (!TZ.test(String(v)))
+                    fieldErrors[f.key] = 'Pick a time zone from the list.';
+                values[f.key] = v;
+                break;
+            case 'iplist': {
+                const parts = String(v).split(',').map((p) => p.trim()).filter(Boolean);
+                const bad = parts.find((p) => {
+                    const [ip, bits] = p.split('/');
+                    return !IPV4.test(ip) || (bits !== undefined && !(Number(bits) >= 0 && Number(bits) <= 32 && /^\d+$/.test(bits)));
+                });
+                if (bad)
+                    fieldErrors[f.key] = `"${bad}" is not an IP address or range (like 192.168.1.0/24).`;
+                values[f.key] = parts.join(', ');
+                break;
+            }
+            default:
+                values[f.key] = String(v).slice(0, 200);
+        }
+    }
+    const groupError = Object.keys(fieldErrors).length ? null : (group.check?.(values) ?? null);
+    return { values, fieldErrors, groupError, ok: !Object.keys(fieldErrors).length && !groupError };
+}
+function findGroup(id) {
+    return SETTINGS_GROUPS.find((g) => g.id === id);
+}
+function article(label) {
+    const l = label.charAt(0).toLowerCase() + label.slice(1);
+    return /^[aeiou]/i.test(l) ? `an ${l}` : `a ${l}`;
+}
+
+const pct = (v) => Math.round(v * 100);
+/** "about 40 min" / "about 2 h" */
+const duration = (min) => (min < 90 ? `about ${Math.max(1, Math.round(min))} min` : `about ${+(min / 60).toFixed(1)} h`);
+function hashrateHealth(points, nominalThs, nowThs, rangeLabel, notHashingReason) {
+    // the newest bucket may simply not have a reading yet: don't count it as a gap
+    const pts = points.length && points[points.length - 1][1] === null ? points.slice(0, -1) : points;
+    const stepMin = points.length > 1 ? (points[1][0] - points[0][0]) / 60_000 : 1;
+    const first = pts.findIndex((p) => p[1] !== null);
+    const seen = first < 0 ? [] : pts.slice(first);
+    const vals = seen.map((p) => p[1]).filter((v) => v !== null);
+    const none = { avg: 0, uptimePct: 0, submittedAvg: 0, submittedNow: 0 };
+    if (!vals.length)
+        return { level: 'none', label: 'No data yet', detail: 'The chart fills in while the dashboard reads the miner.', ...none };
+    const avg = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const rated = nominalThs > 0 ? nominalThs : avg;
+    const gaps = seen.length - vals.length;
+    const drops = vals.filter((v) => v < rated * 0.8).length;
+    const uptimePct = pct(vals.filter((v) => v > 0).length / seen.length);
+    const subs = seen.map((p) => p[2]).filter((v) => v !== null);
+    const submittedAvg = subs.length ? subs.reduce((a, b) => a + b, 0) / subs.length : 0;
+    const submittedNow = subs.length ? subs[subs.length - 1] : 0;
+    const base = { avg, uptimePct, submittedAvg, submittedNow };
+    if (notHashingReason)
+        return { level: 'bad', label: 'Not hashing', detail: notHashingReason, ...base, submittedNow: 0 };
+    if (!nowThs)
+        return { level: 'bad', label: 'Not hashing', detail: 'The miner reports 0 hashrate right now.', ...base };
+    if (submittedAvg < avg * 0.5)
+        return { level: 'warn', label: 'Not reaching your node', detail: submittedAvg ? `Only ${pct(submittedAvg / avg)} % of its hashrate reached your node in the last ${rangeLabel}. Check the pool.` : `The miner hashes, but none of it reached your node in the last ${rangeLabel}. Check the pool.`, ...base };
+    if (avg < rated * 0.8)
+        return { level: 'bad', label: 'Low hashrate', detail: `Averaging ${pct(avg / rated)} % of its rated hashrate over the last ${rangeLabel}.`, ...base };
+    if (gaps || drops) {
+        const parts = [drops && `below 80 % of rated for ${duration(drops * stepMin)}`, gaps && `offline for ${duration(gaps * stepMin)}`].filter(Boolean);
+        return { level: 'warn', label: 'Unstable', detail: `In the last ${rangeLabel}: ${parts.join(', ')}.`, ...base };
+    }
+    if (avg < rated * 0.95)
+        return { level: 'warn', label: 'Below rated', detail: `Steady, at ${pct(avg / rated)} % of its rated hashrate.`, ...base };
+    return { level: 'good', label: 'Healthy', detail: `Steady at ${pct(avg / rated)} % of its rated hashrate, and ${pct(Math.min(1, submittedAvg / avg))} % of it reaches your node.`, ...base };
+}
+/** a round axis maximum a bit above the data, split into 4 round steps */
+function niceMax(v) {
+    if (v <= 0)
+        return 1;
+    const step = v / 4;
+    const e = 10 ** Math.floor(Math.log10(step));
+    for (const m of [1, 1.2, 1.5, 2, 2.5, 3, 4, 5, 6, 7.5, 8, 10])
+        if (m * e >= step)
+            return 4 * m * e;
+    return 40 * e;
+}
+function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTickEvery) {
+    const left = 58, right = width - 12, top = 14, bottom = height - 26;
+    const max = niceMax(Math.max(nominalThs * 1.08, ...points.map((p) => Math.max(p[1] ?? 0, p[2] ?? 0))) || 1);
+    const n = Math.max(1, points.length - 1);
+    const x = (i) => left + ((right - left) * i) / n;
+    const y = (v) => bottom - ((bottom - top) * v) / max;
+    let line = '', area = '', runStart = -1;
+    const closeRun = (end) => {
+        if (runStart < 0)
+            return;
+        area += `L${x(end).toFixed(1)},${bottom}L${x(runStart).toFixed(1)},${bottom}Z`;
+        runStart = -1;
+    };
+    points.forEach(([, v], i) => {
+        if (v === null)
+            return closeRun(i - 1);
+        const cmd = runStart < 0 ? 'M' : 'L';
+        if (runStart < 0)
+            runStart = i;
+        line += `${cmd}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+        area += `${cmd}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+    });
+    closeRun(points.length - 1);
+    let line2 = '', open = false;
+    points.forEach(([, , v], i) => {
+        if (v === null)
+            return void (open = false);
+        line2 += `${open ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`;
+        open = true;
+    });
+    const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => ({ y: y(max * f), label: unit(max * f) }));
+    const xTicks = [];
+    // time labels on round times, thinned out so they never collide on a narrow screen
+    points.forEach(([t], i) => {
+        if (t % xTickEvery !== 0 || i === 0 || i === points.length - 1)
+            return;
+        const last = xTicks[xTicks.length - 1];
+        if (!last || x(i) - last.x >= 76)
+            xTicks.push({ x: x(i), label: timeLabel(t) });
+    });
+    return { line, line2, area, yTicks, xTicks, ratedY: nominalThs > 0 ? y(nominalThs) : null, x, y, left, right, top, bottom };
+}
+
+
+/* ===== demo wiring (the Angular app does this with components + a WebSocket) ===== */
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const fanTpl = $('fan-tpl');
+  const mountFan = (el) => el.appendChild(fanTpl.content.cloneNode(true));
+  // CPU miner (XMRig) instead of a fan: a chip with one square per thread, the mining ones lit (Angular CpuComponent)
+  function cpuSvg(cpu) {
+    const n = Math.max(1, Math.min(256, cpu?.threads || cpu?.cores || 1)), on = Math.min(n, cpu?.miningThreads ?? 0);
+    const cols = Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols), gap = Math.max(1, 6 - cols * 0.4);
+    const sz = Math.min((60 - gap * (cols - 1)) / cols, (60 - gap * (rows - 1)) / rows);
+    const x0 = 50 - (cols * sz + (cols - 1) * gap) / 2, y0 = 50 - (rows * sz + (rows - 1) * gap) / 2;
+    const pins = [22, 34, 46, 58, 70].map((p) => `<rect class="pin" x="${p}" y="3" width="3" height="9" rx="1"/><rect class="pin" x="${p}" y="88" width="3" height="9" rx="1"/><rect class="pin" x="3" y="${p}" width="9" height="3" rx="1"/><rect class="pin" x="88" y="${p}" width="9" height="3" rx="1"/>`).join('');
+    const cells = Array.from({ length: n }, (_, i) => `<rect class="core${i < on ? ' on' : ''}" x="${(x0 + (i % cols) * (sz + gap)).toFixed(2)}" y="${(y0 + Math.floor(i / cols) * (sz + gap)).toFixed(2)}" width="${sz.toFixed(2)}" height="${sz.toFixed(2)}" rx="1.2" style="animation-delay:${((i * 137) % 1100) / 1000}s"/>`).join('');
+    return `<svg viewBox="0 0 100 100" role="img" aria-label="${esc(cpu?.brand ?? 'CPU')}: ${cpu?.cores ?? '?'} cores, ${cpu?.threads ?? '?'} threads, ${on} mining">${pins}<rect class="die" x="12" y="12" width="76" height="76" rx="7"/>${cells}</svg>`;
+  }
+  const coresLine = (c) => `${c.cores} ${c.cores === 1 ? 'core' : 'cores'} · ${c.threads} ${c.threads === 1 ? 'thread' : 'threads'}`;
+  // the icon of a miner in a list row: its fan, or for a CPU miner its chip
+  const iconSpan = (m, state, attrs = '') => (m.cpu ? `<span class="fan cpu ${state}" ${attrs}>${cpuSvg(m.cpu)}</span>` : `<span class="fan ${state}" ${attrs} data-mount></span>`);
+  // model text: an ASIC's model, or how many cores a CPU miner keeps busy
+  const modelHtml = (m) => (m.cpu ? `<b class="cores">${coresLine(m.cpu)}</b> · ${esc(m.cpu.brand)}` : esc(m.model));
+  document.querySelectorAll('[data-fan-static]').forEach(mountFan);
+  const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+  // ---------- simulated chain (same shape as backend ChainState) ----------
+  const hex = (n) => Array.from(crypto.getRandomValues(new Uint8Array(n)), (b) => b.toString(16).padStart(2, '0')).join('');
+  const now = () => Date.now();
+  // the networks (backend networks.json): any proof-of-work hash function, plus "own" (your own node)
+  const NETWORKS = [
+    { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool.guide' },
+    { id: 'monero', algo: 'randomx', label: 'RandomX', chain: 'Monero', ticker: 'XMR', source: 'xmrchain.net' },
+  ];
+  const B2_POOLS = ['Solominers', 'Solo miner', 'DATUM miner'];
+  const BTC_POOLS = ['Foundry USA', 'AntPool', 'ViaBTC', 'F2Pool', 'OCEAN'];
+  const LTC_POOLS = ['ViaBTC', 'F2Pool', 'LitecoinPool.org', 'Binance Pool'];
+  const XMR_POOLS = ['P2Pool', 'SupportXMR', 'Nanopool', 'HashVault', 'MoneroOcean'];
+  // Monero (backend XmrchainSource): blocks every 2 minutes, filled up to the median size (300 kB),
+  // fees in nXMR/B, coloured as a multiple of the base fee (20 nXMR/B) on mempool's scale
+  const XMR_MEDIAN = 300_000, XMR_BASE_FEE = 20;
+  const mkXmrBlock = (height, ts) => {
+    const size = 40_000 + (Math.random() * 160_000 | 0), med = XMR_BASE_FEE * (1 + Math.random() * 4);
+    return { height, hash: hex(32), timestamp: ts, txCount: Math.round(size / 2200), size, weight: Math.min(4e6, size / XMR_MEDIAN * 4e6), medianFee: med, feeRange: [XMR_BASE_FEE, med * 6], pool: XMR_POOLS[Math.random() * XMR_POOLS.length | 0] };
+  };
+  const mkXmrProjected = () => {
+    const waiting = 60_000 + Math.random() * 400_000, out = [];
+    for (let index = 0, left = waiting; left > 0 && index < 6; index++, left -= XMR_MEDIAN) {
+      const bytes = Math.min(XMR_MEDIAN, left), med = XMR_BASE_FEE * Math.max(1, (4 - index * 1.5) * (0.8 + Math.random() * 0.4));
+      out.push({ index, nTx: Math.round(bytes / 2200), vsize: bytes / XMR_MEDIAN * 1e6, bytes, medianFee: med, feeRange: [med * 0.7, med * 3] });
+    }
+    return out;
+  };
+  const mkBlock = (height, ts, pools = B2_POOLS) => {
+    const med = 2 + Math.random() * 12;
+    return { height, hash: '00000000000000000001' + hex(22), timestamp: ts, txCount: 2500 + (Math.random() * 2000 | 0),
+      size: 1_400_000 + (Math.random() * 400_000 | 0), weight: 3_900_000 + (Math.random() * 99_000 | 0), medianFee: med, feeRange: [1, med * 8], pool: pools[Math.random() * pools.length | 0] };
+  };
+  const mkChain = (tip, pools) => {
+    const c = { tipHeight: tip, pools, blocks: [], projected: [] };
+    for (let i = 0; i < 8; i++) c.blocks.push(mkBlock(tip - i, Math.floor(Date.now() / 1000) - 240 - i * 590, pools));
+    return c;
+  };
+  // Simulated fallback tip: block 968,568 on 25 Sep 2026 17:01 UTC, plus one block per 10 minutes since then.
+  const estimateTip = () => 968_568 + Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 8, 25, 17, 1)) / 600_000));
+  // Litecoin: a block every 2.5 minutes (simulated fallback tip)
+  const estimateLtcTip = () => 3_150_000 + Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 8, 25, 17, 1)) / 150_000));
+  // Monero: 3,779,140 on 7 Oct 2026 22:17 UTC, plus one block per 2 minutes (simulated fallback tip)
+  const estimateXmrTip = () => 3_779_140 + Math.max(0, Math.floor((Date.now() - Date.UTC(2026, 9, 7, 22, 17)) / 120_000));
+  const mkXmrChain = (tip) => {
+    const c = { tipHeight: tip, pools: XMR_POOLS, blocks: [], projected: [], xmr: true, feeUnit: 'nXMR/B', feeScale: 1 / XMR_BASE_FEE, minutes: 2 };
+    for (let i = 0; i < 8; i++) c.blocks.push(mkXmrBlock(tip - i, Math.floor(Date.now() / 1000) - 50 - i * 120));
+    return c;
+  };
+  const chains = { sha256: mkChain(estimateTip(), BTC_POOLS), scrypt: { ...mkChain(estimateLtcTip(), LTC_POOLS), minutes: 2.5 }, blake2b: mkChain(estimateTip(), B2_POOLS), monero: mkXmrChain(estimateXmrTip()) };
+  const projFor = (c) => (c.xmr ? mkXmrProjected() : mkProjected());
+  let netId = 'blake2b';
+  const chain = () => chains[netId];
+  const network = () => NETWORKS.find((n) => n.id === netId);
+  const mkProjected = () => Array.from({ length: 6 }, (_, index) => {
+    const med = Math.max(1, (14 - index * 2.2) * (0.85 + Math.random() * 0.3));
+    return { index, nTx: 2800 + (Math.random() * 1200 | 0), vsize: index === 5 ? 400_000 + Math.random() * 500_000 : 997_000, medianFee: med, feeRange: [med * 0.7, med * 3] };
+  });
+  Object.values(chains).forEach((c) => (c.projected = projFor(c)));
+
+
+  // ---------- render: chain strip ----------
+  const fmt = (n, d = 0) => n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  let sharesThisBlock = 0;
+  // mempool colours (as on mempool.guide): projected = median-fee colour over #554b45, mined = purple→blue over #2d3348
+  function frontBg(b, mined) {
+    if (mined) {
+      const e = 100 - Math.max(4, Math.min(100, b.weight / 4e4));
+      return `repeating-linear-gradient(${MEMPOOL_COLORS.minedEmpty}, ${MEMPOOL_COLORS.minedEmpty} ${e}%, ${MEMPOOL_COLORS.mined[0]} ${e}%, ${MEMPOOL_COLORS.mined[1]} 100%)`;
+    }
+    const e = 100 - Math.max(4, Math.min(100, b.vsize / 1e4)), c = feeColor(b.medianFee * (chain().feeScale ?? 1));
+    return `linear-gradient(${MEMPOOL_COLORS.projectedEmpty}, ${MEMPOOL_COLORS.projectedEmpty} ${e}%, ${c} ${e}%, ${c} 100%)`;
+  }
+  // 1.62 MB, or 86 kB for small (Monero) blocks
+  const sizeLabel = (bytes) => (bytes >= 1e6 ? fmt(bytes / 1e6, 2) + ' MB' : fmt(bytes / 1e3) + ' kB');
+  function cube(b, mined) {
+    const lo = b.feeRange[0], hi = b.feeRange[b.feeRange.length - 1], unit = chain().feeUnit ?? 'sat/vB';
+    return `<div class="cube" ${!mined && b.index === 0 ? 'id="mining-block"' : ''}>
+      <div class="face front" style="background:${frontBg(b, mined)}"><div class="txt">
+        <span class="fee">~${fmt(b.medianFee)} ${unit}</span><span class="range">${fmt(lo)} - ${fmt(hi)} ${unit}</span>
+        <span class="size">${mined ? sizeLabel(b.size) : b.bytes !== undefined ? sizeLabel(b.bytes) : fmt(b.vsize / 1e6, 2) + ' MvB'}</span>
+        <span class="txs">${fmt(mined ? b.txCount : b.nTx)} transactions</span>
+        <span class="time">${mined ? formatAgo(b.timestamp * 1000) : 'in ~' + Math.round((b.index + 1) * (chain().minutes ?? 10)) + ' minutes'}</span></div>
+      </div><div class="face top"></div><div class="face side"></div></div>`;
+  }
+  function renderProjected() {
+    $('projected').innerHTML = chain().projected.slice().reverse().map((b) => `<div class="block-wrap ${b.index === 0 ? 'mining' : ''}">
+      <div class="above">${b.index === 0 ? 'Mining now' : ''}</div>${cube(b, false)}
+      <div class="below">${b.index === 0 ? `<span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span>` : ''}</div></div>`).join('');
+  }
+  function renderMined(animateFirst) {
+    const c = chain(), live = !!c.live, url = EXPLORER[netId];
+    // live blocks link to their explorer page; simulated ones have made-up hashes, so no link
+    $('mined').innerHTML = c.blocks.map((b, i) => {
+      const tag = live && url ? `a href="${url}${b.hash}" target="_blank" rel="noopener"` : 'div';
+      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}">
+      <div class="above height">${fmt(b.height)}</div>${cube(b, true)}<div class="below">${esc(b.pool ?? '')}</div></${tag.split(' ')[0]}>`;
+    }).join('');
+    $('tip').textContent = 'tip ' + fmt(c.tipHeight);
+    $('src-label').textContent = netId === 'own' ? `${network().chain} · ${network().source}` : live ? `${network().chain} · live from ${network().source}` : c.connecting ? `Connecting to ${network().source}…` : `${network().chain} · simulated (${network().source} not reachable from this page)`;
+    $('live-dot').className = live ? 'dot live' : 'dot';
+  }
+
+  // ---------- live stream: the same mempool WebSocket the backend's MempoolSource uses ----------
+  //   -> {"action":"init"}, {"action":"want","data":["blocks","mempool-blocks"]}
+  //   <- {blocks:[…]}, {block:{…}}, {"mempool-blocks":[…]}
+  // Works when this file is opened in a normal browser tab; inside a sandboxed
+  // preview the connection is blocked and the chain stays simulated.
+  const LIVE_WS = { sha256: 'wss://mempool.space/api/v1/ws', scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: 'wss://mempool.guide/api/v1/ws' };
+  const EXPLORER = { sha256: 'https://mempool.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmrchain.net/block/' };
+  const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,
+    medianFee: b.extras?.medianFee ?? 0, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0], totalFees: b.extras?.totalFees ?? 0, pool: b.extras?.pool?.name ?? '' });
+  // Monero: xmrchain.net's JSON API (backend XmrchainSource), polled; a browser may block it (CORS), then the chain stays simulated
+  const XMR_API = 'https://xmrchain.net/api';
+  async function connectXmr(id) {
+    const c = chains[id]; c.connecting = true;
+    const get = async (p) => { const r = await fetch(XMR_API + p, { signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error(r.status); const j = await r.json(); return j.data ?? j; };
+    const rate = (t) => (t.tx_size ? t.tx_fee / t.tx_size / 1000 : 0);
+    const pct = (v) => { const s = [...v].sort((a, b) => a - b); return s.length ? [s[0], s[s.length >> 1], s[s.length - 1]] : [0, 0]; };
+    const poll = async () => {
+      try {
+        const [{ blocks }, pool] = await Promise.all([get('/transactions?page=0&limit=8'), get('/mempool?limit=2000').catch(() => ({ txs: [] }))]);
+        const mapped = blocks.map((b) => { const txs = (b.txs ?? []).filter((t) => !t.coinbase), r = txs.map(rate);
+          return { height: b.height, hash: b.hash, timestamp: b.timestamp, txCount: txs.length, size: b.size, weight: Math.min(4e6, b.size / XMR_MEDIAN * 4e6), medianFee: pct(r)[1] ?? 0, feeRange: pct(r), pool: '' }; });
+        const isNew = c.live && mapped[0]?.height > c.tipHeight;
+        c.blocks = mapped; c.tipHeight = mapped[0]?.height ?? c.tipHeight;
+        const txs = (pool.txs ?? []).sort((a, b) => rate(b) - rate(a)), proj = [];
+        let cur = [], bytes = 0;
+        const flush = () => { const r = cur.map(rate); proj.push({ index: proj.length, nTx: cur.length, vsize: bytes / XMR_MEDIAN * 1e6, bytes, medianFee: pct(r)[1] ?? 0, feeRange: pct(r) }); cur = []; bytes = 0; };
+        for (const t of txs) { if (proj.length >= 6) break; if (bytes + t.tx_size > XMR_MEDIAN && cur.length) flush(); cur.push(t); bytes += t.tx_size; }
+        if (proj.length < 6) flush();
+        c.projected = proj; c.live = true; c.connecting = false;
+        if (id === netId) { if (isNew) sharesThisBlock = 0; renderProjected(); renderMined(isNew); }
+      } catch {
+        c.connecting = false; if (id === netId) renderMined(false);
+        if (!c.live) return; // never reached: stay simulated
+      }
+      setTimeout(poll, 15_000);
+    };
+    poll();
+  }
+  function connectLive(id) {
+    if (id === 'monero') return connectXmr(id);
+    const c = chains[id];
+    let ws;
+    c.connecting = true;
+    try { ws = new WebSocket(LIVE_WS[id]); } catch { c.connecting = false; if (id === netId) renderMined(false); return; }
+    const giveUp = setTimeout(() => { if (!c.live) { c.connecting = false; try { ws.close(); } catch {} if (id === netId) renderMined(false); } }, 7000);
+    ws.onopen = () => {
+      ws.send(JSON.stringify({ action: 'init' }));
+      ws.send(JSON.stringify({ action: 'want', data: ['blocks', 'mempool-blocks'] }));
+      c.ping = setInterval(() => ws.readyState === 1 && ws.send('{"action":"ping"}'), 30_000);
+    };
+    ws.onmessage = (ev) => {
+      let msg; try { msg = JSON.parse(ev.data); } catch { return; }
+      let newBlock = false;
+      if (Array.isArray(msg.blocks) && msg.blocks.length) {
+        c.blocks = msg.blocks.map(mapBlock).sort((a, b) => b.height - a.height).slice(0, 8);
+        c.tipHeight = c.blocks[0].height;
+      }
+      if (msg.block && !c.blocks.some((b) => b.hash === msg.block.id)) {
+        c.blocks = [mapBlock(msg.block), ...c.blocks].slice(0, 8);
+        c.tipHeight = Math.max(c.tipHeight, msg.block.height);
+        newBlock = true;
+      }
+      if (Array.isArray(msg['mempool-blocks'])) {
+        c.projected = msg['mempool-blocks'].slice(0, 6).map((b, index) => ({ index, nTx: b.nTx, vsize: b.blockVSize, medianFee: b.medianFee,
+          feeRange: b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee], totalFees: b.totalFees }));
+      }
+      if (!c.live && c.blocks.length && c.projected.length) { c.live = true; c.connecting = false; clearTimeout(giveUp); }
+      if (!c.live || id !== netId) return;
+      if (newBlock) sharesThisBlock = 0;
+      if (msg['mempool-blocks'] || newBlock) renderProjected();
+      if (msg.blocks || newBlock) renderMined(newBlock);
+    };
+    ws.onclose = () => {
+      clearInterval(c.ping);
+      const wasLive = c.live;
+      c.live = false; c.connecting = false;
+      if (id === netId) renderMined(false);
+      if (wasLive) setTimeout(() => connectLive(id), 5000); // dropped after working: try again
+    };
+    ws.onerror = () => {};
+  }
+
+  function mineBlock(id = netId) {
+    const c = chains[id];
+    if (c.live) return; // live chains get real blocks
+    c.tipHeight++;
+    c.blocks.unshift(c.xmr ? mkXmrBlock(c.tipHeight, Math.floor(now() / 1000)) : mkBlock(c.tipHeight, Math.floor(now() / 1000), c.pools));
+    c.blocks.length = 8;
+    c.projected = projFor(c);
+    if (id !== netId) return;
+    sharesThisBlock = 0;
+    renderProjected();
+    renderMined(true);
+  }
+
+  // ---------- hash function picker ----------
+  // dropdown: same markup, wording and keyboard handling as the Angular NetworkBarComponent
+  const CHEV = '<svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const TICK = '<svg class="tick" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const describe = (n) => n.id === 'own' ? `${n.label} · ${n.source}` : `Validated with ${n.label} · live from ${n.source}`;
+  let activeOpt = 0;
+  function renderNetworks() {
+    const n = network();
+    $('net-trigger').innerHTML = `<span class="algo ${n.algo}">${n.label}</span><span class="dd-text" id="net-current"><b>${n.id === 'own' ? 'Your node' : n.chain}</b>
+      <small>${esc(n.id === 'own' ? n.chain + ' · ' + n.source : n.ticker + ' · ' + n.source)}</small></span>${CHEV}`;
+    $('net-menu').innerHTML = NETWORKS.map((o, i) => `<li role="option" id="net-opt-${i}" data-net="${o.id}" aria-selected="${o.id === netId}" class="${i === activeOpt ? 'active' : ''}">
+      <span class="algo ${o.algo}">${o.label}</span><span class="dd-text"><b>${o.id === 'own' ? 'Your node' : o.chain} <em>${o.ticker}</em></b><small>${esc(describe(o))}</small></span>${o.id === netId ? TICK : '<span></span>'}</li>`).join('');
+    $('net-menu').setAttribute('aria-activedescendant', 'net-opt-' + activeOpt);
+    $('own-btn').textContent = NETWORKS.some((o) => o.id === 'own') ? 'Your node and Electrum server' : 'Connect node';
+  }
+  const menuOpen = () => !$('net-menu').hidden;
+  function openMenu() { activeOpt = Math.max(0, NETWORKS.findIndex((o) => o.id === netId)); $('net-menu').hidden = false; $('net-trigger').setAttribute('aria-expanded', 'true'); renderNetworks(); }
+  function closeMenu(focus) { $('net-menu').hidden = true; $('net-trigger').setAttribute('aria-expanded', 'false'); if (focus) $('net-trigger').focus(); }
+  $('net-trigger').addEventListener('click', () => (menuOpen() ? closeMenu() : openMenu()));
+  $('net-menu').addEventListener('click', (e) => { const li = e.target.closest('[data-net]'); if (li) { setNetwork(li.dataset.net); closeMenu(true); } });
+  $('net-menu').addEventListener('mousemove', (e) => { const li = e.target.closest('[data-net]'); if (li) { const i = +li.id.split('-').pop(); if (i !== activeOpt) { activeOpt = i; renderNetworks(); } } });
+  $('net-dd').addEventListener('keydown', (e) => {
+    if (!menuOpen()) { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openMenu(); } return; }
+    const last = NETWORKS.length - 1;
+    if (e.key === 'ArrowDown') activeOpt = Math.min(last, activeOpt + 1);
+    else if (e.key === 'ArrowUp') activeOpt = Math.max(0, activeOpt - 1);
+    else if (e.key === 'Home') activeOpt = 0;
+    else if (e.key === 'End') activeOpt = last;
+    else if (e.key === 'Enter' || e.key === ' ') { setNetwork(NETWORKS[activeOpt].id); closeMenu(true); e.preventDefault(); return; }
+    else if (e.key === 'Escape') { closeMenu(true); e.preventDefault(); return; }
+    else if (e.key === 'Tab') { closeMenu(); return; }
+    else return;
+    e.preventDefault(); renderNetworks();
+  });
+  // composedPath: the clicked node may already have been re-rendered away
+  document.addEventListener('click', (e) => { if (menuOpen() && !e.composedPath().includes($('net-dd'))) closeMenu(); });
+  function setNetwork(id) {
+    if (!chains[id]) return;
+    netId = id; sharesThisBlock = 0;
+    renderNetworks(); renderProjected(); renderMined(false);
+    // the connected miner is now on this blockchain network: re-check its mode straight away (backend setNetwork)
+    if (typeof tickStatus === 'function' && current) { current.network = network(); tickStatus(); renderHashrate(false); }
+  }
+
+  // ---------- "Connect your own node and Electrum server" (simulated in the demo) ----------
+  const dlg = $('own-dlg');
+  $('own-btn').addEventListener('click', () => { $('own-result').textContent = ''; $('own-remove').hidden = !chains.own; dlg.showModal(); });
+  $('own-cancel').addEventListener('click', () => dlg.close());
+  $('own-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const res = $('own-result'); res.className = 'result';
+    const rpc = $('own-rpc').value.trim(), eh = $('own-ehost').value.trim(), ep = $('own-eport').value.trim();
+    const algo = $('own-algo').value || DEFAULT_ALGO;
+    if (!rpc && !eh) { res.textContent = 'Enter your node’s RPC address, an Electrum server, or both.'; return; }
+    if (rpc && !/^(https?:\/\/)?[a-z0-9.-]+(:\d+)?\/?$/i.test(rpc)) { res.textContent = `"${rpc}" is not a node address. Use the form http://192.168.1.20:8332`; return; }
+    if (ep && (+ep < 1 || +ep > 65535)) { res.textContent = 'The Electrum port must be between 1 and 65535.'; return; }
+    const name = rpc ? 'Bitcoin Knots' : 'Electrum';
+    const base = NETWORKS.find((n) => n.algo === algo && n.id !== 'own');
+    const info = { id: 'own', algo, label: ALGO[algo] ?? algo, chain: CHAIN[algo] ?? algo, ticker: base?.ticker ?? algo.toUpperCase(), source: `Your node (${name}, demo)` };
+    const i = NETWORKS.findIndex((n) => n.id === 'own');
+    if (i >= 0) NETWORKS[i] = info; else NETWORKS.push(info);
+    chains.own = mkChain(estimateTip(), ['Your node']);
+    chains.own.projected = mkProjected();
+    res.className = 'result ok';
+    res.textContent = `Connected (simulated). The real app first tests ${[rpc && 'the node at ' + rpc, eh && 'the Electrum server at ' + eh + ':' + (ep || ($('own-etls').checked ? 50002 : 50001))].filter(Boolean).join(' and ')}.`;
+    $('own-remove').hidden = false;
+    setNetwork('own');
+  });
+  $('own-remove').addEventListener('click', () => {
+    const i = NETWORKS.findIndex((n) => n.id === 'own');
+    if (i >= 0) NETWORKS.splice(i, 1);
+    delete chains.own;
+    setNetwork(NETWORKS[0].id);
+    $('own-result').className = 'result ok'; $('own-result').textContent = `Your node is disconnected. The page shows ${NETWORKS[0].chain} (${NETWORKS[0].label}) from ${NETWORKS[0].source} again.`;
+    $('own-remove').hidden = true;
+  });
+
+  // ---------- simulated network: every miner has its own IP (backend MinerSimulator) ----------
+  // your node per hash function (account.nodes): a miner must point at the node for ITS hash function
+  const NODES = { sha256: 'stratum+tcp://datum.local:23334', scrypt: 'stratum+tcp://datum.local:23336', blake2b: 'stratum+tcp://datum.local:23335', randomx: 'stratum+tcp://p2pool.local:3333' };
+  const ALGO = { blake2b: 'BLAKE2b', kheavyhash: 'kHeavyHash', equihash: 'Equihash', randomx: 'RandomX' };
+  const CHAIN = { sha256: 'Bitcoin', scrypt: 'Litecoin', blake2b: 'Bitcoin BLAKE2b', kheavyhash: 'Kaspa', equihash: 'Zcash', randomx: 'Monero' };
+  const DEFAULT_ALGO = 'blake2b';
+  // the hash-function pickers (Miner settings, your own node)
+  const algoOptions = (sel) => Object.entries(ALGO).map(([a, l]) => `<option value="${a}"${a === sel ? ' selected' : ''}>${l}</option>`).join('');
+  $('own-algo').innerHTML = algoOptions(DEFAULT_ALGO);
+  const NODE_HOSTS = ['localhost', '127.0.0.1', 'datum', 'p2pool'];   // account.expectedPoolHosts
+  const isMyNode = (u) => !!u && NODE_HOSTS.some((h) => u.toLowerCase().includes(h));
+  const parseStratum = (u) => { const r = /^(?:[a-z0-9+.-]+:\/\/)?(?:[^@/]*@)?([^/:]+)(?::(\d+))?/i.exec(String(u).trim()); return { host: (r?.[1] ?? '').toLowerCase(), port: r?.[2] ?? '' }; };
+  // which of your nodes a pool URL points at (backend MinerRegistry.nodeFor)
+  function nodeFor(url) {
+    if (!url) return { kind: 'other' };
+    const p = parseStratum(url);
+    if (!isMyNode(p.host)) return { kind: 'other' };
+    const hit = Object.entries(NODES).find(([, u]) => parseStratum(u).port === p.port);
+    return hit ? { kind: 'node', algo: hit[0] } : { kind: 'wrong-port', port: p.port || 'none' };
+  }
+  const stripScheme = (u) => u.replace(/^stratum\+(tcp|ssl|tls):\/\//, '');
+  const worker = (i) => 'bc1qexampleaddress.rig' + String(i + 1).padStart(2, '0');
+  // mode: ok = connected and hashing (right node, right chain) · idle = right host, wrong port · offline = on, but no pool set up
+  // demo miners (backend MinerSimulator): Goldshell SC Box II 1.4 TH/s BLAKE2b (no pool set up) ·
+  // Goldshell SC Pro 11 TH/s BLAKE2b (connected and hashing)
+  const SIM = [['192.168.1.103', 'Goldshell SC Box II', 1.4, 'offline', 'blake2b'], ['192.168.1.104', 'Goldshell SC Pro', 11, 'ok', 'blake2b'],
+    // CPU miners running XMRig on Monero (RandomX): 22 kH/s on 16 cores / 32 threads, and 600 H/s on 4 cores (pool on the wrong port)
+    ['192.168.1.105', 'AMD Ryzen 9 7950X 16-Core Processor', 22e-9, 'ok', 'randomx', { cores: 16, threads: 32 }],
+    ['192.168.1.106', 'Raspberry Pi 5 (Cortex-A76)', 0.6e-9, 'idle', 'randomx', { cores: 4, threads: 4 }]];
+  const miners = SIM.map(([host, model, ths, mode, algo, cpu], i) => {
+    const pools = mode === 'ok' ? [{ url: NODES[algo], user: worker(i), pass: 'x' }] : mode === 'idle' ? [{ url: NODES[algo].replace(/:(\d+)$/, (_, p) => ':' + (Number(p) + 10)), user: worker(i), pass: 'x' }] : [];
+    const diff = Math.max(cpu ? 0 : 1, 2 ** Math.round(Math.log2((ths * 1e12) / (0.35 * 2 ** 32))));
+    return { id: 'demo:' + host, host, port: 4028, name: 'Rig ' + String(i + 1).padStart(2, '0'), model, nominalThs: ths, mode, algo, diff, pools, poolUrl: pools[0]?.url ?? '',
+      hashrateThs: 0, temperatureC: null, fanRpm: null, sharesAccepted: mode === 'ok' ? 412 : mode === 'idle' ? 186 : 0, sharesRejected: mode === 'ok' ? 1 : 0,
+      bestShareDiff: mode === 'ok' ? diff * 256 : mode === 'idle' ? diff * 64 : 0,
+      lastShareAt: mode === 'ok' ? Date.now() - 3000 : mode === 'idle' ? Date.now() - 25 * 60_000 : null, lastSeenAt: Date.now(), status: 'not-hashing', statusReason: '',
+      settings: defaultSettings(), poolStrategy: 'failover', locateUntil: 0, rebootUntil: 0,
+      ...(cpu && { kind: 'cpu', firmware: 'XMRig 6.22', cpu: { brand: model, cores: cpu.cores, threads: cpu.threads, miningThreads: cpu.threads, threadHashrates: [] } }) };
+  });
+  const byHost = (h) => miners.find((m) => m.host === h);
+
+  // ---------- the three modes: same order and wording as backend MinerRegistry.evaluate() ----------
+  function evaluate(m) {
+    const t = now();
+    if (m.rebootUntil > t) return ['not-hashing', 'The miner is rebooting. It starts hashing again in about a minute.'];
+    if (m.poweredOff) return ['not-hashing', 'The miner is turned off. Turn it on under Miner settings → Maintenance.'];
+    if (!m.lastSeenAt || t - m.lastSeenAt > 60_000) return ['not-hashing', `No response from ${m.host}. Check that the miner is on and connected.`];
+    const ma = m.algo ?? DEFAULT_ALGO;
+    if (m.network && m.network.algo !== ma) return ['not-hashing', `A ${ALGO[ma]} miner can't hash on the ${m.network.label} network (${m.network.chain}). Switch the network to ${ALGO[ma]}, or connect a ${ALGO[m.network.algo]} miner.`];
+    if (m.settings.performance.mode === 'sleep' && !m.hashrateThs) return ['not-hashing', 'The miner is in sleep mode. Change the work mode under Performance to start it.'];
+    const recent = m.lastShareAt && t - m.lastShareAt < 120_000;
+    if (!m.hashrateThs && !recent) return ['not-hashing', m.poolUrl || m.pools.length ? 'The miner is on but reports 0 hashrate.' : 'No pool is set up on this miner.'];
+    const algo = m.algo ?? DEFAULT_ALGO, useOwn = NODES[algo] ? ` Use your ${ALGO[algo]} node: ${stripScheme(NODES[algo])}.` : ` Set up a ${ALGO[algo] ?? algo} node first.`;
+    if (m.poolUrl) {
+      const n = nodeFor(m.poolUrl);
+      if (n.kind === 'other') return ['not-submitting', `Mining for another pool (${stripScheme(m.poolUrl)}), not your node.`];
+      if (n.kind === 'wrong-port') return ['not-submitting', `Your node doesn't take shares on port ${n.port}.${useOwn}`];
+      if (n.algo !== algo) return ['not-submitting', `This miner computes ${ALGO[algo]}, but ${stripScheme(m.poolUrl)} is your ${CHAIN[n.algo]} node, so its shares are useless there.${useOwn}`];
+    }
+    const verdicts = (m.verdicts ?? []).filter((v) => t - v.ts < 600_000), rej = verdicts.filter((v) => !v.ok).length;
+    if (verdicts.length >= 10 && rej > verdicts.length / 2) return ['not-submitting', `Your node rejects most of its shares (${rej} of the last ${verdicts.length}). Check the worker name and the pool password.`];
+    if (recent) return ['hashing', `Hashing ${ALGO[algo]} for ${CHAIN[algo]}, and your node accepts its shares.`];
+    return ['not-submitting', `No share has reached your node ${m.lastShareAt ? 'for ' + Math.round((t - m.lastShareAt) / 60_000) + ' min' : 'yet'}. Check the pool address, port and worker name.`];
+  }
+  const LABEL = { hashing: 'Connected and hashing', 'not-submitting': 'Hashing, not submitting shares', 'not-hashing': 'Not hashing, go to miner settings' };
+  const SHORT = { ...LABEL, 'not-hashing': 'Not hashing' };
+
+  // ---------- miner login (backend MinerAuth): every miner has its own username + password ----------
+  // In this demo the login lives in the page's memory; the real backend keeps salted scrypt hashes and session tokens.
+  const DEFAULT_LOGIN = { username: 'admin', password: '123456789' };
+  const loginOf = (m) => (m.login ??= { ...DEFAULT_LOGIN, isDefault: true });
+  const unlocked = new Set();        // miner IPs this browser is logged in to: Connected on Find ASIC
+  let loginFor = null;               // the miner waiting for its login on the dashboard
+  const fails = new Map();           // 5 wrong passwords → 60 s lock
+  function tryLogin(m, user, pass) {
+    const t = now(), f = fails.get(m.id);
+    if (f && f.lockedUntil > t) return `Too many wrong passwords. Try again in ${Math.ceil((f.lockedUntil - t) / 1000)} s.`;
+    const l = loginOf(m);
+    if (user.trim() !== l.username || pass !== l.password) {
+      const cur = f && t - f.first < 300_000 ? f : { n: 0, first: t, lockedUntil: 0 };
+      if (++cur.n >= 5) { cur.lockedUntil = t + 60_000; cur.n = 0; cur.first = t; }
+      fails.set(m.id, cur);
+      return 'Wrong username or password.';
+    }
+    fails.delete(m.id); unlocked.add(m.host);
+    return null;
+  }
+  function renderLogin() {
+    const m = loginFor, l = loginOf(m);
+    $('miner-slot').innerHTML = `<section class="login-card" aria-labelledby="login-title"><span class="fan not-hashing" id="login-fan"></span>
+      <form id="login-form-dash" novalidate>
+        <div><h2 id="login-title">Log in to <span class="ip">${esc(m.host)}</span></h2><p class="sub">Every miner has its own login, so nobody else on your network can open it and change its pool or settings.</p></div>
+        <label class="lfield" for="login-user">Username <input id="login-user" type="text" autocomplete="username" spellcheck="false" value="${l.isDefault ? DEFAULT_LOGIN.username : ''}"></label>
+        <label class="lfield" for="login-pass">Password <span class="pw"><input id="login-pass" type="${l.isDefault ? 'text' : 'password'}" autocomplete="current-password" spellcheck="false" value="${l.isDefault ? DEFAULT_LOGIN.password : ''}" aria-describedby="login-hint">
+          <button type="button" class="show" id="login-show" aria-pressed="${l.isDefault}">${l.isDefault ? 'Hide' : 'Show'}</button></span></label>
+        <p class="hint" id="login-hint">${l.isDefault ? 'This miner still has the default login (<b>admin</b> / <b>123456789</b>). Change it under Miner settings → Login after you log in.' : 'Use the login you set for this miner under Miner settings → Login.'}</p>
+        <div class="actions"><button type="submit" class="btn primary">Log in</button>${m.cpu ? '<a class="btn" href="#cpu">Back to Find CPUs</a>' : '<a class="btn" href="#asic">Back to Find ASIC</a>'}</div>
+      </form></section>`;
+    mountFan($('login-fan'));
+  }
+  $('miner-slot').addEventListener('submit', (e) => {
+    if (e.target.id !== 'login-form-dash') return;
+    e.preventDefault();
+    const m = loginFor, err = tryLogin(m, $('login-user').value, $('login-pass').value), hint = $('login-hint');
+    if (err) { hint.className = 'err'; hint.setAttribute('role', 'alert'); hint.textContent = err; $('login-pass').setAttribute('aria-invalid', 'true'); return; }
+    loginFor = null; connect(m.host);
+  });
+  $('miner-slot').addEventListener('click', (e) => {
+    if (e.target.id !== 'login-show') return;
+    const inp = $('login-pass'), show = inp.type === 'password';
+    inp.type = show ? 'text' : 'password'; e.target.textContent = show ? 'Hide' : 'Show'; e.target.setAttribute('aria-pressed', show);
+  });
+  // Miner settings → Login → Log out of this miner: end this browser's login for it
+  function logout(host) {
+    unlocked.delete(host);
+    if (current?.host === host) current = null;
+    renderMiner(true); renderAsic(); renderFleet();
+  }
+
+  // ---------- one connected miner at a time, picked on Find ASIC ----------
+  let current = null;           // the connected miner
+  let view = 'asic';
+
+  function connect(host) {
+    const m = byHost(host) ?? null;
+    // Manage → without this miner's login, the dashboard asks for it first
+    if (m && !unlocked.has(m.host)) { loginFor = m; current = null; renderMiner(true); return; }
+    loginFor = null;
+    current = m;
+    // open the miner on a network of its own hash function (backend PushServer.watch); switching the
+    // dropdown afterwards still shows what happens on the wrong network
+    if (current && network().algo !== (current.algo ?? DEFAULT_ALGO)) {
+      const fit = NETWORKS.find((n) => n.algo === (current.algo ?? DEFAULT_ALGO));
+      if (fit) setNetwork(fit.id);
+    }
+    if (current) { current.network = network(); [current.status, current.statusReason] = evaluate(current); }
+    sharesThisBlock = 0; renderProjected();
+    renderMiner(true);
+  }
+  function disconnect() { current = null; renderMiner(true); renderAsic(); renderFleet(); }
+
+  // ---------- Find ASIC: scan the local network (the backend probes TCP 4028; here: the demo miners) ----------
+  let scan = null;              // { at, found: [...] }
+  function runScan() {
+    ['scan-btn', 'cpu-scan-btn'].forEach((b) => { $(b).disabled = true; $(b).textContent = 'Scanning…'; });
+    $('scan-meta').textContent = $('cpu-meta').textContent = 'Scanning your local network (192.168.1.0/24)…';
+    if (!scan) {
+      $('scan-list').innerHTML = '<div class="scanning"><span class="fan" id="scan-fan"></span>Looking for miners that answer on port 4028…</div>'; mountFan($('scan-fan'));
+      $('cpu-list').innerHTML = '<div class="scanning"><span class="fan" id="cpu-scan-fan"></span>Looking for XMRig rigs that answer on port 18088…</div>'; mountFan($('cpu-scan-fan'));
+    }
+    setTimeout(() => {
+      // powered on = answers on the network (a rebooting miner doesn't)
+      scan = { at: now(), found: miners.filter((m) => m.mode !== 'unreachable' && !(m.rebootUntil > now())).map((m) => m.id) };
+      ['scan-btn', 'cpu-scan-btn'].forEach((b) => { $(b).disabled = false; $(b).textContent = 'Scan again'; });
+      renderAsic(); renderFleet();
+    }, 900);
+  }
+  // after you log in, a miner's bar follows its mode (backend evaluate): Connected · Not submitting · Not hashing
+  const BAR = { hashing: 'Connected', 'not-submitting': 'Not submitting', 'not-hashing': 'Not hashing' };
+  const bar = (m) => `<button type="button" class="btn connected ${m.status === 'hashing' ? '' : m.status}" data-connect="${esc(m.host)}" title="${esc(m.statusReason)}"
+    aria-label="${BAR[m.status]}: ${esc(m.host)}. ${esc(m.statusReason)} Open the dashboard">${BAR[m.status]}</button>`;
+  // a fan only spins after you managed the miner here (logged in) and it is configured correctly (connected and hashing)
+  const spinState = (m) => (unlocked.has(m.host) ? m.status : 'not-hashing');
+  // Find ASIC lists the ASICs, Find CPUs the CPU rigs (XMRig): same rows, same Manage and login
+  const rowHtml = (m) => {
+    const on = unlocked.has(m.host), pool = m.poolUrl ? m.poolUrl.replace(/^stratum\+(tcp|ssl|tls):\/\//, '') : 'No pool set up';
+    return `<li class="pick${current === m ? ' current' : ''}" data-row="${esc(m.host)}" title="Show ${esc(m.host)} on the dashboard">${iconSpan(m, spinState(m))}
+      <div class="who"><span class="ip">${esc(m.host)}</span><span class="model">${modelHtml(m)} · ${ALGO[m.algo] ?? m.algo}</span></div>
+      <dl><div><dt>Pool</dt><dd title="${esc(m.poolUrl)}">${esc(pool)}</dd></div></dl>
+      <div class="go">${on ? `${bar(m)}<button type="button" class="btn primary" data-manage-settings="${esc(m.host)}" aria-label="Manage ${esc(m.host)}: Miner settings">Manage</button>`
+        : `<button type="button" class="btn primary" data-connect="${esc(m.host)}" aria-label="Manage ${esc(m.host)}">Manage</button>`}</div></li>`;
+  };
+  function renderList(listId, metaId, found, cpu) {
+    const one = cpu ? 'CPU rig' : 'miner', many = cpu ? 'CPU rigs' : 'miners';
+    $(metaId).textContent = `${found.length} ${found.length === 1 ? one : many} powered on · scanned 192.168.1.0/24`;
+    const el = $(listId);
+    if (!found.length) {
+      el.__html = null;
+      el.innerHTML = cpu
+        ? `<section class="empty"><span class="fan not-hashing" id="${listId}-none"></span><div><h2>No CPU rigs found</h2><p>Nothing answered on XMRig's HTTP API (port 18088 by default). Check that XMRig runs with <code>"http": { "enabled": true, "host": "0.0.0.0", "port": 18088 }</code>, that the backend has its token in <code>XMRIG_ACCESS_TOKEN</code>, and that hashes.space runs in the same local network.</p></div></section>`
+        : `<section class="empty"><span class="fan not-hashing" id="${listId}-none"></span><div><h2>No miners found</h2><p>Nothing answered on the miner API port (4028). Check that the miners are powered on and plugged in, and that hashes.space runs on a computer in the same local network.</p></div></section>`;
+      mountFan($(listId + '-none')); return;
+    }
+    const html = '<ul class="alist">' + found.map(rowHtml).join('') + '</ul>';
+    if (el.__html !== html) { el.innerHTML = html; el.__html = html; el.querySelectorAll('[data-mount]').forEach(mountFan); }
+  }
+  function renderAsic() {
+    if (!scan) return;
+    const found = scan.found.map((id) => miners.find((m) => m.id === id)).filter(Boolean);
+    renderList('scan-list', 'scan-meta', found.filter((m) => !m.cpu), false);
+    renderList('cpu-list', 'cpu-meta', found.filter((m) => !!m.cpu), true);
+  }
+  $('scan-btn').addEventListener('click', runScan);
+  $('cpu-scan-btn').addEventListener('click', runScan);
+
+  // ---------- the fleet (backend MinerRegistry.addToFleet / fleet) ----------
+  const fleet = { name: 'My fleet', ids: [] };
+  // an IP nothing answers on in this demo: registered, but not hashing ("No response")
+  const ensureMiner = (host) => byHost(host) ?? (miners.push({ id: 'demo:' + host, host, port: 4028, name: host, model: 'ASIC miner', algo: DEFAULT_ALGO, nominalThs: 0, mode: 'unreachable', settings: defaultSettings(), poolStrategy: 'failover', locateUntil: 0, rebootUntil: 0, diff: 1024, pools: [], poolUrl: '',
+    hashrateThs: 0, temperatureC: null, fanRpm: null, sharesAccepted: 0, sharesRejected: 0, bestShareDiff: 0, lastShareAt: null, lastSeenAt: null, status: 'not-hashing', statusReason: '' }), miners[miners.length - 1]);
+  const invalidList = (list) => list.slice(0, 4).map((i) => i.entry).join(', ') + (list.length > 4 ? ` and ${list.length - 4} more` : '');
+  // a miner's way into the fleet (backend MinerRegistry.fleetReadiness): 1 log in (Manage) · 2 set it up until it is connected and hashing · ready
+  function fleetCheck(ip) {
+    const m = byHost(ip);
+    if (!m || !unlocked.has(ip)) return { ip, ready: false, step: 'login', reason: `Log in first: click Manage for this miner on ${m?.cpu ? 'Find CPUs' : 'Find ASIC'}.` };
+    if (m.status !== 'hashing') return { ip, ready: false, step: 'setup', reason: m.statusReason };
+    return { ip, ready: true, step: 'ready', reason: m.statusReason };
+  }
+  function fleetPreview() {
+    const text = $('fleet-ips').value, help = $('fleet-ips-help'), list = $('fleet-checks');
+    if (!text.trim()) { help.textContent = 'Separate them with commas, spaces or new lines. A range like 192.168.1.110-120 adds every address in it.'; $('fleet-add').disabled = true; list.hidden = true; list.__html = ''; list.innerHTML = ''; return; }
+    const pv = parseIpList(text), checks = pv.ips.slice(0, MAX_FLEET_ADD).map(fleetCheck), ready = checks.filter((c) => c.ready).length;
+    help.innerHTML = `<b>${ready} of ${pv.ips.length}</b> ${pv.ips.length === 1 ? 'miner' : 'miners'} ready` + (ready < pv.ips.length ? ' · Manage the others first' : '') + (pv.duplicates.length ? ` · ${pv.duplicates.length} given twice` : '')
+      + (pv.invalid.length ? ` · <span class="bad">not an IP: ${esc(invalidList(pv.invalid))}</span>` : '') + (pv.ips.length > MAX_FLEET_ADD ? ` · <span class="bad">add at most ${MAX_FLEET_ADD} at a time</span>` : '');
+    const html = checks.map((c) => `<li class="${c.step}"><span class="mark" aria-hidden="true">${c.step === 'ready' ? '✓' : c.step === 'login' ? '1' : '2'}</span><span class="ip">${esc(c.ip)}</span>
+      <span class="what">${c.step === 'ready' ? '<b>Ready</b> · connected and hashing' : c.step === 'login' ? '<b>Log in first</b> · click Manage and log in to this miner' : `<b>Set it up</b> · ${esc(c.reason)}`}</span>
+      ${c.ready ? '' : `<button type="button" class="btn small" data-check-manage="${esc(c.ip)}" data-step="${c.step}" aria-label="Manage ${esc(c.ip)}">Manage</button>`}</li>`).join('');
+    list.hidden = !checks.length;
+    if (list.__html !== html) { list.innerHTML = html; list.__html = html; }
+    // Generate only when every listed miner is logged in to and connected and hashing
+    $('fleet-add').disabled = !pv.ips.length || pv.ips.length > MAX_FLEET_ADD || ready < pv.ips.length;
+  }
+  $('fleet-checks').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-check-manage]'); if (!b) return;
+    const ip = b.dataset.checkManage;
+    ensureMiner(ip); // an IP the scan didn't find (e.g. another subnet): register it, like the backend does on Manage
+    connect(ip);
+    location.hash = b.dataset.step === 'setup' && unlocked.has(ip) ? '#settings' : '#dashboard';
+  });
+  function addToFleet(text) {
+    const pv = parseIpList(text), res = $('fleet-result');
+    if (pv.ips.length > MAX_FLEET_ADD) { res.className = 's-result'; res.textContent = `That is ${pv.ips.length} addresses. Add at most ${MAX_FLEET_ADD} at a time.`; return; }
+    const open = pv.ips.map(fleetCheck).filter((c) => !c.ready).length;
+    if (open) { res.className = 's-result'; res.textContent = `${open} ${open === 1 ? 'miner is' : 'miners are'} not set up yet. Manage each one on Find ASIC: log in and make it Connected and hashing, then Generate.`; fleetPreview(); return; }
+    const added = [], already = [];
+    pv.ips.forEach((ip) => { const m = ensureMiner(ip); if (fleet.ids.includes(m.id)) already.push(ip); else { fleet.ids.push(m.id); added.push(ip); } });
+    miners.forEach((m) => { [m.status, m.statusReason] = evaluate(m); });
+    const parts = [added.length && `Added ${added.length} ${added.length === 1 ? 'miner' : 'miners'}.`, already.length && `${already.length} already in the fleet.`, pv.invalid.length && `Skipped (not an IP): ${invalidList(pv.invalid)}.`].filter(Boolean);
+    res.className = added.length ? 's-result ok' : 's-result'; res.textContent = parts.join(' ') || 'Nothing to add.';
+    if (added.length) $('fleet-ips').value = '';
+    fleetPreview(); renderFleet();
+    if (added.length || already.length) location.hash = '#fleet'; // Generate: open the fleet dashboard
+  }
+  function renderFleet() {
+    const list = fleet.ids.map((id) => miners.find((m) => m.id === id)).filter(Boolean);
+    $('open-fleet').hidden = !list.length;
+    const count = (st) => list.filter((m) => m.status === st).length, rate = {};
+    list.filter((m) => m.status === 'hashing').forEach((m) => { const a = m.algo ?? DEFAULT_ALGO; rate[a] = (rate[a] ?? 0) + m.hashrateThs; });
+    $('fleet-tally').hidden = !list.length;
+    const setHtml = (el, html) => { if (el.__html !== html) { el.innerHTML = html; el.__html = html; return true; } return false; };
+    setHtml($('fleet-tally'), `<li><b>${list.length}</b> ${list.length === 1 ? 'miner' : 'miners'}</li><li class="hashing"><b>${count('hashing')}</b> connected and hashing</li>
+      <li class="not-submitting"><b>${count('not-submitting')}</b> not submitting shares</li><li class="not-hashing"><b>${count('not-hashing')}</b> not hashing</li>`
+      + Object.entries(rate).map(([a, v]) => `<li><b>${formatHashrate(v)}</b> ${ALGO[a]}</li>`).join(''));
+    const found = scan ? scan.found.map((id) => miners.find((m) => m.id === id)?.host).filter((h) => h && !list.some((m) => m.host === h)) : [];
+    const fb = $('fleet-add-found'); fb.hidden = !found.length; fb.dataset.ips = found.join(', ');
+    fb.textContent = `Use the ${found.length} found ${found.length === 1 ? 'miner' : 'miners'}`;
+    if (!list.length) { setHtml($('fleet-list'), '<p class="meta">No miners in this fleet yet. Paste their IP addresses above.</p>'); return; }
+    const SHORT_LABEL = { hashing: 'Connected and hashing', 'not-submitting': 'Hashing, not submitting shares', 'not-hashing': 'Not hashing' };
+    const html = '<ul class="alist">' + list.map((m) => {
+      const on = unlocked.has(m.host);
+      return `<li class="pick ${m.status}${current === m ? ' current' : ''}" data-row="${esc(m.host)}" title="Show ${esc(m.host)} on the dashboard">${iconSpan(m, spinState(m))}
+        <div class="who"><span class="ip">${esc(m.host)}</span><span class="model">${m.name !== m.host ? esc(m.name) + ' · ' : ''}${modelHtml(m)} · ${ALGO[m.algo] ?? m.algo}</span></div>
+        <div class="fstate"><span class="chip">${SHORT_LABEL[m.status]}</span><span class="why" title="${esc(m.statusReason)}">${esc(m.statusReason)}</span></div>
+        <div class="go">${on ? bar(m) + `<button type="button" class="btn primary" data-manage-settings="${esc(m.host)}" aria-label="Manage ${esc(m.host)}: Miner settings">Manage</button>`
+          : `<button type="button" class="btn primary" data-connect="${esc(m.host)}" aria-label="Manage ${esc(m.host)}">Manage</button>`}
+          <button type="button" class="btn icon" data-remove="${esc(m.host)}" aria-label="Remove ${esc(m.host)} from the fleet" title="Remove from the fleet">✕</button></div></li>`;
+    }).join('') + '</ul>';
+    if (setHtml($('fleet-list'), html)) $('fleet-list').querySelectorAll('[data-mount]').forEach(mountFan);
+  }
+  $('fleet-ips').addEventListener('input', () => { $('fleet-result').textContent = ''; fleetPreview(); });
+  $('fleet-form').addEventListener('submit', (e) => { e.preventDefault(); addToFleet($('fleet-ips').value); });
+  // put the found miners' IP addresses in the box, ready to Generate
+  $('fleet-add-found').addEventListener('click', (e) => { const t = $('fleet-ips'); t.value = [t.value.trim(), e.currentTarget.dataset.ips].filter(Boolean).join('\n'); $('fleet-result').textContent = ''; fleetPreview(); t.focus(); });
+  $('fleet-name').addEventListener('change', (e) => { fleet.name = e.target.value.trim().slice(0, 60) || 'My fleet'; e.target.value = fleet.name; renderFleet(); });
+  // a row (box) on Find ASIC or in the fleet list: click it and the dashboard shows that miner
+  // (asks for its login first); Manage on a logged-in miner opens its Miner settings
+  function openRow(e) {
+    const r = e.target.closest('[data-remove]');
+    if (r) { const m = byHost(r.dataset.remove); fleet.ids = fleet.ids.filter((id) => id !== m?.id); renderFleet(); return true; }
+    const s = e.target.closest('[data-manage-settings]');
+    if (s) { const h = s.dataset.manageSettings; if (current?.host !== h) connect(h); location.hash = '#settings'; return true; }
+    const row = e.target.closest('[data-connect], [data-row]');
+    if (!row || e.target.closest('a, input, select, textarea')) return false;
+    const h = row.dataset.connect ?? row.dataset.row;
+    if (current?.host !== h || loginFor) connect(h);
+    location.hash = '#dashboard'; return true;
+  }
+  $('fleet-list').addEventListener('click', openRow);
+  fleetPreview();
+  $('scan-list').addEventListener('click', openRow);
+  $('cpu-list').addEventListener('click', openRow);
+
+  function renderMiner(rebuild) {
+    if (loginFor) { if (rebuild || !$('login-form-dash')) renderLogin(); return; }
+    if (!current) {
+      if (!rebuild && $('empty-fan')) return;
+      $('miner-slot').innerHTML = `<section class="empty"><span class="fan not-hashing" id="empty-fan"></span><div><h2>No miner connected</h2>
+        <p>Visit Find ASIC first: it lists every miner that is powered on in your local network. Connect one and it shows up here, with its fan spinning while it hashes and every share it sends to your node flying into the block being mined.</p>
+        <a class="btn primary cta" href="#asic">Go to Find ASIC</a></div></section>`;
+      mountFan($('empty-fan')); return;
+    }
+    const m = current, s = m.status;
+    if (rebuild || !$('m-panel')) {
+      $('miner-slot').innerHTML = `<p class="login-warn" id="login-warn" role="note" hidden><b>Default login.</b> <span id="lw-host"></span> still uses <code>admin</code> / <code>123456789</code>. Anyone on your network could change its pool. <a href="#settings" data-sec-link="login">Change it under Miner settings → Login</a></p>
+        <article class="mpanel" id="m-panel"><span class="fan" id="m-fan" data-fan="${esc(m.id)}"></span>
+        <div class="mbody"><div class="mhead"><div><h2 id="m-name"></h2><p><span class="ip">${esc(m.host)}</span> · <span id="m-model"></span></p></div><span id="m-pill"></span></div>
+        <p class="reason" id="m-reason"></p><dl id="m-stats"></dl>
+        <div class="mfoot"><span id="m-pool"></span><a href="#settings">Miner settings</a></div></div></article>
+        <ul class="modes" aria-label="What the colours mean">
+          <li class="hashing"><b>Connected and hashing</b> Hashing for the right blockchain, and your node accepts its shares. They fly into the block being mined.</li>
+          <li class="not-submitting"><b>Hashing, not submitting shares</b> The miner works, but its shares don't reach your node. Check the pool.</li>
+          <li class="not-hashing"><b>Not hashing</b> The miner doesn't answer or has no pool set up. Open Miner settings.</li></ul>
+        <section class="hr-card" id="hr-card" aria-labelledby="hr-title"></section>`;
+      if (m.cpu) { $('m-fan').innerHTML = cpuSvg(m.cpu); $('m-fan').dataset.on = m.cpu.miningThreads; } else mountFan($('m-fan'));
+      hrHover = -1; renderHashrate(true);
+    }
+    $('m-panel').className = 'mpanel ' + s;
+    $('login-warn').hidden = !loginOf(m).isDefault; $('lw-host').textContent = m.host;
+    const fan = $('m-fan'); fan.className = 'fan ' + (m.cpu ? 'cpu ' : '') + s;
+    const eff = s === 'not-hashing' ? 0 : m.hashrateThs; // no useful work here (e.g. the other blockchain network)
+    if (m.cpu) { // a CPU miner: one lit square per mining thread
+      if (fan.dataset.on !== String(m.cpu.miningThreads)) { fan.innerHTML = cpuSvg(m.cpu); fan.dataset.on = m.cpu.miningThreads; }
+    } else {
+      const ratio = m.nominalThs ? eff / m.nominalThs : 1;
+      fan.querySelector('.rotor').style.animationDuration = (0.55 / Math.max(0.2, Math.min(1.2, ratio || 1))).toFixed(2) + 's';
+    }
+    $('m-name').textContent = m.name; $('m-model').innerHTML = modelHtml(m);
+    $('m-pill').innerHTML = s === 'not-hashing' ? `<a class="pill" href="#settings">${LABEL[s]}</a>` : `<span class="pill">${LABEL[s]}</span>`;
+    $('m-reason').innerHTML = esc(m.statusReason) + (m.locateUntil > now() ? ' <span class="locate">· LED blinking</span>' : '');
+    $('m-stats').innerHTML = `
+      <div><dt>Hashrate</dt><dd>${formatHashrate(eff)}</dd></div>
+      ${m.cpu ? `<div><dt>Mining threads</dt><dd>${m.cpu.miningThreads} <small>of ${m.cpu.threads}</small></dd></div>
+      <div><dt>Per thread</dt><dd>${m.cpu.miningThreads && eff ? formatHashrate(eff / m.cpu.miningThreads) : '–'}</dd></div>`
+      : `<div><dt>Chip temp</dt><dd>${m.temperatureC ? m.temperatureC + ' °C' : '–'}</dd></div>
+      <div><dt>Fan</dt><dd>${m.fanRpm ? fmt(m.fanRpm) + ' rpm' : '–'}</dd></div>`}
+      <div><dt>Shares to your node</dt><dd>${fmt(m.sharesAccepted)} <small>/ ${m.sharesRejected} rej</small></dd></div>
+      <div><dt>Last share</dt><dd>${formatAgo(m.lastShareAt)}</dd></div>
+      <div><dt>Best diff</dt><dd>${m.bestShareDiff ? formatDiff(m.bestShareDiff * (m.cpu ? 2 ** 32 : 1)) : '–'}</dd></div>`;
+    $('m-pool').textContent = m.poolUrl ? m.poolUrl.replace(/^stratum\+(tcp|ssl|tls):\/\//, '') : 'no pool set up';
+    document.querySelectorAll('.modes li').forEach((li) => li.classList.toggle('on', li.classList.contains(s)));
+  }
+
+  // ---------- hashrate health: reported + submitted history per miner (backend HashrateHistory) + chart ----------
+  const HR_RANGES = { live: { bucketMs: 10_000, spanMs: 300_000, windowMs: 60_000 }, '1h': { bucketMs: 30_000, spanMs: 3_600_000, windowMs: 300_000 }, '24h': { bucketMs: 600_000, spanMs: 86_400_000, windowMs: 600_000 } };
+  const HR_KEEP = 86_400_000 + 600_000, SHARE_BUCKET = 10_000;
+  const hrData = new Map();
+  const hrGet = (id) => { if (!hrData.has(id)) hrData.set(id, { live: new Map(), '1h': new Map(), '24h': new Map(), work: new Map() }); return hrData.get(id); };
+  function hrRecord(id, ths, t = now()) {
+    const d = hrGet(id);
+    for (const r of Object.keys(HR_RANGES)) {
+      const { bucketMs, spanMs } = HR_RANGES[r], b = d[r], k = Math.floor(t / bucketMs) * bucketMs;
+      const cur = b.get(k) ?? { sum: 0, n: 0 }; cur.sum += ths; cur.n++; b.set(k, cur);
+      if (b.size > spanMs / bucketMs + 4) for (const key of b.keys()) if (key < t - spanMs - bucketMs) b.delete(key);
+    }
+  }
+  // work that reached your node, credited at the pool's share difficulty
+  function hrShare(id, diff, t = now()) {
+    const w = hrGet(id).work, k = Math.floor(t / SHARE_BUCKET) * SHARE_BUCKET;
+    w.set(k, (w.get(k) ?? 0) + diff);
+    if (w.size > HR_KEEP / SHARE_BUCKET + 10) for (const key of w.keys()) if (key < t - HR_KEEP) w.delete(key);
+  }
+  function hrSubmitted(d, end, windowMs) {
+    let work = 0; const from = Math.floor((end - windowMs) / SHARE_BUCKET) * SHARE_BUCKET;
+    for (let k = from; k < end; k += SHARE_BUCKET) work += d.work.get(k) ?? 0;
+    return Number(((work * 2 ** 32) / ((end - from) / 1000) / 1e12).toPrecision(4));
+  }
+  function hrSeries(id, r) {
+    const { bucketMs, spanMs, windowMs } = HR_RANGES[r], d = hrData.get(id), t = now(), last = Math.floor(t / bucketMs) * bucketMs, out = [];
+    for (let k = last - spanMs + bucketMs; k <= last; k += bucketMs) {
+      const v = d?.[r].get(k), rep = v ? Number((v.sum / v.n).toPrecision(4)) : null;
+      out.push([k, rep, rep === null ? null : hrSubmitted(d, Math.min(k + bucketMs, t), windowMs)]);
+    }
+    return out;
+  }
+  // a day of history per demo miner (backend demoHistory): rig 01 had a power cut 15 h ago and a dip 7 h ago;
+  // rig 02 hashes, but none of it reaches your node; rig 03 lost its pool 3 h ago
+  miners.forEach((m, i) => {
+    const H = 3_600_000, t0 = now(), step = 5_000;
+    for (let t = t0 - HR_KEEP; t < t0; t += step) {
+      const ago = t0 - t, noise = 0.95 + Math.random() * 0.08 + 0.02 * Math.sin(t / 900_000 + i);
+      if (i === 0 && ago > 15 * H && ago < 15.75 * H) continue;
+      const rep = +(m.nominalThs * noise * (i === 0 && ago > 6.8 * H && ago < 7.1 * H ? 0.64 : m.mode === 'offline' && ago < 3 * H ? 0 : 1)).toPrecision(4);
+      hrRecord(m.id, rep, t);
+      const sub = m.mode === 'ok' || (m.mode === 'offline' && ago >= 3 * H) ? rep * (0.9 + Math.random() * 0.2) : 0;
+      if (sub > 0) hrShare(m.id, (sub * 1e12 * (step / 1000)) / 2 ** 32, t);
+    }
+  });
+  let hrRange = 'live', hrHover = -1;
+  const HR_LABEL = { live: '5 minutes', '1h': 'hour', '24h': '24 hours' }, HR_BTN = { live: 'Live', '1h': '1 hour', '24h': '24 hours' };
+  const HR_TICK = { live: 60_000, '1h': 600_000, '24h': 4 * 3_600_000 };
+  const hrAxis = (v) => { if (v === 0) return '0'; const h = v * 1e12, u = [[1e15, 'PH/s'], [1e12, 'TH/s'], [1e9, 'GH/s'], [1e6, 'MH/s'], [1e3, 'kH/s'], [1, 'H/s']].find(([f]) => h >= f) ?? [1, 'H/s']; return `${+(h / u[0]).toFixed(2)} ${u[1]}`; };
+  const hrClock = (t) => new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const hrWhen = (t) => hrRange === 'live' ? new Date(t).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : hrRange === '1h' ? hrClock(t) : new Date(t).toLocaleString([], { weekday: 'short', hour: '2-digit', minute: '2-digit' });
+  function renderHashrate(full) {
+    const card = $('hr-card'); if (!card || !current) return;
+    const m = current, pts = hrSeries(m.id, hrRange), label = HR_LABEL[hrRange];
+    const nowThs = m.status === 'not-hashing' ? 0 : m.hashrateThs;
+    const h = hashrateHealth(pts, m.nominalThs, nowThs, label, m.status === 'not-hashing' ? m.statusReason : undefined);
+    if (full || !$('hr-svg')) {
+      card.innerHTML = `<header><div><h2 id="hr-title">Hashrate health</h2><p class="hr-health" id="hr-health"></p></div>
+        <div class="hr-ranges" role="group" aria-label="Time range">${['live', '1h', '24h'].map((r) => `<button type="button" data-range="${r}" class="${r === hrRange ? 'on' : ''}" aria-pressed="${r === hrRange}">${r === 'live' ? '<span class="hr-pulse" aria-hidden="true"></span>' : ''}${HR_BTN[r]}</button>`).join('')}</div></header>
+        <dl class="hr-stats" id="hr-stats"></dl>
+        <ul class="hr-legend" aria-label="Chart lines"><li><span class="hr-key rep"></span>Reported by the miner</li><li><span class="hr-key sub"></span><span>Submitted to your node <small>(from shares, ${HR_RANGES[hrRange].windowMs / 60_000} min average)</small></span></li>${m.nominalThs ? '<li><span class="hr-key rated"></span>Rated</li>' : ''}</ul>
+        <div class="hr-plot" id="hr-plot"><svg id="hr-svg" role="img" tabindex="0"></svg><div class="hr-tip" id="hr-tip" hidden></div></div>
+        <table class="sr-only" id="hr-table"></table>`;
+    }
+    const hp = $('hr-health'); hp.className = 'hr-health ' + h.level;
+    hp.innerHTML = `<span class="icon" aria-hidden="true">${{ good: '✓', warn: '!', bad: '✕', none: '·' }[h.level]}</span><b></b><span></span>`;
+    hp.querySelector('b').textContent = h.label; hp.querySelector('span:last-child').textContent = h.detail;
+    const dash = h.level === 'none';
+    $('hr-stats').innerHTML = `<div><dt><span class="hr-key rep"></span>Reported now</dt><dd>${formatHashrate(nowThs)}</dd></div>
+      <div><dt><span class="hr-key sub"></span>Submitted now</dt><dd>${dash ? '–' : formatHashrate(h.submittedNow)}</dd></div>
+      <div><dt>Average</dt><dd>${dash ? '–' : formatHashrate(h.avg)}</dd></div>
+      <div><dt>Rated</dt><dd>${m.nominalThs ? formatHashrate(m.nominalThs) : '–'}</dd></div><div><dt>Uptime</dt><dd>${dash ? '–' : h.uptimePct + ' %'}</dd></div>`;
+    const W = Math.max(280, Math.round($('hr-plot').clientWidth || 640)), HGT = 230;
+    const g = chartGeometry(pts, m.nominalThs, W, HGT, hrAxis, hrClock, HR_TICK[hrRange]);
+    const svg = $('hr-svg');
+    svg.setAttribute('viewBox', `0 0 ${W} ${HGT}`); svg.setAttribute('width', W); svg.setAttribute('height', HGT);
+    svg.setAttribute('aria-label', `Hashrate over the last ${label}. ${h.label}. ${h.detail}`);
+    const p = pts[hrHover];
+    let lastI = -1; for (let i = pts.length - 1; i >= 0; i--) if (pts[i][1] !== null) { lastI = i; break; }
+    svg.innerHTML = `<defs><linearGradient id="hr-fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#0ba5bf" stop-opacity=".2"/><stop offset="1" stop-color="#0ba5bf" stop-opacity="0"/></linearGradient></defs>
+      ${g.yTicks.map((t) => `<line class="grid" x1="${g.left}" x2="${g.right}" y1="${t.y}" y2="${t.y}"/><text class="ytick" x="${g.left - 8}" y="${t.y + 4}">${t.label}</text>`).join('')}
+      ${g.xTicks.map((t) => `<text class="xtick" x="${t.x}" y="${HGT - 6}">${t.label}</text>`).join('')}
+      ${g.ratedY !== null ? `<line class="rated" x1="${g.left}" x2="${g.right}" y1="${g.ratedY}" y2="${g.ratedY}"/>` : ''}
+      <path d="${g.area}" fill="url(#hr-fill)"/><path class="line rep" d="${g.line}"/><path class="line sub" d="${g.line2}"/>
+      ${hrRange === 'live' && lastI >= 0 ? `<circle class="live-dot" cx="${g.x(lastI)}" cy="${g.y(pts[lastI][1])}" r="4"/>` : ''}
+      ${p ? `<line class="cross" x1="${g.x(hrHover)}" x2="${g.x(hrHover)}" y1="${g.top}" y2="${g.bottom}"/>${p[1] !== null ? `<circle class="dot rep" cx="${g.x(hrHover)}" cy="${g.y(p[1])}" r="4.5"/>` : ''}${p[2] !== null ? `<circle class="dot sub" cx="${g.x(hrHover)}" cy="${g.y(p[2])}" r="4.5"/>` : ''}` : ''}`;
+    const tip = $('hr-tip'); tip.hidden = !p;
+    if (p) {
+      tip.style.left = g.x(hrHover) + 'px'; tip.classList.toggle('flip', g.x(hrHover) > W - 190);
+      tip.innerHTML = `<span class="when">${hrWhen(p[0])}</span>` + (p[1] === null ? '<span>No reading</span>'
+        : `<span class="row"><span class="hr-key rep"></span><b>${formatHashrate(p[1])}</b> reported</span><span class="row"><span class="hr-key sub"></span><b>${formatHashrate(p[2] ?? 0)}</b> submitted</span>`);
+    }
+    if (full) $('hr-table').innerHTML = `<caption>Hashrate over the last ${label}</caption><tr><th scope="col">Time</th><th scope="col">Reported</th><th scope="col">Submitted to your node</th></tr>` + pts.map(([t, v, sv]) => `<tr><td>${hrClock(t)}</td><td>${v === null ? 'no reading' : formatHashrate(v)}</td><td>${sv === null ? '–' : formatHashrate(sv)}</td></tr>`).join('');
+    svg.__g = g; svg.__n = pts.length;
+  }
+  $('miner-slot').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-range]'); if (!b) return;
+    hrRange = b.dataset.range; hrHover = -1; renderHashrate(true);
+  });
+  $('miner-slot').addEventListener('pointermove', (e) => {
+    const svg = e.target.closest('#hr-svg'); if (!svg || !svg.__g) return;
+    const r = svg.getBoundingClientRect(), g = svg.__g, px = ((e.clientX - r.left) / r.width) * svg.viewBox.baseVal.width;
+    const i = Math.max(0, Math.min(svg.__n - 1, Math.round(((px - g.left) / (g.right - g.left)) * (svg.__n - 1))));
+    if (i !== hrHover) { hrHover = i; renderHashrate(false); }
+  });
+  $('miner-slot').addEventListener('pointerout', (e) => { if (e.target.closest('#hr-svg') && !e.relatedTarget?.closest?.('#hr-svg')) { hrHover = -1; renderHashrate(false); } });
+  $('miner-slot').addEventListener('keydown', (e) => {
+    const svg = e.target.closest('#hr-svg'); if (!svg || !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
+    e.preventDefault(); const n = svg.__n, cur = hrHover < 0 ? n - 1 : hrHover;
+    hrHover = e.key === 'Home' ? 0 : e.key === 'End' ? n - 1 : Math.max(0, Math.min(n - 1, cur + (e.key === 'ArrowLeft' ? -1 : 1)));
+    renderHashrate(false);
+  });
+  $('miner-slot').addEventListener('focusout', (e) => { if (e.target.id === 'hr-svg') { hrHover = -1; renderHashrate(false); } });
+  addEventListener('resize', () => renderHashrate(false));
+
+  // ---------- animation layers ----------
+  const streams = new ShareStreamRenderer($('streams'));
+  addEventListener('resize', () => streams.resize());
+  document.querySelector('.strip').addEventListener('share-arrived', (e) => {
+    const el = e.target;
+    el.classList.remove('hit'); void el.offsetWidth; el.classList.add('hit');
+    sharesThisBlock++;
+    const n = $('fleet-shares');
+    if (n) n.textContent = fmt(sharesThisBlock);
+  });
+
+  function onShare(m, diff, accepted) {
+    const hash = shareHash(diff);
+    if (accepted) { m.sharesAccepted++; m.lastShareAt = now(); hrShare(m.id, m.diff); } else m.sharesRejected++;
+    (m.verdicts ??= []).push({ ts: now(), ok: accepted }); if (m.verdicts.length > 30) m.verdicts.shift();
+    m.bestShareDiff = Math.max(m.bestShareDiff, diff);
+    // fleet dashboard: every fleet miner streams (thinned out by fleetLaunch)
+    if (view === 'fleet' && !document.hidden && fleet.ids.includes(m.id)) return fleetLaunch(m, hash, accepted);
+    // only the connected miner is shown and streamed
+    if (m !== current || document.hidden || view !== 'dashboard') return;
+    if (network().algo !== (m.algo ?? DEFAULT_ALGO)) return; // only shares of the chain's own hash function land in its block
+    const fan = $('m-fan');
+    if (!fan || !$('mining-block')) return;
+    const f = fan.getBoundingClientRect();
+    streams.launch({ x: f.left + f.width / 2, y: f.top + f.height / 2 }, () => {
+      const r = ($('mining-block') || fan).getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height * 0.6 };
+    }, shareBits(hash), {
+      accepted, lucky: diff >= m.diff * 16,
+      onArrive: () => { const b = $('mining-block'); if (b) b.dispatchEvent(new CustomEvent('share-arrived', { bubbles: true })); },
+    });
+  }
+  // ---------- fleet dashboard (Angular FleetPage + FleetStreamComponent) ----------
+  // Shares of every fleet miner fly from its tile's fan into the block, scaled to the fleet size so the page stays clean:
+  // smaller glyphs and shorter strings for bigger fleets, one string per miner every so often, a few per second in total.
+  const fleetScale = (n) => n <= 4 ? { font: 11, spacing: 10, zeros: 18, tail: 8, perMinerMs: 900, perSecond: 6 }
+    : n <= 12 ? { font: 10, spacing: 9, zeros: 12, tail: 6, perMinerMs: 1800, perSecond: 5 }
+    : { font: 9, spacing: 8, zeros: 8, tail: 4, perMinerMs: Math.min(8000, n * 220), perSecond: 4 };
+  let fleetStreams = null, fleetStreamsFor = 0, fleetRecent = [];
+  const fleetLast = new Map();
+  function fleetLaunch(m, hash, accepted) {
+    const fan = document.querySelector(`[data-fleet-fan="${CSS.escape(m.id)}"]`), block = $('mining-block');
+    if (!fan || !block) return;
+    const pulse = () => block.dispatchEvent(new CustomEvent('share-arrived', { bubbles: true }));
+    const n = Math.max(1, fleet.ids.length), sc = fleetScale(n), t = performance.now();
+    fleetRecent = fleetRecent.filter((x) => t - x < 1000);
+    if (t - (fleetLast.get(m.id) ?? -Infinity) < sc.perMinerMs || fleetRecent.length >= sc.perSecond) return pulse(); // still lands, without its own string
+    fleetLast.set(m.id, t); fleetRecent.push(t);
+    const bucket = n <= 4 ? 1 : n <= 12 ? 2 : 3;
+    if (!fleetStreams || fleetStreamsFor !== bucket) {
+      fleetStreams?.destroy();
+      fleetStreams = new ShareStreamRenderer($('fleet-streams'), { font: `600 ${sc.font}px "IBM Plex Mono", ui-monospace, monospace`, spacing: sc.spacing }, 24 + sc.perSecond * 4);
+      fleetStreamsFor = bucket;
+    }
+    const f = fan.getBoundingClientRect();
+    fleetStreams.launch({ x: f.left + f.width / 2, y: f.top + f.height / 2 }, () => { const r = ($('mining-block') || fan).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height * 0.6 }; },
+      shareBits(hash, sc.zeros, sc.tail), { accepted, onArrive: pulse });
+  }
+  addEventListener('resize', () => fleetStreams?.resize());
+  const FLEET_LABEL = { hashing: 'Connected', 'not-submitting': 'Not submitting', 'not-hashing': 'Not hashing' };
+  function renderFleetDash(rebuild) {
+    const el = $('fleetdash'), list = fleet.ids.map((id) => miners.find((m) => m.id === id)).filter(Boolean);
+    if (!list.length) {
+      if (!rebuild && $('fleet-empty-fan')) return;
+      el.innerHTML = `<section class="empty"><span class="fan not-hashing" id="fleet-empty-fan"></span><div><h1>No fleet yet</h1>
+        <p>Go to Find ASIC, paste the IP addresses of your miners under Generate fleet and click Generate. This page then shows all of them, with their shares flying into the block being mined.</p>
+        <a class="btn primary cta" href="#asic">Generate a fleet</a></div></section>`;
+      mountFan($('fleet-empty-fan')); return;
+    }
+    if (rebuild || !$('fleet-grid')) {
+      el.innerHTML = `<header class="fhead"><div><h1 id="fd-name"></h1><p id="fd-sub"></p></div><a class="btn" href="#asic" data-sec-link="fleet-anchor">Edit fleet</a></header>
+        <ul class="tally" id="fd-tally" aria-label="Fleet summary"></ul>
+        <ul class="fgrid ${list.length > 12 ? 'dense' : ''}" id="fleet-grid">${list.map((m) => `<li class="tile" id="tile-${esc(m.id).replace(/[^a-z0-9-]/gi, '_')}" data-id="${esc(m.id)}">
+          ${iconSpan(m, '', `data-fleet-fan="${esc(m.id)}"`)}
+          <div class="info"><span class="ip">${esc(m.host)}</span><span class="model">${m.cpu ? `<b class="cores">${m.cpu.cores} cores · <span data-threads>${m.cpu.miningThreads}</span>/${m.cpu.threads} threads</b>` : esc(m.model)} · ${ALGO[m.algo] ?? m.algo}</span><span class="chip"></span>
+          <span class="row"><span class="rate"></span><button type="button" class="manage" data-manage="${esc(m.host)}">Manage</button></span></div></li>`).join('')}</ul>`;
+      el.querySelectorAll('[data-mount]').forEach(mountFan);
+    }
+    $('fd-name').textContent = fleet.name;
+    $('fd-sub').textContent = `${list.length} ${list.length === 1 ? 'miner' : 'miners'} · every share that reaches your node flies from its fan into the block being mined`;
+    const count = (st) => list.filter((m) => m.status === st).length;
+    // hashrate per hash function: TH/s of SHA-256 and kH/s of RandomX don't add up
+    const total = {}; list.filter((m) => m.status === 'hashing').forEach((m) => { const a = m.algo ?? DEFAULT_ALGO; total[a] = (total[a] ?? 0) + m.hashrateThs; });
+    $('fd-tally').innerHTML = `<li class="hashing"><b>${count('hashing')}</b> connected and hashing</li><li class="not-submitting"><b>${count('not-submitting')}</b> not submitting shares</li>
+      <li class="not-hashing"><b>${count('not-hashing')}</b> not hashing</li>${Object.entries(total).map(([a, v]) => `<li><b>${formatHashrate(v)}</b> ${ALGO[a] ?? a}</li>`).join('') || '<li><b>0 H/s</b> fleet hashrate</li>'}`;
+    list.forEach((m) => {
+      const tile = document.querySelector(`#fleet-grid [data-id="${CSS.escape(m.id)}"]`); if (!tile) return;
+      tile.className = `tile ${m.status}${current === m ? ' current' : ''}`;
+      const fan = tile.querySelector('.fan'); fan.className = 'fan ' + (m.cpu ? 'cpu ' : '') + spinState(m);
+      if (m.cpu) { // light up as many cores as XMRig runs threads
+        if (fan.dataset.on !== String(m.cpu.miningThreads)) { fan.innerHTML = cpuSvg(m.cpu); fan.dataset.on = m.cpu.miningThreads; tile.querySelector('[data-threads]').textContent = m.cpu.miningThreads; }
+      } else {
+        const ratio = m.nominalThs ? m.hashrateThs / m.nominalThs : 1;
+        fan.querySelector('.rotor').style.animationDuration = (0.55 / Math.max(0.2, Math.min(1.2, ratio || 1))).toFixed(2) + 's';
+      }
+      const chip = tile.querySelector('.chip'); chip.textContent = FLEET_LABEL[m.status]; chip.title = m.statusReason;
+      tile.querySelector('.rate').textContent = m.status === 'not-hashing' ? '–' : formatHashrate(m.hashrateThs);
+      tile.querySelector('.manage').setAttribute('aria-label', `Manage ${m.host}: ${FLEET_LABEL[m.status]}. ${m.statusReason}`);
+    });
+  }
+  $('fleetdash').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-manage]');
+    if (b) { connect(b.dataset.manage); location.hash = '#dashboard'; }
+  });
+
+  function shareHash(diff) {
+    const zeroBits = Math.min(255, 32 + Math.max(0, Math.floor(Math.log2(Math.max(1, diff)))));
+    const bytes = crypto.getRandomValues(new Uint8Array(32));
+    for (let b = 0; b < zeroBits; b++) bytes[b >> 3] &= ~(0x80 >> (b & 7));
+    bytes[zeroBits >> 3] |= 0x80 >> (zeroBits & 7);
+    return Array.from(bytes, (x) => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  // telemetry every 3 s (each miner reports in; the mode is decided right then), shares every 200 ms
+  // what a miner reports for its settings (same rules as backend simulatedReadings())
+  function simulatedReadings(st, nominalThs) {
+    const p = st.performance, c = st.cooling, powerW = nominalThs * 16;
+    const factor = p.mode === 'sleep' ? 0 : p.mode === 'low' ? 0.75 : p.mode === 'high' ? 1.15
+      : p.mode === 'custom' ? Math.max(0.3, Math.min(1.3, p.powerTargetW ? p.powerTargetW / powerW : 1)) * (p.frequencyMHz ? Math.max(0.5, Math.min(1.4, p.frequencyMHz / 525)) : 1) : 1;
+    const heat = 45 + 20 * factor;
+    const fanRpm = factor === 0 || c.fanMode === 'immersion' ? 0 : c.fanMode === 'manual' ? Math.round(c.fanSpeedPct * 60) : Math.round(2400 + 2400 * factor);
+    const temperatureC = factor === 0 ? 34 : c.fanMode === 'immersion' ? Math.round(52 + 6 * factor) : c.fanMode === 'manual' ? Math.round(heat + (100 - c.fanSpeedPct) * 0.35) : Math.round(Math.min(c.targetTempC, heat + 10));
+    return { factor, fanRpm, temperatureC, powerW: Math.round(powerW * factor) };
+  }
+  function telemetry() {
+    miners.forEach((m) => {
+      if (m.mode === 'unreachable') return;                  // nothing answers at this IP
+      if (m.rebootUntil > now()) return;                     // no answer while rebooting
+      m.lastSeenAt = now();
+      if (m.poweredOff) { m.hashrateThs = 0; m.fanRpm = 0; m.temperatureC = 30; if (m.cpu) m.cpu.miningThreads = 0; return; } // control board answers, hashboards and fans off (XMRig: paused)
+      if (m.mode === 'offline') { m.hashrateThs = 0; m.fanRpm = 0; m.temperatureC = 34; if (m.cpu) m.cpu.miningThreads = 0; return; }
+      const r = simulatedReadings(m.settings, m.nominalThs);
+      m.hashrateThs = Number((m.nominalThs * r.factor * (0.94 + Math.random() * 0.1)).toPrecision(4));
+      // XMRig: the work mode decides how many threads mine (low power = 3/4 of them, sleep = none)
+      if (m.cpu) m.cpu.miningThreads = r.factor <= 0 ? 0 : Math.max(1, Math.min(m.cpu.threads, Math.round(m.cpu.threads * Math.min(1, r.factor))));
+      m.fanRpm = r.fanRpm ? Math.round(r.fanRpm * (0.97 + Math.random() * 0.06)) : 0;
+      m.temperatureC = r.temperatureC + Math.round(Math.random() * 2);
+    });
+    miners.forEach((m) => { if (m.mode !== 'unreachable' && !(m.rebootUntil > now())) hrRecord(m.id, evaluate(m)[0] === 'not-hashing' ? 0 : m.hashrateThs); });
+    tickStatus();
+    if (view === 'dashboard') renderHashrate(false);
+  }
+  function tickStatus() {
+    miners.forEach((m) => { [m.status, m.statusReason] = evaluate(m); });
+    renderMiner(false);
+    if (view === 'settings') renderSettingsHead();
+    if ((view === 'asic' || view === 'cpu') && typeof renderFleet === 'function') { renderAsic(); renderFleet(); fleetPreview(); }
+    if (view === 'fleet' && typeof renderFleetDash === 'function') renderFleetDash(false);
+  }
+  setInterval(() => {
+    miners.forEach((m) => {
+      if (m.mode !== 'ok' || !m.hashrateThs) return;        // only miners pointed at your node land shares there
+      if (m.network && m.network.algo !== (m.algo ?? DEFAULT_ALGO)) return; // wrong blockchain network: no usable work
+      const rate = (m.hashrateThs * 1e12) / (m.diff * 2 ** 32);
+      if (Math.random() < rate * 0.2) {
+        const diff = Math.random() < 0.05 ? m.diff * 2 ** Math.ceil(Math.random() * 12) : m.diff;
+        onShare(m, diff, Math.random() > 0.015);
+      }
+    });
+  }, 200);
+  setInterval(telemetry, 3000);
+  setInterval(tickStatus, 1000);
+  setInterval(() => { Object.values(chains).forEach((c) => { if (!c.live) c.projected = projFor(c); }); if (!chain().live) renderProjected(); }, 6000);
+  setInterval(() => mineBlock('blake2b'), 117_000);
+  setInterval(() => mineBlock('monero'), 40_000);
+  setInterval(() => renderMined(false), 30_000);
+
+  // ---------- miner settings: general interface for any ASIC ----------
+  // Sections are drawn from the shared schema (frontend/src/app/lib/settings-schema.ts):
+  // Pools · Miner · Performance · Cooling · Network · Security · System · Maintenance
+  const POOL_RE = /^stratum(\+(tcp|ssl|tls))?:\/\/[^\s/:]+(:\d+)?\/?$/i;
+  let touched = false;
+  const SECTIONS = [['pools', 'Pools'], ['miner', 'Miner'], ['login', 'Login'], ...SETTINGS_GROUPS.map((g) => [g.id, g.title]), ['maintenance', 'Maintenance']];
+  $('toc').innerHTML = SECTIONS.map(([id, label]) => `<button type="button" data-sec="${id}">${label}</button>`).join('');
+  $('toc').addEventListener('click', (e) => { const b = e.target.closest('[data-sec]'); if (b) $('sec-' + b.dataset.sec).scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); });
+  const TIMEZONES = (() => { try { const z = Intl.supportedValuesOf('timeZone'); return ['UTC', ...z.filter((x) => x !== 'UTC')]; } catch { return ['UTC', 'Europe/Amsterdam', 'Europe/London', 'America/New_York', 'Asia/Shanghai', 'Asia/Tokyo']; } })();
+
+  function showView(v) {
+    view = 'dashboard'; // Find Mempool: only the blockchain
+    ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
+    $('chain-area').hidden = !(view === 'dashboard' || view === 'fleet');
+    if (view === 'asic' || view === 'cpu') { if (!scan) runScan(); else renderAsic(); renderFleet(); }
+    else if (view === 'fleet') { renderProjected(); renderMined(false); renderFleetDash(true); }
+    else if (view === 'settings') { $('no-miner').hidden = !!current; $('settings-body').hidden = !current; if (current) loadForm(); }
+    else { renderProjected(); renderMined(false); renderMiner(true); }
+    const sec = pendingSec && $('sec-' + pendingSec); pendingSec = null;
+    if (sec && !sec.closest('[hidden]')) sec.scrollIntoView({ block: 'start' }); else scrollTo(0, 0);
+  }
+  let pendingSec = null; // "Change it under Miner settings → Login" opens the settings at that section
+  document.addEventListener('click', (e) => { const l = e.target.closest('[data-sec-link]'); if (l) pendingSec = l.dataset.secLink; });
+  addEventListener('hashchange', () => showView(location.hash.slice(1)));
+
+  function renderSettingsHead() {
+    const m = current; if (!m) return;
+    $('summary').className = 'summary ' + m.status;
+    $('f-title').textContent = m.name; $('f-ip').textContent = m.host; $('f-ip2').textContent = m.host;
+    $('f-model').textContent = m.model; $('f-state').textContent = SHORT[m.status];
+    $('f-reason').innerHTML = esc(m.statusReason) + (m.locateUntil > now() ? ' <span class="locate">· LED blinking</span>' : '');
+    $('f-now').textContent = m.poolUrl || 'nothing'; $('f-hash').textContent = formatHashrate(m.hashrateThs);
+    $('off-cap').hidden = !m.poweredOff;
+    $('led-cap').hidden = !!m.poweredOff || !(m.locateUntil > now());
+    if (($('act-list').dataset.off === 'true') !== !!m.poweredOff) renderActions(); // Turn off ↔ Turn on
+  }
+
+  // ----- pools + miner -----
+  // ----- Login (Miner settings → Login; backend PUT /miners/:id/login) -----
+  function renderLoginCard() {
+    const l = loginOf(current);
+    $('login-cap').textContent = l.isDefault ? 'Default login' : 'Own login set';
+    $('login-cap').classList.toggle('saved-only', l.isDefault);
+    $('login-caution').hidden = !l.isDefault;
+    $('ls-user').placeholder = l.isDefault ? DEFAULT_LOGIN.username : 'Keep the current one';
+  }
+  function saveLogin() {
+    const m = current, l = loginOf(m), res = $('ls-result');
+    const user = $('ls-user').value.trim(), cur = $('ls-cur').value, pw = $('ls-new').value, rep = $('ls-rep').value;
+    const fail = (t) => { res.className = 's-result'; res.textContent = t; };
+    if (!cur) return fail('Enter the current password.');
+    if (!pw && !user) return fail('Enter a new username or a new password.');
+    if (cur !== l.password) return fail('The current password is not right.');
+    if (user && !/^[A-Za-z0-9._@-]{1,32}$/.test(user)) return fail('Use 1 to 32 letters, digits or . _ @ - for the username.');
+    if (pw) {
+      if (pw.length < 8) return fail('Use a password of at least 8 characters.');
+      if (pw === DEFAULT_LOGIN.password) return fail('Pick a password other than the default one.');
+      if (pw !== rep) return fail('The two new passwords are not the same.');
+    }
+    m.login = { username: user || l.username, password: pw || l.password, isDefault: pw ? false : l.isDefault };
+    ['ls-user', 'ls-cur', 'ls-new', 'ls-rep'].forEach((id) => ($(id).value = ''));
+    res.className = 's-result ok';
+    res.textContent = `Login changed. Other devices signed in to this miner are signed out. The miner’s own web page uses the new password too. Username: ${m.login.username}.`;
+    renderLoginCard();
+  }
+  $('ls-save').addEventListener('click', saveLogin);
+  $('ls-logout').addEventListener('click', () => { const h = current?.host; if (h) { const cpu = !!byHost(h)?.cpu; logout(h); location.hash = cpu ? '#cpu' : '#asic'; } });
+  $('login-form').addEventListener('submit', (e) => { e.preventDefault(); saveLogin(); });
+
+  // "Your node" on the settings page: the node for this miner's hash function
+  function showNode() { const a = current?.algo ?? DEFAULT_ALGO; $('node-algo').textContent = ALGO[a] ?? a; $('node-url').textContent = NODES[a] ?? 'none set up for this hash function'; }
+  function loadForm() {
+    const m = current; touched = false;
+    showNode(); renderLoginCard(); $('ls-result').textContent = '';
+    const pools = [...m.pools]; while (pools.length < 2) pools.push({ url: '', user: '', pass: 'x' });
+    $('pool-grid').innerHTML = `<span class="col-head"></span><span class="col-head">Pool URL</span><span class="col-head">Worker</span><span class="col-head">Password</span>` +
+      pools.slice(0, 2).map((p, i) => `
+        <label class="slot" for="pool-url-${i}">${SLOT[i]}<small>${i ? 'Backup' : 'Used first'}</small></label>
+        <div class="field"><input id="pool-url-${i}" data-k="url" type="text" inputmode="url" autocomplete="off" spellcheck="false" placeholder="stratum+tcp://host:port" value="${esc(p.url)}"><span class="tag" ${isMyNode(p.url) ? '' : 'hidden'}>your node</span></div>
+        <input id="pool-user-${i}" type="text" autocomplete="off" spellcheck="false" placeholder="bc1q….rig01" aria-label="${SLOT[i]} worker" value="${esc(p.user)}">
+        <input id="pool-pass-${i}" type="text" autocomplete="off" placeholder="x" aria-label="${SLOT[i]} password" value="${esc(p.pass)}">
+        <p class="pool-err" id="pool-err-${i}" hidden></p>`).join('');
+    $('rig-algo').innerHTML = algoOptions(m.algo ?? DEFAULT_ALGO);
+    $('rig-name').value = m.name; $('rig-port').value = m.port; $('rig-ths').value = m.nominalThs ? (m.cpu ? +(m.nominalThs * 1e9).toFixed(3) : m.nominalThs) : ''; $('rig-ths-unit').textContent = m.cpu ? 'kH/s' : 'TH/s';
+    ['f-result', 'm-result', 'a-result'].forEach((id) => { $(id).textContent = ''; $(id).className = 's-result'; });
+    renderGroups(); renderActions(); renderSettingsHead();
+  }
+  const SLOT = ['Main pool', 'Failover pool'];
+  const readPools = () => [0, 1].map((i) => ({ url: $('pool-url-' + i).value.trim(), user: $('pool-user-' + i).value.trim(), pass: $('pool-pass-' + i).value.trim() || 'x' }));
+  function validatePools() {
+    let ok = true;
+    readPools().forEach((p, i) => {
+      const err = p.url && !POOL_RE.test(p.url) ? 'Use the form stratum+tcp://host:port' : p.url && !p.user ? 'Enter a worker name' : '';
+      const el = $('pool-err-' + i); el.hidden = !(touched && err); el.textContent = `${SLOT[i]}: ${err}`;
+      $('pool-url-' + i).classList.toggle('invalid', touched && !!err);
+      if (err) ok = false;
+    });
+    return ok;
+  }
+  $('pool-grid').addEventListener('input', (e) => {
+    const t = e.target;
+    if (t.dataset.k === 'url') t.parentElement.querySelector('.tag').hidden = !isMyNode(t.value);
+    $('f-result').textContent = '';
+    if (touched) validatePools();
+  });
+  $('use-node').addEventListener('click', () => {
+    if (!NODES[current?.algo ?? DEFAULT_ALGO]) return;
+    $('pool-url-0').value = NODES[current?.algo ?? DEFAULT_ALGO]; $('pool-url-0').parentElement.querySelector('.tag').hidden = false;
+    if (!$('pool-user-0').value) $('pool-user-0').value = 'bc1qexampleaddress.' + current.name.toLowerCase().replace(/[^a-z0-9]+/g, '');
+    if (touched) validatePools();
+  });
+  function savePools(apply) {
+    const m = current; if (!m) return;
+    touched = true;
+    const res = $('f-result');
+    if (!validatePools()) { res.className = 's-result'; res.textContent = 'Fix the highlighted pool before saving.'; return; }
+    const pools = readPools().filter((p) => p.url);
+    if (apply && !pools.length) { res.className = 's-result'; res.textContent = 'Enter a main pool address before applying.'; return; }
+    m.pools = pools; m.poolStrategy = 'failover';
+    let msg = 'Saved. Use Save & apply to send it to the miner.', ok = true;
+    if (apply) {
+      if (m.mode === 'unreachable') { ok = false; msg = `Could not reach ${m.host}:${m.port}. Settings are saved; check the IP address and that the miner is on.`; }
+      else {
+        // same outcome rules as backend MinerSimulator.applyPools()
+        const url = pools[0].url;
+        const n = nodeFor(url);
+        m.mode = n.kind === 'node' && n.algo === (m.algo ?? DEFAULT_ALGO) ? 'ok' : n.kind === 'other' ? 'wrong' : 'idle';
+        m.poolUrl = url;
+        msg = 'Applied to the simulated miner. ' + { ok: 'It is now connected and hashing to your node.', idle: n.kind === 'node' ? 'It reaches your node for the other blockchain, so its shares are useless there.' : 'It reaches your node, but that port does not accept shares.', wrong: 'It is now mining for another pool, not your node.' }[m.mode];
+      }
+    }
+    res.className = ok ? 's-result ok' : 's-result'; res.textContent = msg;
+    telemetry(); renderSettingsHead();
+  }
+  $('pool-grid').addEventListener('submit', (e) => { e.preventDefault(); savePools(true); });
+  $('f-save').addEventListener('click', () => savePools(false));
+  $('f-apply').addEventListener('click', () => savePools(true));
+  $('m-save').addEventListener('click', () => {
+    const m = current; if (!m) return;
+    m.name = $('rig-name').value.trim() || m.name; m.algo = $('rig-algo').value || m.algo; showNode(); [m.status, m.statusReason] = evaluate(m); m.port = +$('rig-port').value || 4028; m.nominalThs = (+$('rig-ths').value * (m.cpu ? 1e-9 : 1)) || m.nominalThs;
+    $('m-result').className = 's-result ok'; $('m-result').textContent = 'Saved.';
+    renderSettingsHead();
+  });
+
+  // ----- Performance, Cooling, Network, Security, System: drawn from the schema -----
+  const draft = {};          // group id -> values being edited
+  const groupTouched = {};
+  function fieldHtml(g, f, v, err) {
+    const id = `${g.id}-${f.key}`, val = v[f.key];
+    const help = err ? `<span class="s-err" id="${id}-err">${esc(err)}</span>` : f.help ? `<span class="s-help">${esc(f.help)}</span>` : '';
+    const inv = err ? ' class="invalid"' : '';
+    if (f.type === 'toggle') return `<label class="s-toggle"><input type="checkbox" id="${id}" data-key="${f.key}" ${val ? 'checked' : ''}><span>${esc(f.label)}${f.help ? `<small>${esc(f.help)}</small>` : ''}</span></label>`;
+    let control;
+    if (f.type === 'select') control = `<select id="${id}" data-key="${f.key}"${inv}>${f.options.map((o) => `<option value="${o.value}" ${o.value === val ? 'selected' : ''}>${esc(o.label)}</option>`).join('')}</select>`;
+    else if (f.type === 'timezone') control = `<select id="${id}" data-key="${f.key}"${inv}>${TIMEZONES.map((z) => `<option value="${z}" ${z === val ? 'selected' : ''}>${z.replace('_', ' ')}</option>`).join('')}</select>`;
+    else if (f.type === 'number') control = `<span class="s-unit"><input id="${id}" data-key="${f.key}" type="number" inputmode="decimal" ${f.min !== undefined ? `min="${f.min}"` : ''} ${f.max !== undefined ? `max="${f.max}"` : ''} step="${f.step ?? 1}" placeholder="${f.optional ? 'Automatic' : ''}" value="${val ?? ''}"${inv}>${f.unit ? `<span>${f.unit}</span>` : ''}</span>`;
+    else control = `<input id="${id}" data-key="${f.key}" type="text" spellcheck="false" autocomplete="off" ${f.type === 'ipv4' ? 'inputmode="decimal"' : ''} placeholder="${esc(f.placeholder ?? '')}" value="${esc(val ?? '')}"${inv}>`;
+    return `<label class="s-field${f.type === 'iplist' ? ' wide' : ''}${f.type === 'select' || f.type === 'timezone' ? ' sel' : ''}" for="${id}">${esc(f.label)}${control}${help}</label>`;
+  }
+  function renderGroup(g) {
+    const v = draft[g.id], check = checkGroup(g, v), t = groupTouched[g.id];
+    const fields = g.fields.filter((f) => !f.showIf || f.showIf(v));
+    const card = $('sec-' + g.id);
+    card.querySelector('.s-grid').innerHTML = fields.map((f) => fieldHtml(g, f, v, t ? check.fieldErrors[f.key] : null)).join('');
+    const ge = card.querySelector('.s-group-err'); ge.hidden = !(t && check.groupError); ge.textContent = check.groupError ?? '';
+    const c = g.caution?.(v, current?.host); const ce = card.querySelector('.s-caution'); ce.hidden = !c; ce.textContent = c ?? '';
+  }
+  function renderGroups() {
+    $('group-cards').innerHTML = SETTINGS_GROUPS.map((g) => `<section class="s-card" id="sec-${g.id}" data-group="${g.id}" aria-labelledby="h-${g.id}">
+      <div class="s-card-head"><div><h2 id="h-${g.id}">${g.title}</h2><p>${esc(g.summary)}</p></div><span class="s-cap">Applies to the miner</span></div>
+      <form class="s-grid" novalidate></form>
+      <p class="s-group-err" role="alert" hidden></p><p class="s-caution" hidden></p>
+      <div class="s-actions"><p class="s-result" role="status"></p>
+        <button type="button" class="btn" data-do="reset">Reset</button><button type="button" class="btn" data-do="save">Save</button><button type="button" class="btn primary" data-do="apply">Save &amp; apply</button></div>
+    </section>`).join('');
+    SETTINGS_GROUPS.forEach((g) => { draft[g.id] = { ...current.settings[g.id] }; groupTouched[g.id] = false; renderGroup(g); });
+  }
+  const readGroup = (card) => { const v = {}; card.querySelectorAll('[data-key]').forEach((el) => (v[el.dataset.key] = el.type === 'checkbox' ? el.checked : el.value)); return v; };
+  $('group-cards').addEventListener('input', (e) => {
+    const card = e.target.closest('[data-group]'); if (!card) return;
+    const g = findGroup(card.dataset.group);
+    Object.assign(draft[g.id], readGroup(card));
+    card.querySelector('.s-result').textContent = '';
+    // selects and toggles can show or hide other fields; text inputs keep their focus
+    if (e.target.tagName === 'SELECT' || e.target.type === 'checkbox' || groupTouched[g.id]) {
+      const focusId = document.activeElement?.id, pos = document.activeElement?.selectionStart;
+      renderGroup(g);
+      const el = focusId && $(focusId); if (el) { el.focus(); try { if (pos != null) el.setSelectionRange(pos, pos); } catch {} }
+    }
+  });
+  $('group-cards').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-do]'); if (!b) return;
+    const card = b.closest('[data-group]'), g = findGroup(card.dataset.group), res = card.querySelector('.s-result'), m = current;
+    if (b.dataset.do === 'reset') { draft[g.id] = { ...m.settings[g.id] }; groupTouched[g.id] = false; res.textContent = ''; return renderGroup(g); }
+    Object.assign(draft[g.id], readGroup(card));
+    groupTouched[g.id] = true;
+    const check = checkGroup(g, draft[g.id]);
+    renderGroup(g);
+    if (!check.ok) { res.className = 's-result'; res.textContent = 'Fix the highlighted fields first.'; return; }
+    m.settings[g.id] = { ...check.values };
+    groupTouched[g.id] = false;
+    if (b.dataset.do === 'save') { res.className = 's-result ok'; res.textContent = 'Saved. Use Save & apply to send it to the miner.'; return; }
+    res.className = 's-result ok'; res.textContent = applyGroup(m, g.id);
+    renderGroup(g);
+  });
+  // same messages as backend MinerSimulator.applySettings()
+  function applyGroup(m, gid) {
+    if (m.mode === 'unreachable') return `Saved, but ${m.host} does not answer, so nothing was applied.`;
+    const st = m.settings;
+    if (gid === 'network' && !st.network.dhcp && st.network.ip && st.network.ip !== m.host) {
+      const clash = miners.find((x) => x !== m && x.host === st.network.ip);
+      if (clash) return `${st.network.ip} already belongs to ${clash.name}. Every miner needs its own IP address. Settings are saved, but the miner kept ${m.host}.`;
+      m.host = st.network.ip; renderMiner(true); renderSettingsHead();
+      return `Applied to the simulated miner. It now answers on ${m.host}.`;
+    }
+    telemetry();
+    const r = simulatedReadings(st, m.nominalThs);
+    const extra = gid === 'performance' ? (st.performance.mode === 'sleep' ? ' It is sleeping now and stops hashing.' : ` It now runs at about ${Math.round(r.factor * 100)} % of its rated hashrate, using about ${fmt(r.powerW)} W.`)
+      : gid === 'cooling' ? (r.fanRpm ? ` Fans now run at about ${fmt(r.fanRpm)} rpm.` : ' The fans are off.') : '';
+    return 'Applied to the simulated miner.' + extra;
+  }
+
+  // ----- Maintenance -----
+  let confirming = null;
+  function renderActions() {
+    const off = !!current?.poweredOff; $('act-list').dataset.off = off;
+    $('act-list').innerHTML = MINER_ACTIONS.filter((a) => !a.onlyWhen || (a.onlyWhen === 'off') === off).map((a) => `<li><div><b>${a.label}</b><small>${esc(a.help)}</small></div>${confirming === a.id
+      ? `<div class="confirm" role="group" aria-label="Confirm ${a.label}"><span>${esc(a.confirm)}</span><button type="button" class="btn" data-act="cancel">Cancel</button><button type="button" class="btn ${a.danger ? 'danger solid' : 'primary'}" data-act="run" data-id="${a.id}">Yes, ${a.label.toLowerCase()}</button></div>`
+      : `<button type="button" class="btn ${a.danger ? 'danger' : ''}" data-act="start" data-id="${a.id}">${a.label}</button>`}</li>`).join('');
+  }
+  $('act-list').addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]'); if (!b) return;
+    const a = MINER_ACTIONS.find((x) => x.id === b.dataset.id), res = $('a-result');
+    if (b.dataset.act === 'cancel') { confirming = null; return renderActions(); }
+    if (b.dataset.act === 'start' && a.confirm) { confirming = a.id; res.textContent = ''; return renderActions(); }
+    confirming = null; renderActions();
+    res.className = 's-result ok'; res.textContent = runAction(current, a.id);
+  });
+  // same messages as backend MinerSimulator.runAction()
+  function runAction(m, id) {
+    if (m.mode === 'unreachable') return `Could not reach ${m.host}.`;
+    const t = now();
+    if (id === 'locate') { m.locateUntil = t + 60_000; renderSettingsHead(); return 'The LED on the simulated miner blinks for 60 seconds.'; }
+    if (id === 'reboot') { m.rebootUntil = t + 25_000; m.hashrateThs = 0; m.fanRpm = 0; tickStatus(); return 'The simulated miner is rebooting. It hashes again in about 25 seconds.'; }
+    if (id === 'power-off') {
+      if (m.poweredOff) return 'The simulated miner is already turned off.';
+      m.poweredOff = true; m.hashrateThs = 0; m.fanRpm = 0; tickStatus(); renderActions(); renderSettingsHead();
+      return 'The simulated miner is turned off. Its hashboards and fans stopped; turn it on here whenever you like.';
+    }
+    if (id === 'power-on') {
+      if (!m.poweredOff) return 'The simulated miner is already on.';
+      m.poweredOff = false; m.rebootUntil = t + 15_000; m.hashrateThs = 0; m.fanRpm = 0; tickStatus(); renderActions(); renderSettingsHead();
+      return 'The simulated miner is turning on. It hashes again in about 15 seconds.';
+    }
+    if (id === 'factory-reset') {
+      m.mode = 'offline'; m.poweredOff = false; m.pools = []; m.poolUrl = ''; m.poolStrategy = 'failover'; m.settings = defaultSettings();
+      m.login = { ...DEFAULT_LOGIN, isDefault: true }; // the login goes back to admin / 123456789 too
+      m.rebootUntil = t + 25_000; m.hashrateThs = 0; m.fanRpm = 0; loadForm(); tickStatus();
+      return 'The simulated miner is back to factory settings and restarting. Set up a pool to start hashing again.';
+    }
+    return 'The web interface password of the simulated miner is changed.';
+  }
+
+  NETWORKS.forEach((n) => connectLive(n.id));
+  renderNetworks();
+  renderProjected();
+  renderMined(false);
+  telemetry();
+  // start on Find ASIC: pick a miner from the ones powered on in the local network
+  showView(location.hash.slice(1));
+})();
+</script>
+
+</body>
+</html>
