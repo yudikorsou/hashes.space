@@ -534,6 +534,25 @@
   }
   /* Find Mempool: only the blockchain */
   #miner-slot, .fleet-shares { display: none !important; }
+
+  /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
+  .mstats { max-width: 1100px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 20px; }
+  .mstats[hidden] { display: none !important; }
+  .mcard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 18px 14px; display: grid; gap: 10px; min-width: 0; }
+  .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
+  .mcard .kpis dt { font: 600 14px/1.2 var(--sans); color: var(--link); text-transform: none; letter-spacing: 0; }
+  .mcard .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+  .mcard svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .mcard svg text { font-family: var(--sans); }
+  .mcard .more { justify-self: center; color: var(--link); text-decoration: none; font: 500 14px/1 var(--sans); padding: 6px 8px; }
+  .mcard .more:hover { text-decoration: underline; }
+  .mcard .key { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
+  .mcard .key i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .msource { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; text-align: center; }
+  .slice:hover, .slice:focus { filter: brightness(1.15); outline: none; }
+  .mtip { position: fixed; z-index: 30; pointer-events: none; background: #0b0d17; border: 1px solid var(--line-strong); border-radius: 6px; padding: 7px 9px; font: 400 12.5px/1.4 var(--sans); color: var(--text); max-width: 240px; }
+  .mtip b { font-weight: 600; }
+  @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mcard .kpis dd { font-size: 17px; } }
 </style>
 
 </head>
@@ -660,6 +679,31 @@
 </section>
 
 </div>
+
+
+<section class="mstats" id="mining-stats" aria-label="Mining on Bitcoin BLAKE2b" hidden>
+  <article class="mcard" aria-labelledby="pools-title">
+    <h2 class="sr-only" id="pools-title">Mining pools, last week</h2>
+    <dl class="kpis">
+      <div><dt title="Blocks found this week as a share of the 1,008 blocks expected in a week (one every 10 minutes)">Pools Luck</dt><dd id="ms-luck">–</dd></div>
+      <div><dt>Blocks (1w)</dt><dd id="ms-blocks">–</dd></div>
+      <div><dt>Pools Count</dt><dd id="ms-pools">–</dd></div>
+    </dl>
+    <svg id="ms-pie" viewBox="0 0 600 330" role="img" aria-label="Blocks per mining pool, last week"></svg>
+    <a class="more" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
+  </article>
+  <article class="mcard" aria-labelledby="hr-title">
+    <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
+    <dl class="kpis">
+      <div><dt>Hashrate (1w)</dt><dd id="ms-hash">–</dd></div>
+      <div><dt>Difficulty</dt><dd id="ms-diff">–</dd></div>
+    </dl>
+    <svg id="ms-chart" viewBox="0 0 600 330" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
+    <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i>Hashrate (7-day average)</li><li><i style="background:#d6336c"></i>Difficulty</li></ul>
+    <a class="more" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
+  </article>
+  <p class="msource" id="ms-source"></p>
+</section>
 
 <div id="view-fleet" hidden>
 <main class="fleetdash" id="fleetdash"></main>
@@ -1701,6 +1745,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   function setNetwork(id) {
     if (!chains[id]) return;
     netId = id; sharesThisBlock = 0;
+    if (typeof renderMiningStats === "function") renderMiningStats();
     renderNetworks(); renderProjected(); renderMined(false);
     // the connected miner is now on this blockchain network: re-check its mode straight away (backend setNetwork)
     if (typeof tickStatus === 'function' && current) { current.network = network(); tickStatus(); renderHashrate(false); }
@@ -2626,7 +2671,135 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     return 'The web interface password of the simulated miner is changed.';
   }
 
+
+  // ---------- Find Mempool: mining pools + hashrate & difficulty (mempool.guide/mining), Bitcoin BLAKE2b only ----------
+  var MINING_API = 'https://mempool.guide/api/v1/mining';
+  // a snapshot of mempool.guide for when the API can't be reached from this page (2026-10-08)
+  var MINING_SNAPSHOT = {
+    at: 1791417600,
+    pools: { blockCount: 1168, pools: [['AlphaPool', 369, [['Soggy Waffle', 109], ['huangyh', 33], ['BlockBuster3000', 30], ['XGLLGSZB', 29], ['Tofu Toes', 27], ['DAtumYF', 23], ['DAUMWangpeisong', 22], ['Grumpy Pickle', 22], ['MineWithMe', 14], ['Sweaty Beaver', 14], ['wo912849', 8], ['mabeigu668', 6], ['Wzyw3', 5], ['LTQS', 4], ['whbtc', 4], ['DATUM User', 3], ['Fed14', 3], ['LU007', 3], ['Wang wei', 2], ['wangyong66688', 2]]],
+      ['Lazarus', 282, [['DATUM User', 55], ['XBTGW01', 38], ['Gateway', 34], ['BTCB2', 24], ['DouPool', 22], ['HKBMS3Cloud', 15], ['orionubdat', 9], ['Freedom Money', 4], ['Lunar Fleet', 4], ['nine006', 3], ['BlockFoundry', 2], ['fishnet', 2], ['HARUSERVER', 2], ['ibs DATUM User', 2], ['JH Gateway', 2], ['MBGA', 2], ['nomadshiba xbt', 2], ['SOVEROOT', 2], ['this is so big', 2], ['cryptographic proof instead of trust', 1]]],
+      ['B2Pool', 134], ['DxPool', 81], ['Omega Pool', 69], ['CONVOY', 62], ['Legata', 31], ['Rabid Pool', 18], ['RIPTIDE', 17], ['PyBLOCK', 14], ['sobig solo', 14], ['Quai Network', 13], ['Unknown', 12], ['Pow.re', 6], ['Paperclip Pool', 6], ['Blockvase', 5], ['mhr6091', 4], ['DATUM User', 4], ['Red Panda Mining', 4], ['TrueNorth', 3], ['Blake2b is BTC', 3], ['Jim Johnson', 3], ['CrypticBro2009', 2], ['Bitcoin Xor', 2], ['btc maxi', 2], ['Tower7', 2], ['ghost_of_nobody', 1], ['Napkin', 1], ['Son of Satoshi', 1], ['TerminusPool', 1], ['TwentyOne.Life', 1], ['Komodo', 1]] },
+    hashrate: { currentHashrate: 41394563947455700, currentDifficulty: 21846214529159510000,
+      // one point a week (the live API has one a day)
+      hashrates: [[1760486400, 1.2841e21], [1761091200, 1.0956e21], [1761696000, 1.1871e21], [1762300800, 1.0235e21], [1762905600, 1.183e21], [1763510400, 1.0148e21], [1764115200, 8.768e20], [1764720000, 9.424e20], [1765324800, 9.501e20], [1765929600, 1.0899e21], [1766534400, 1.0609e21], [1767139200, 8.732e20], [1767744000, 9.533e20], [1768348800, 9.8e20], [1768953600, 9.83e20], [1769558400, 8.488e20], [1770163200, 9.205e20], [1770768000, 8.967e20], [1771372800, 1.0302e21], [1771977600, 1.1754e21], [1772582400, 9.686e20], [1773187200, 1.0107e21], [1773792000, 8.974e20], [1774396800, 8.522e20], [1775001600, 9.067e20], [1775606400, 9.536e20], [1776211200, 1.1292e21], [1776816000, 9.083e20], [1777420800, 9.339e20], [1778025600, 9.851e20], [1778630400, 8.649e20], [1779235200, 9.629e20], [1779840000, 9.404e20], [1780444800, 7.598e20], [1781049600, 8.608e20], [1781654400, 1.0058e21], [1782259200, 1.0799e21], [1782864000, 9.785e20], [1783468800, 9.385e20], [1784073600, 1.0191e21], [1784678400, 8.668e20], [1785283200, 7.843e20], [1785888000, 8.801e20], [1786492800, 0], [1787097600, 0], [1787702400, 0], [1788307200, 2.1635e15], [1788912000, 1.9286e16], [1789516800, 3.3150e16], [1790121600, 3.4696e16], [1790726400, 3.9714e16], [1791331200, 4.0437e16], [1791417600, 4.0619e16]],
+      difficulty: [[1760594746, 1.46716e14], [1761732893, 1.55973e14], [1762972230, 1.52271e14], [1764206208, 1.49301e14], [1765424862, 1.48195e14], [1766634486, 1.48258e14], [1767859543, 1.46473e14], [1769110282, 1.41668e14], [1770472605, 1.25865e14], [1771527275, 1.44398e14], [1772731727, 1.45042e14], [1774043659, 1.33793e14], [1775208520, 1.38967e14], [1776448537, 1.35595e14], [1777687605, 1.32472e14], [1778860884, 1.36607e14], [1780050586, 1.38955e14], [1781396637, 1.24933e14], [1782525607, 1.3387e14], [1783800551, 1.27171e14], [1785019866, 1.26232e14], [1786219932, 1.2748e14], [1788070477, 1.30542e17], [1788280416, 7.66357e16], [1788343545, 3.06543e17], [1788540388, 1.22617e18], [1788831998, 4.90468e18], [1789236249, 1.46771e19], [1790130520, 1.98647e19], [1791230424, 2.18462e19]] },
+  };
+  var mining = null; // { live, at, pools: [{ name, blocks, miners: [[name, blocks]] }], blockCount, hashrates: [[t, h]], difficulty: [[t, d]], hash, diff }
+  var SI = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
+  function si(v, digits) { if (!v) return '0'; let i = 0; while (Math.abs(v) >= 1000 && i < SI.length - 1) { v /= 1000; i++; } return `${v.toFixed(digits ?? (v >= 100 ? 1 : 2))} ${SI[i]}`.trim(); }
+  function siShort(v) { let i = 0; while (v >= 1000 && i < SI.length - 1) { v /= 1000; i++; } return `${+v.toFixed(2)} ${SI[i]}`; }
+  async function getJson(path) {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+    try { const r = await fetch(MINING_API + path, { signal: ctl.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(to); }
+  }
+  async function loadMining() {
+    try {
+      const [p, h] = await Promise.all([getJson('/pools/1w'), getJson('/hashrate/1y')]);
+      mining = { live: true, at: Date.now() / 1000, blockCount: p.blockCount,
+        pools: p.pools.map((x) => ({ name: x.name, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
+        hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: h.difficulty.map((x) => [x.time, x.difficulty]),
+        hash: h.currentHashrate, diff: h.currentDifficulty };
+    } catch {
+      if (mining?.live) return; // keep the last live numbers
+      const s = MINING_SNAPSHOT;
+      mining = { live: false, at: s.at, blockCount: s.pools.blockCount, pools: s.pools.pools.map(([name, blocks, miners]) => ({ name, blocks, miners: miners || [] })),
+        hashrates: s.hashrate.hashrates, difficulty: s.hashrate.difficulty, hash: s.hashrate.currentHashrate, diff: s.hashrate.currentDifficulty };
+    }
+    renderMiningStats();
+  }
+  function renderMiningStats() {
+    const sec = $('mining-stats'); if (!sec) return;
+    sec.hidden = netId !== 'blake2b' || !mining;
+    if (sec.hidden) return;
+    const m = mining;
+    $('ms-luck').textContent = `${((m.blockCount / 1008) * 100).toFixed(2)}%`; // expected: 6 blocks an hour, 1,008 a week
+    $('ms-blocks').textContent = fmt(m.blockCount);
+    $('ms-pools').textContent = fmt(m.pools.length);
+    $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
+    $('ms-diff').textContent = si(m.diff, 2).replace(' ', '');
+    $('ms-source').textContent = m.live
+      ? `Live from mempool.guide/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : `Snapshot of mempool.guide/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (mempool.guide is not reachable from this page)`;
+    drawPie(m); drawChart(m);
+  }
+  const svgEl = (tag, attrs, text) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
+  const poolHue = (i) => [338, 285, 262, 228, 205, 190, 172, 150, 95, 62, 45, 30, 15, 0][i % 14];
+  function arcPath(cx, cy, r0, r1, a0, a1) {
+    const p = (r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`, large = a1 - a0 > Math.PI ? 1 : 0;
+    return `M${p(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${p(r1, a1)}L${p(r0, a1)}A${r0} ${r0} 0 ${large} 0 ${p(r0, a0)}Z`;
+  }
+  function tip(e, html) { let t = $('mtip'); if (!t) { t = document.createElement('div'); t.id = 'mtip'; t.className = 'mtip'; document.body.appendChild(t); } if (!html) { t.hidden = true; return; } t.hidden = false; t.innerHTML = html; t.style.left = Math.min(innerWidth - 250, e.clientX + 12) + 'px'; t.style.top = e.clientY + 12 + 'px'; }
+  function drawPie(m) {
+    const svg = $('ms-pie'); svg.replaceChildren();
+    const cx = 330, cy = 165, R = 140, R0 = 46, total = m.pools.reduce((a, p) => a + p.blocks, 0) || 1;
+    let a = -Math.PI / 2; const labels = [];
+    m.pools.forEach((p, i) => {
+      const share = p.blocks / total, a0 = a, a1 = a + share * Math.PI * 2; a = a1;
+      const g = svgEl('g', { class: 'slice', tabindex: '0', role: 'img', 'aria-label': `${p.name}: ${p.blocks} blocks, ${(share * 100).toFixed(1)}%` });
+      const hue = poolHue(i), top = p.miners.slice(0, 8), rest = p.blocks - top.reduce((s, x) => s + x[1], 0);
+      // a pool's miners as rings, the biggest miner innermost (as on mempool.guide)
+      const rings = top.length ? [...top, ...(rest > 0 ? [['other miners', rest]] : [])] : [[p.name, p.blocks]];
+      let r = R0; const sum = rings.reduce((s, x) => s + x[1], 0);
+      rings.forEach(([, n], k) => {
+        const r1 = k === rings.length - 1 ? R : r + ((R - R0) * n) / sum;
+        const light = rings.length > 1 ? 52 + (30 * k) / (rings.length - 1) : 58;
+        g.appendChild(svgEl('path', { d: arcPath(cx, cy, r, r1, a0, a1), fill: `hsl(${hue} 62% ${light}%)`, stroke: 'var(--surface)', 'stroke-width': share > 0.02 ? 1 : 0.4 }));
+        r = r1;
+      });
+      g.addEventListener('mousemove', (e) => tip(e, `<b>${esc(p.name)}</b><br>${fmt(p.blocks)} blocks · ${(share * 100).toFixed(1)}%${top.length ? '<br>' + top.slice(0, 5).map(([n, b]) => `${esc(n)} ${b}`).join('<br>') : ''}`));
+      g.addEventListener('mouseleave', (e) => tip(e, null));
+      svg.appendChild(g);
+      if (share >= 0.004 && labels.length < 18) { const mid = (a0 + a1) / 2; labels.push({ name: p.name, mid, hue, right: Math.cos(mid) > 0, y: cy + (R + 14) * Math.sin(mid) }); }
+    });
+    // labels left and right of the ring, spread out so they don't overlap
+    for (const right of [true, false]) {
+      const side = labels.filter((l) => l.right === right).sort((p, q) => p.y - q.y);
+      side.forEach((l, k) => { if (k && l.y < side[k - 1].y + 16) l.y = side[k - 1].y + 16; });
+      const over = side.length ? side[side.length - 1].y - 322 : 0; if (over > 0) side.forEach((l) => (l.y -= over));
+      side.forEach((l, k) => { if (k && l.y < side[k - 1].y + 16) l.y = side[k - 1].y + 16; if (l.y < 10) l.y = 10 + k * 16; });
+      side.forEach((l) => {
+        const x0 = cx + R * Math.cos(l.mid), y0 = cy + R * Math.sin(l.mid), x1 = cx + (R + 14) * Math.cos(l.mid), xe = right ? cx + R + 34 : cx - R - 34;
+        svg.appendChild(svgEl('polyline', { points: `${x0},${y0} ${x1},${l.y} ${xe},${l.y}`, fill: 'none', stroke: `hsl(${l.hue} 62% 58%)`, 'stroke-width': 1.5 }));
+        svg.appendChild(svgEl('text', { x: right ? xe + 5 : xe - 5, y: l.y + 4, 'text-anchor': right ? 'start' : 'end', fill: 'var(--muted)', 'font-size': 14 }, l.name));
+      });
+    }
+  }
+  function niceStep(max, n) { const raw = max / n, p = 10 ** Math.floor(Math.log10(raw)), f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 3 ? 3 : f <= 5 ? 5 : 10) * p; }
+  function drawChart(m) {
+    const svg = $('ms-chart'); svg.replaceChildren();
+    const L = 78, Rt = 530, T = 14, B = 290, hs = m.hashrates, ds = m.difficulty;
+    if (!hs.length) return;
+    const t0 = hs[0][0], t1 = Math.max(hs[hs.length - 1][0], ds.length ? ds[ds.length - 1][0] : 0);
+    const X = (t) => L + ((t - t0) / (t1 - t0 || 1)) * (Rt - L);
+    const hMax = Math.max(...hs.map((x) => x[1])) || 1, hStep = niceStep(hMax, 4), hTop = Math.ceil(hMax / hStep) * hStep;
+    const dMax = Math.max(...ds.map((x) => x[1]), 1), dStep = niceStep(dMax, 4), dTop = Math.ceil(dMax / dStep) * dStep;
+    const YH = (v) => B - (v / hTop) * (B - T), YD = (v) => B - (v / dTop) * (B - T);
+    for (let v = hStep; v <= hTop + 1; v += hStep) {
+      svg.appendChild(svgEl('line', { x1: L, x2: Rt, y1: YH(v), y2: YH(v), stroke: 'var(--line)', 'stroke-dasharray': '2 4' }));
+      svg.appendChild(svgEl('text', { x: L - 8, y: YH(v) + 4, 'text-anchor': 'end', fill: 'var(--muted)', 'font-size': 12 }, siShort(v) + 'H/s'));
+    }
+    for (let v = dStep; v <= dTop + 1; v += dStep) svg.appendChild(svgEl('text', { x: Rt + 8, y: YD(v) + 4, fill: 'var(--muted)', 'font-size': 12 }, siShort(v).replace(' ', '')));
+    svg.appendChild(svgEl('line', { x1: L, x2: Rt, y1: B, y2: B, stroke: 'var(--line-strong)' }));
+    // months along the bottom, the year where it starts
+    const d = new Date(t0 * 1000); d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0);
+    for (d.setUTCMonth(d.getUTCMonth() + 1); d.getTime() / 1000 <= t1; d.setUTCMonth(d.getUTCMonth() + 2)) {
+      const x = X(d.getTime() / 1000), jan = d.getUTCMonth() === 0;
+      svg.appendChild(svgEl('line', { x1: x, x2: x, y1: B, y2: B + 5, stroke: 'var(--line-strong)' }));
+      svg.appendChild(svgEl('text', { x, y: B + 20, 'text-anchor': 'middle', fill: jan ? 'var(--text)' : 'var(--muted)', 'font-size': 12, 'font-weight': jan ? 600 : 400 }, jan ? String(d.getUTCFullYear()) : d.toLocaleDateString('en', { month: 'short', timeZone: 'UTC' })));
+    }
+    const line = (pts, color, w) => svg.appendChild(svgEl('polyline', { points: pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '), fill: 'none', stroke: color, 'stroke-width': w, 'stroke-linejoin': 'round' }));
+    line(hs.map(([t, v]) => [X(t), YH(v)]), '#f6c177', 1);
+    const k = hs.length > 120 ? 7 : 3; // 7-day average (3 points for the weekly snapshot)
+    line(hs.map(([t], i) => { const w = hs.slice(Math.max(0, i - k + 1), i + 1); return [X(t), YH(w.reduce((s, x) => s + x[1], 0) / w.length)]; }), '#e8862a', 2.6);
+    // difficulty only changes at an adjustment: a step line
+    const steps = []; ds.forEach(([t, v], i) => { if (i) steps.push([X(t), YD(ds[i - 1][1])]); steps.push([X(t), YD(v)]); }); steps.push([X(t1), YD(ds[ds.length - 1][1])]);
+    if (ds.length) { steps.unshift([L, YD(ds[0][1])]); line(steps, '#d6336c', 2.4); }
+  }
+  setInterval(loadMining, 5 * 60_000);
+
   NETWORKS.forEach((n) => connectLive(n.id));
+  loadMining();
   renderNetworks();
   renderProjected();
   renderMined(false);
