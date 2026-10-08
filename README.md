@@ -362,3 +362,22 @@ The blockchain strip builds on the visual language of **[The Mempool Open Source
 
 hashes.space is an independent project and is not affiliated with or endorsed by Mempool Holdings S.A. de C.V. mempool.space® and the mempool logos are trademarks of Mempool Holdings; they are used here only to name the data sources.
 
+
+## Find Mempool page and themes
+
+[`demo/mempool.html`](demo/mempool.html) is a stand-alone page with only the blockchain: pick **Bitcoin BLAKE2b** or **Monero** and watch the mempool and the last blocks, with mining pools and hashrate & difficulty from mempool.guide under the blocks (BLAKE2b).
+
+**Themes** (top right) changes the background. **Space**, a slow starfield, is the default; **Plain** is the dark background without animation. Add your own theme in a `<script>` after the page's scripts:
+
+```js
+HashesThemes.register({
+  id: 'aurora', label: 'Aurora', note: 'Green northern lights',
+  swatch: '#0b2a2a',          // the colour dot in the Themes menu
+  background: '#05100f',      // page colour behind the animation
+  setup(ctx, width, height) { // draw on a full-page canvas behind everything
+    return { frame(dt, t) { /* draw one frame; dt and t in seconds */ } };
+  },
+});
+```
+
+The visitor's choice is remembered in their browser, and visitors who ask their device to reduce motion get a still frame.

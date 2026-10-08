@@ -1,66 +1,142 @@
 <!--CSS-->
-  /* Space theme: a slow starfield behind the page (toggle in the top bar) */
-  #space { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; display: none; }
-  html.space-on #space { display: block; }
-  html.space-on { background: #070913; }
-  html.space-on body { background: transparent; }
-  html.space-on .topbar { background: rgba(10, 12, 24, 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-  html.space-on .netbar, html.space-on .strip { background: rgba(10, 12, 24, 0.45); }
-  html.space-on .mcard { background: rgba(29, 31, 49, 0.82); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
-  .theme-toggle { margin-left: auto; display: inline-flex; align-items: center; gap: 8px; background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 5px 10px 5px 6px; color: var(--muted); font: 500 12.5px/1 var(--sans); cursor: pointer; }
-  .theme-toggle:hover { color: var(--text); border-color: var(--muted); }
-  .theme-toggle:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
-  .theme-toggle .track { position: relative; width: 30px; height: 16px; border-radius: 999px; background: var(--line); transition: background .2s; }
-  .theme-toggle .track::after { content: ''; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%; background: var(--muted); transition: transform .2s, background .2s; }
-  .theme-toggle[aria-pressed="true"] .track { background: #2b3b7a; }
-  .theme-toggle[aria-pressed="true"] .track::after { transform: translateX(14px); background: #cfd8ff; }
+  /* Themes: an animated background behind the page, picked under "Themes" in the top bar.
+     A theme with a background sets html.bg-theme: the page's bars and cards turn see-through. */
+  #theme-bg { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; display: none; }
+  html.bg-theme #theme-bg { display: block; }
+  html.bg-theme { background: var(--theme-bg, #070913); }
+  html.bg-theme body { background: transparent; }
+  html.bg-theme .topbar { background: rgba(10, 12, 24, 0.55); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+  html.bg-theme .netbar, html.bg-theme .strip { background: rgba(10, 12, 24, 0.45); }
+  html.bg-theme .mcard { background: rgba(29, 31, 49, 0.82); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+  .themes { position: relative; margin-left: auto; }
+  .themes-btn { display: inline-flex; align-items: center; gap: 8px; background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 6px 12px 6px 8px; color: var(--muted); font: 500 12.5px/1 var(--sans); cursor: pointer; }
+  .themes-btn:hover, .themes-btn[aria-expanded="true"] { color: var(--text); border-color: var(--muted); }
+  .themes-btn:focus-visible, .themes-menu button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .themes-btn .sw { width: 14px; height: 14px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--sw, #11131f); }
+  .themes-btn .chev { font-size: 10px; opacity: .7; }
+  .themes-menu { position: absolute; right: 0; top: calc(100% + 6px); z-index: 40; min-width: 210px; margin: 0; padding: 6px; list-style: none; background: #151829; border: 1px solid var(--line-strong); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.45); }
+  .themes-menu button { width: 100%; display: grid; grid-template-columns: 16px 1fr auto; align-items: center; gap: 10px; text-align: left; background: none; border: 0; border-radius: 5px; padding: 8px; color: var(--text); font: 500 13px/1.25 var(--sans); cursor: pointer; }
+  .themes-menu button:hover { background: var(--surface); }
+  .themes-menu .sw { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--sw); }
+  .themes-menu .note { color: var(--muted); font-size: 11.5px; font-weight: 400; }
+  .themes-menu [aria-checked="true"]::after { content: '✓'; color: var(--link); }
 <!--TOGGLE-->
-  <button type="button" class="theme-toggle" id="theme-toggle" aria-pressed="false" title="Switch the starry space background on or off"><span class="track" aria-hidden="true"></span>Space theme</button>
+  <div class="themes">
+    <button type="button" class="themes-btn" id="themes-btn" aria-haspopup="menu" aria-expanded="false" aria-controls="themes-menu"><span class="sw" aria-hidden="true"></span>Themes<span class="chev" aria-hidden="true">▾</span></button>
+    <ul class="themes-menu" id="themes-menu" role="menu" aria-label="Themes" hidden></ul>
+  </div>
 <!--JS-->
-<canvas id="space" aria-hidden="true"></canvas>
+<canvas id="theme-bg" aria-hidden="true"></canvas>
 <script>
-// Space theme: a soothing starfield that drifts slowly behind the page. Off: the plain dark background.
+/*
+ * Themes for hashes.space. Space is the default. Add your own with:
+ *
+ *   HashesThemes.register({
+ *     id: 'aurora', label: 'Aurora', note: 'Green northern lights',
+ *     swatch: '#0b2a2a',                 // the colour dot in the menu (any CSS background)
+ *     background: '#05100f',             // page colour behind the canvas
+ *     setup(ctx, width, height) {        // called when the theme starts and when the window resizes
+ *       return { frame(dt, t) { … draw one frame on ctx … } };   // dt and t in seconds
+ *     },
+ *   });
+ *
+ * A theme without setup() keeps the page's plain background. Visitors who ask their device
+ * to reduce motion get a still frame. The choice is remembered in the visitor's browser.
+ */
 (() => {
-  const root = document.documentElement, btn = document.getElementById('theme-toggle'), cv = document.getElementById('space'), ctx = cv.getContext('2d');
+  const root = document.documentElement, cv = document.getElementById('theme-bg'), ctx = cv.getContext('2d');
+  const btn = document.getElementById('themes-btn'), menu = document.getElementById('themes-menu');
   const still = matchMedia('(prefers-reduced-motion: reduce)');
-  let stars = [], nebula = null, w = 0, h = 0, dpr = 1, raf = 0, last = 0;
-  const rnd = (a, b) => a + Math.random() * (b - a);
-  function build() {
-    dpr = Math.min(2, devicePixelRatio || 1); w = innerWidth; h = innerHeight;
+  const DEFAULT = 'space', themes = [];
+  let current = null, scene = null, raf = 0, last = 0, w = 0, h = 0, saved = null;
+  try { saved = localStorage.getItem('hs-theme'); } catch {}
+  const wanted = () => saved || DEFAULT;
+
+  function size() {
+    const dpr = Math.min(2, devicePixelRatio || 1); w = innerWidth; h = innerHeight;
     cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    const n = Math.min(520, Math.round((w * h) / 2600));
-    // three depths: far stars are small, dim and slow; near ones a little brighter and faster
-    stars = Array.from({ length: n }, () => { const z = Math.random() ** 1.8; return { x: rnd(0, w), y: rnd(0, h), z, r: 0.35 + z * 1.15, a: 0.25 + z * 0.55, tw: rnd(0, Math.PI * 2), ts: rnd(0.15, 0.5), hue: Math.random() < 0.15 ? rnd(200, 230) : Math.random() < 0.1 ? rnd(30, 45) : 0 }; });
-    // faint nebula clouds, drawn once
-    nebula = document.createElement('canvas'); nebula.width = w; nebula.height = h; const g = nebula.getContext('2d');
-    [[0.18, 0.25, '86,70,190'], [0.82, 0.7, '30,90,170'], [0.55, 0.1, '140,60,170']].forEach(([fx, fy, c]) => {
-      const r = Math.max(w, h) * rnd(0.35, 0.55), gr = g.createRadialGradient(fx * w, fy * h, 0, fx * w, fy * h, r);
-      gr.addColorStop(0, `rgba(${c},0.10)`); gr.addColorStop(1, `rgba(${c},0)`); g.fillStyle = gr; g.fillRect(0, 0, w, h);
-    });
   }
-  function draw(t) {
+  function loop(t) {
     const dt = last ? Math.min(0.1, (t - last) / 1000) : 0; last = t;
-    ctx.fillStyle = '#070913'; ctx.fillRect(0, 0, w, h); ctx.drawImage(nebula, 0, 0);
-    for (const s of stars) {
-      if (!still.matches) { s.x -= (2 + s.z * 9) * dt; s.y += (0.6 + s.z * 2) * dt; s.tw += s.ts * dt; } // a slow drift to the lower left
-      if (s.x < -2) s.x += w + 4; if (s.y > h + 2) s.y -= h + 4;
-      const a = s.a * (0.75 + 0.25 * Math.sin(s.tw));
-      ctx.fillStyle = s.hue ? `hsla(${s.hue},80%,82%,${a})` : `rgba(235,240,255,${a})`;
-      ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
-    }
-    raf = still.matches ? 0 : requestAnimationFrame(draw);
+    scene.frame(still.matches ? 0 : dt, t / 1000);
+    raf = still.matches ? 0 : requestAnimationFrame(loop);
   }
-  function start() { cancelAnimationFrame(raf); last = 0; if (root.classList.contains('space-on') && !document.hidden) raf = requestAnimationFrame(draw); }
-  function set(on, save) {
-    root.classList.toggle('space-on', on); btn.setAttribute('aria-pressed', String(on));
-    if (save) try { localStorage.setItem('hs-space', on ? '1' : '0'); } catch {}
-    if (on && !stars.length) build(); start();
+  function run() { cancelAnimationFrame(raf); raf = 0; last = 0; if (scene && !document.hidden) raf = requestAnimationFrame(loop); }
+  function apply(th, save) {
+    current = th; scene = null;
+    root.dataset.bgTheme = th.id;
+    root.classList.toggle('bg-theme', !!th.setup);
+    root.style.setProperty('--theme-bg', th.background || '#070913');
+    btn.style.setProperty('--sw', th.swatch || '#11131f');
+    btn.title = `Theme: ${th.label}`;
+    if (th.setup) { size(); scene = th.setup(ctx, w, h); }
+    if (save) { saved = th.id; try { localStorage.setItem('hs-theme', th.id); } catch {} }
+    renderMenu(); run();
   }
-  btn.addEventListener('click', () => set(!root.classList.contains('space-on'), true));
-  addEventListener('resize', () => { if (stars.length) { build(); start(); } });
-  document.addEventListener('visibilitychange', start);
-  still.addEventListener?.('change', start);
-  let saved = null; try { saved = localStorage.getItem('hs-space'); } catch {}
-  set(saved !== '0', false); // on by default
+  function renderMenu() {
+    menu.replaceChildren(...themes.map((th) => {
+      const li = document.createElement('li'); li.setAttribute('role', 'none');
+      const b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'menuitemradio');
+      b.setAttribute('aria-checked', String(th === current)); b.dataset.theme = th.id;
+      const sw = document.createElement('span'); sw.className = 'sw'; sw.style.setProperty('--sw', th.swatch || '#11131f');
+      const tx = document.createElement('span'); tx.textContent = th.label;
+      if (th.note) { const n = document.createElement('span'); n.className = 'note'; n.textContent = th.note; tx.append(document.createElement('br'), n); }
+      b.append(sw, tx); li.append(b); return li;
+    }));
+  }
+  function open(on) { menu.hidden = !on; btn.setAttribute('aria-expanded', String(on)); if (on) menu.querySelector('[aria-checked="true"]')?.focus(); }
+  btn.addEventListener('click', () => open(menu.hidden));
+  menu.addEventListener('click', (e) => { const b = e.target.closest('[data-theme]'); if (b) { apply(themes.find((x) => x.id === b.dataset.theme), true); open(false); btn.focus(); } });
+  menu.addEventListener('keydown', (e) => {
+    const items = [...menu.querySelectorAll('button')], i = items.indexOf(document.activeElement);
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length]?.focus(); }
+    if (e.key === 'Escape') { open(false); btn.focus(); }
+  });
+  document.addEventListener('click', (e) => { if (!menu.hidden && !e.target.closest('.themes')) open(false); });
+  addEventListener('resize', () => { if (current?.setup) { size(); scene = current.setup(ctx, w, h); run(); } });
+  document.addEventListener('visibilitychange', run);
+  still.addEventListener?.('change', run);
+
+  window.HashesThemes = {
+    register(th) {
+      if (!th || !/^[a-z0-9-]+$/.test(th.id || '') || !th.label || themes.some((x) => x.id === th.id)) return;
+      themes.push(th);
+      // the first theme shows straight away; the visitor's own pick (or the default) takes over when it arrives
+      if (!current || th.id === wanted()) apply(th, false); else renderMenu();
+    },
+    use(id) { const th = themes.find((x) => x.id === id); if (th) apply(th, true); },
+    list: () => themes.map(({ id, label }) => ({ id, label })),
+  };
+
+  // ---- built-in themes ----
+  // Space (default): a soothing starfield drifting slowly to the lower left, with faint nebula clouds
+  HashesThemes.register({
+    id: 'space', label: 'Space', note: 'Slow drifting stars', background: '#070913',
+    swatch: 'radial-gradient(circle at 35% 35%, #cfd8ff 0 14%, #2b2f6a 15% 100%)',
+    setup(ctx, w, h) {
+      const rnd = (a, b) => a + Math.random() * (b - a), n = Math.min(520, Math.round((w * h) / 2600));
+      // three depths: far stars small, dim and slow; near ones a little brighter and faster
+      const stars = Array.from({ length: n }, () => { const z = Math.random() ** 1.8; return { x: rnd(0, w), y: rnd(0, h), z, r: 0.35 + z * 1.15, a: 0.25 + z * 0.55, tw: rnd(0, 6.3), ts: rnd(0.15, 0.5), hue: Math.random() < 0.15 ? rnd(200, 230) : Math.random() < 0.1 ? rnd(30, 45) : 0 }; });
+      const neb = document.createElement('canvas'); neb.width = w; neb.height = h; const g = neb.getContext('2d');
+      [[0.18, 0.25, '86,70,190'], [0.82, 0.7, '30,90,170'], [0.55, 0.1, '140,60,170']].forEach(([fx, fy, c]) => {
+        const r = Math.max(w, h) * rnd(0.35, 0.55), gr = g.createRadialGradient(fx * w, fy * h, 0, fx * w, fy * h, r);
+        gr.addColorStop(0, `rgba(${c},0.10)`); gr.addColorStop(1, `rgba(${c},0)`); g.fillStyle = gr; g.fillRect(0, 0, w, h);
+      });
+      return {
+        frame(dt) {
+          ctx.fillStyle = '#070913'; ctx.fillRect(0, 0, w, h); ctx.drawImage(neb, 0, 0);
+          for (const s of stars) {
+            s.x -= (2 + s.z * 9) * dt; s.y += (0.6 + s.z * 2) * dt; s.tw += s.ts * dt;
+            if (s.x < -2) s.x += w + 4; if (s.y > h + 2) s.y -= h + 4;
+            const a = s.a * (0.75 + 0.25 * Math.sin(s.tw));
+            ctx.fillStyle = s.hue ? `hsla(${s.hue},80%,82%,${a})` : `rgba(235,240,255,${a})`;
+            ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+          }
+        },
+      };
+    },
+  });
+  // Plain: the page's own dark background, no animation
+  HashesThemes.register({ id: 'plain', label: 'Plain', note: 'No background animation', swatch: '#11131f' });
 })();
 </script>
