@@ -2927,6 +2927,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     const bl = chain().blocks ?? []; if (!bl.length) return 0;
     return bl.reduce((a, b) => a + (b.totalFees || (b.medianFee || 0) * (b.weight || 0) / 4), 0) / bl.length;
   }
+  // 1.2345 / 0.012345 / 0.00004794: up to 8 decimals (1 sat), 4 significant digits
+  const coinAmount = (x) => (x <= 0 ? '0' : x >= 1 ? fmt(x, 4) : x.toFixed(Math.min(8, 3 - Math.floor(Math.log10(x)))));
   const coins = (x, t) => `${x >= 1 ? fmt(x, 3) : x >= 0.001 ? fmt(x, 5) : fmt(Math.round(x * 1e8))} ${x >= 0.001 ? t : 'sats'}`;
   function renderPoolCalc() {
     const m = mining; if (!m || !$('pcalc-form')) return;
@@ -2945,10 +2947,11 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     const yours = total ? h / total : 0; // your part of every block's reward in the TIDES window
     const reward = cfg.subsidy + avgFeesSats() / 1e8; // subsidy + average fees per block
     const perBlockForYou = yours * reward * (1 - cfg.fee); // what you get each time the pool finds a block
-    CALC_PERIODS.forEach(([id, t]) => set('p' + id, pct(-Math.expm1(-rate * t)), h ? `you ≈ ${coins(rate * t * perBlockForYou, cfg.ticker)}` : ''));
+    // big: the coins you receive on average in the period (after the pool fee); small: the chance the pool finds a block in it
+    CALC_PERIODS.forEach(([id, t]) => set('p' + id, h ? coinAmount(rate * t * perBlockForYou) : '–', h ? `${cfg.ticker} · pool block chance ${pct(-Math.expm1(-rate * t))}` : ''));
     const windowSec = total ? (cfg.window * perBlock) / total : 0; // how long a share stays in the TIDES window
     const perDay = rate * 86400 * perBlockForYou;
-    $('pcalc-note').textContent = `Chance that ${cfg.name} finds at least one block, and your TIDES earnings after its fee (${cfg.feeNote}). `
+    $('pcalc-note').textContent = `The ${cfg.ticker} you receive on average when you point this hashrate through your DATUM Gateway to ${cfg.name}, paid with TIDES after its fee (${cfg.feeNote}). `
       + `${cfg.name} ≈ ${poolHash ? `${si(poolHash, 1)}H/s (${(100 * stat.blocks / m.blockCount).toFixed(1)}% of last week's blocks)` : 'unknown hashrate'}; a block pays about ${fmt(reward, 3)} ${cfg.ticker} (${fmt(cfg.subsidy, 3)} subsidy + fees). `
       + (h ? `You get about ${smallPct(yours)} of every block it finds; each share stays in the TIDES window (${cfg.window} × difficulty) for about ${ageText(windowSec)}, so it is paid about ${cfg.window} times. `
         + `On-chain payout at ${fmt(cfg.threshold, 8)} ${cfg.ticker}: about every ${perDay > 0 ? ageText((cfg.threshold / perDay) * 86400) : '–'}.` : 'Enter your hashrate to see your share.');
