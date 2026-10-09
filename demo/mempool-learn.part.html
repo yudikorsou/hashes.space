@@ -1,0 +1,113 @@
+<!--CSS-->
+  /* Learn: short explainers at the bottom of the page, in the same soft-glow style as the charts */
+  .learn { max-width: 1280px; margin: 0 auto; padding: 36px 20px 56px; display: grid; gap: 18px; }
+  .learn-head { text-align: center; display: grid; gap: 6px; justify-items: center; }
+  .learn-head h2 { margin: 0; font: 600 14px/1.2 var(--sans); color: var(--link); letter-spacing: .02em; }
+  .learn-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 60ch; }
+  .learn-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 28px; align-items: start; }
+  @media (max-width: 900px) { .learn-grid { grid-template-columns: minmax(0, 1fr); } .learn { padding-inline: 16px; } }
+  .learn details { border-radius: 18px; background: radial-gradient(ellipse 90% 120% at 50% 0%, rgba(70, 78, 140, 0.14), rgba(70, 78, 140, 0) 75%); }
+  .learn details[open] { background: radial-gradient(ellipse 90% 80% at 50% 20%, rgba(70, 78, 140, 0.2), rgba(70, 78, 140, 0) 80%); }
+  .learn summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px 16px; border-radius: 18px; font: 600 15px/1.3 var(--sans); color: var(--text); }
+  .learn summary::-webkit-details-marker { display: none; }
+  .learn summary:hover { color: #fff; background: rgba(160, 170, 230, 0.05); }
+  .learn summary:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .learn summary .n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; font: 600 12px/1 var(--mono); color: var(--link); background: rgba(27, 216, 244, 0.1); border: 1px solid rgba(27, 216, 244, 0.25); }
+  .learn summary .pm { color: var(--muted); font: 400 18px/1 var(--mono); transition: transform .2s; }
+  .learn details[open] summary .pm { transform: rotate(45deg); color: var(--link); }
+  .learn .body { padding: 0 18px 18px 56px; display: grid; gap: 10px; }
+  @media (max-width: 520px) { .learn .body { padding-left: 18px; } }
+  .learn .body p { margin: 0; color: var(--muted); font: 400 14px/1.65 var(--sans); max-width: 68ch; }
+  .learn .body p b, .learn .body li b { color: var(--text); font-weight: 500; }
+  .learn .body a { color: var(--link); }
+  .learn .body ol { margin: 0; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 8px; }
+  .learn .body ol li { counter-increment: step; display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 10px; color: var(--muted); font: 400 14px/1.6 var(--sans); }
+  .learn .body ol li::before { content: counter(step); display: inline-grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 6px; font: 600 11px/1 var(--mono); color: var(--text); background: rgba(147, 57, 244, 0.35); }
+  /* a hash, bit by bit: one nibble (4 bits) per hex character */
+  .nibbles { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0; }
+  .nibbles span { display: grid; justify-items: center; gap: 3px; padding: 6px 8px; border-radius: 8px; background: rgba(10, 12, 24, 0.55); border: 1px solid var(--line); }
+  .nibbles code { font: 500 11px/1 var(--mono); color: var(--muted); letter-spacing: .06em; }
+  .nibbles b { font: 600 15px/1 var(--mono); color: var(--matrix); }
+  .hexline { margin: 0; padding: 10px 12px; border-radius: 10px; background: rgba(10, 12, 24, 0.55); border: 1px solid var(--line); font: 500 12.5px/1.5 var(--mono); color: var(--text); overflow-wrap: anywhere; }
+  .hexline em { font-style: normal; color: var(--matrix); }
+  .hexcap { margin: -4px 0 0; font-size: 12px; color: var(--muted); }
+  .vs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  @media (max-width: 520px) { .vs { grid-template-columns: minmax(0, 1fr); } }
+  .vs > div { padding: 12px 14px; border-radius: 12px; background: rgba(10, 12, 24, 0.45); border: 1px solid var(--line); display: grid; gap: 6px; }
+  .vs h4 { margin: 0; font: 600 13px/1.2 var(--sans); }
+  .vs .c h4 { color: #ff8a65; } .vs .d h4 { color: var(--matrix); }
+  .vs p { font-size: 13.5px !important; }
+<!--HTML-->
+<section class="learn" id="learn" aria-labelledby="learn-title">
+  <div class="learn-head">
+    <h2 id="learn-title">Learn</h2>
+    <p>How miners and computers talk to each other, from bits to blocks.</p>
+  </div>
+  <div class="learn-grid">
+    <div class="learn-col">
+      <details open>
+        <summary><span class="n">1</span>What are hashes?<span class="pm" aria-hidden="true">+</span></summary>
+        <div class="body">
+          <p>A hash is a collection of <b>bits</b> (0s and 1s) inside a computer, but it is shown to humans as a <b>fixed-length string of letters and numbers</b>.</p>
+          <p>Reading a long sequence of 0s and 1s is hard for people. To make hashes easy to read, computers translate groups of bits into a text format called <b>hexadecimal encoding</b>.</p>
+          <p>Hexadecimal uses 16 symbols: the numbers <b>0–9</b> and the letters <b>A–F</b>. That makes a hash far easier to read than the 256 or 512 bits behind it, which would be a very long string of 0s and 1s.</p>
+          <p>Every group of <b>4 bits is called a nibble</b>, and every nibble turns into a single letter or number in hexadecimal:</p>
+          <div class="nibbles" aria-label="Nibbles: 0000 is 0, 0001 is 1, 1001 is 9, 1010 is A, 1100 is C, 1111 is F">
+            <span><code>0000</code><b>0</b></span><span><code>0001</code><b>1</b></span><span><code>1001</code><b>9</b></span><span><code>1010</code><b>A</b></span><span><code>1100</code><b>C</b></span><span><code>1111</code><b>F</b></span>
+          </div>
+          <p class="hexline" aria-label="A 256-bit block hash written as 64 hexadecimal characters"><em>0000000000000000000</em>1a7c3f09b2e6d48c15f7e2a9b0c34d6e81f25a9c7b3e0</p>
+          <p class="hexcap">A 256-bit block hash = 64 hex characters (64 × 4 bits). The leading zeros are what miners search for.</p>
+        </div>
+      </details>
+      <details>
+        <summary><span class="n">2</span>How are hashes generated?<span class="pm" aria-hidden="true">+</span></summary>
+        <div class="body">
+          <p>A hash is generated by passing data of any size through a mathematical algorithm called a <b>hash function</b>.</p>
+          <p>Mining hardware uses wide data buses to move bits in parallel. A miner using the hash function <b>SHA-256</b> (Bitcoin) processes data in blocks of <b>512 bits</b> and outputs a hash of exactly <b>256 bits</b>.</p>
+          <p>A miner using <b>BLAKE2b</b> (Bitcoin BLAKE2b) hashes a restructured <b>164-byte</b> block header. Every 8 bits make a byte, so that is <b>1,312 bits</b> of input, while the hash it outputs is still exactly <b>256 bits</b>.</p>
+          <p>The microscopic transistors on a mining chip perform <b>bitwise operations</b> (like AND, XOR and bit-shifting) directly on these streams of bits, billions of times per second.</p>
+          <p>When your mining software talks to the hashing hardware (ASIC chips or GPU cores), the bits are grouped into bytes: a 256-bit hash travels over the PCIe bus or another interface as a <b>32-byte array</b>.</p>
+          <p>When you mine in a pool and your miner finds a valid share, sending raw bits over the internet is inefficient and error-prone. So the software turns the bits into a <b>hexadecimal string</b>: one hex character is exactly one nibble, so a 256-bit hash travels as a readable <b>64-character</b> text string.</p>
+          <p>Most miners speak the <b>Stratum</b> protocol, to a pool or to their own <b>DATUM Gateway</b>, which packs these hex strings into standard <b>JSON-RPC</b> text messages sent over TCP.</p>
+        </div>
+      </details>
+      <details>
+        <summary><span class="n">3</span>How does my ASIC send a share to a mining pool?<span class="pm" aria-hidden="true">+</span></summary>
+        <div class="body">
+          <ol>
+            <li><span>Your mining software receives the work in <b>hexadecimal</b>, built from your node's block template, and converts it into raw <b>binary bytes</b>.</span></li>
+            <li><span>The raw bytes are fed into the ASIC hashing boards over an internal <b>serial bus</b>.</span></li>
+            <li><span>The ASIC hashes the bytes and returns a <b>32-bit nonce</b> (4 bytes) when it finds a share.</span></li>
+            <li><span>The software sends that share back as hex text in a Stratum message, to the pool or through your DATUM Gateway.</span></li>
+          </ol>
+          <p>Visit our <a href="https://hashes.space" target="_blank" rel="noopener">dashboard</a> to see a live visualization of your miner returning 32-bit nonces every time it finds a share.</p>
+        </div>
+      </details>
+    </div>
+    <div class="learn-col">
+      <details open>
+        <summary><span class="n">4</span>What is hashrate?<span class="pm" aria-hidden="true">+</span></summary>
+        <div class="body">
+          <p><b>Hashrate</b> is the measure of the total computing power and speed a proof-of-work blockchain network uses to process transactions and mine new blocks: how many hashes per second (H/s, TH/s, EH/s) all miners together try.</p>
+        </div>
+      </details>
+      <details>
+        <summary><span class="n">5</span>What is decentralised hashrate?<span class="pm" aria-hidden="true">+</span></summary>
+        <div class="body">
+          <p><b>Decentralised hashrate</b> is the computing power a proof-of-work network uses to process transactions and mine new blocks with <b>locally constructed block templates</b>: every miner decides what goes into the block they work on.</p>
+        </div>
+      </details>
+      <details>
+        <summary><span class="n">6</span>Centralised vs decentralised hashrate<span class="pm" aria-hidden="true">+</span></summary>
+        <div class="body">
+          <div class="vs">
+            <div class="c"><h4>Centralised</h4>
+              <p>Miners have little to no visibility or control over which transactions are included or excluded; they merely rent out raw hash power. A handful of large mining pools decide the contents of most of the network's blocks.</p></div>
+            <div class="d"><h4>Decentralised</h4>
+              <p>Miners have sovereign control and visibility over which transactions are included or excluded. They run their own Bitcoin full node (such as Bitcoin Knots or Bitcoin Core) and a protocol like DATUM Gateway that talks directly to their mining hardware.</p></div>
+          </div>
+        </div>
+      </details>
+    </div>
+  </div>
+</section>
