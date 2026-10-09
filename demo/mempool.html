@@ -541,12 +541,15 @@
   @media (prefers-reduced-motion: reduce) { .block-wrap.datum .cube { animation: none; filter: drop-shadow(0 0 6px rgba(60,226,107,.75)) drop-shadow(0 0 16px rgba(60,226,107,.35)); } }
   /* How to read it: a popover next to the PoW picker */
   .howto { position: relative; }
-  .howto-btn { display: inline-flex; align-items: center; gap: 8px; background: none; border: 1px solid var(--line-strong); border-radius: 999px; padding: 7px 13px 7px 8px; color: var(--muted); font: 500 13px/1 var(--sans); cursor: pointer; }
-  .howto-btn:hover, .howto-btn[aria-expanded="true"] { color: var(--text); border-color: var(--muted); }
-  .howto-btn:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
-  .howto-btn .i { display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 50%; background: rgba(27,216,244,.15); color: var(--link); font: 700 11px/1 var(--sans); }
-  .howto-pop { position: absolute; left: calc(100% + 12px); top: -6px; z-index: 45; width: min(440px, calc(100vw - 32px)); padding: 14px 16px; background: rgba(16, 18, 34, .96); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.5); display: grid; gap: 8px; }
+  /* plain words next to the PoW picker; hover (or focus, or tap) shows the explanation */
+  .howto-btn { background: none; border: 0; padding: 6px 2px; color: var(--muted); font: 500 13px/1 var(--sans); cursor: help; text-decoration: underline dotted rgba(158,164,188,.6); text-underline-offset: 4px; }
+  .howto-btn:hover, .howto.open .howto-btn, .howto-btn:focus-visible { color: var(--text); }
+  .howto-btn:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 3px; }
+  .howto-pop { display: none; }
+  .howto:hover .howto-pop, .howto:focus-within .howto-pop, .howto.open .howto-pop { display: grid; }
+  .howto .howto-pop { position: absolute; left: calc(100% + 12px); top: -6px; z-index: 45; width: min(440px, calc(100vw - 32px)); padding: 14px 16px; background: rgba(16, 18, 34, .96); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.5); gap: 8px; }
   .howto-pop::before { content: ''; position: absolute; left: -6px; top: 20px; width: 10px; height: 10px; background: inherit; border-left: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); transform: rotate(45deg); }
+  .howto-pop::after { content: ''; position: absolute; left: -14px; top: 0; bottom: 0; width: 14px; }
   .howto-pop p { margin: 0; font: 400 13px/1.55 var(--sans); color: var(--muted); }
   .howto-pop b { color: var(--text); font-weight: 500; }
   @media (max-width: 760px) { .howto-pop { left: 0; top: calc(100% + 10px); transform: none; } .howto-pop::before { left: 22px; top: -6px; transform: rotate(135deg); } }
@@ -723,8 +726,8 @@
   </div>
   <button type="button" class="own-btn" id="own-btn" hidden>Connect node</button>
   <div class="howto">
-    <button type="button" class="howto-btn" id="howto-btn" aria-expanded="false" aria-controls="howto-pop"><span class="i" aria-hidden="true">?</span>How to read it</button>
-    <div class="howto-pop" id="howto-pop" role="dialog" aria-label="How to read it" hidden>
+    <button type="button" class="howto-btn" id="howto-btn" aria-describedby="howto-pop">How to read it</button>
+    <div class="howto-pop" id="howto-pop" role="tooltip">
       <p>Pick a proof-of-work blockchain on the left: <b>Bitcoin</b> (SHA-256, from mempool.space), <b>Bitcoin BLAKE2b</b> (BLAKE2b, from mempool.guide) or <b>Monero</b> (RandomX, from xmrchain.net).</p>
       <p>On the left are the blocks waiting in the mempool, the next one first: transactions sorted by the fee they pay, filled up to a full block. On the right are the blocks that were just mined. When a miner finds a block, the first waiting block moves across the line and becomes the newest block in the chain.</p>
       <p>The colour of a block shows its fees: the warmer, the more the transactions in it pay. A block with a green glow and <b>DATUM Verified</b> was mined through DATUM Gateway, with the miner's own node.</p>
@@ -2886,11 +2889,11 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
 
 <script>
 (() => {
-  const b = document.getElementById('howto-btn'), pop = document.getElementById('howto-pop');
-  const open = (on) => { pop.hidden = !on; b.setAttribute('aria-expanded', String(on)); };
-  b.addEventListener('click', () => open(pop.hidden));
-  document.addEventListener('click', (e) => { if (!pop.hidden && !e.target.closest('.howto')) open(false); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !pop.hidden) { open(false); b.focus(); } });
+  // hover and keyboard focus show it with CSS; a tap (touch screens) pins it open, a tap elsewhere or Esc closes it
+  const wrap = document.querySelector('.howto'), b = document.getElementById('howto-btn');
+  b.addEventListener('click', () => wrap.classList.toggle('open'));
+  document.addEventListener('click', (e) => { if (!e.target.closest('.howto')) wrap.classList.remove('open'); });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { wrap.classList.remove('open'); if (wrap.contains(document.activeElement)) document.activeElement.blur(); } });
 })();
 </script>
 
