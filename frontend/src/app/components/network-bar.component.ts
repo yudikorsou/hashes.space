@@ -189,7 +189,8 @@ interface OwnForm {
         background: #3b4463;
       }
       /* a colour per hash function; any other one gets the neutral badge above */
-      .algo.sha256, .algo.blake2b { color: #1a1206; background: #f7931a; } /* Bitcoin orange */
+      .algo.sha256 { color: #1a1206; background: #f7931a; } /* Bitcoin orange */
+      .algo.blake2b { color: #1a1406; background: #e2b33c; } /* Bitcoin BLAKE2b gold */
       .algo.scrypt { color: #0b1530; background: #bfc8dc; } /* Litecoin silver */
       .algo.kheavyhash { color: #04211c; background: #49eacb; }
       .algo.equihash { color: #1a1406; background: #f4b728; }

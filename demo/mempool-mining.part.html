@@ -20,7 +20,7 @@
   .mtip b { font-weight: 600; }
   @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mcard .kpis dd { font-size: 17px; } }
 <!--HTML-->
-<section class="mstats" id="mining-stats" aria-label="Mining on Bitcoin BLAKE2b" hidden>
+<section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <article class="mcard" aria-labelledby="hr-title">
     <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
     <dl class="kpis">
@@ -29,7 +29,7 @@
     </dl>
     <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
     <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i>Hashrate (7-day average)</li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
-    <a class="more" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
+    <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard" aria-labelledby="pools-title">
     <h2 class="sr-only" id="pools-title">Mining pools, last week</h2>
@@ -39,15 +39,17 @@
       <div><dt>Pools Count</dt><dd id="ms-pools">–</dd></div>
     </dl>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
-    <a class="more" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
+    <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
   </article>
   <p class="msource" id="ms-source"></p>
 </section>
 <!--JS-->
-  // ---------- Find Mempool: mining pools + hashrate & difficulty (mempool.guide/mining), Bitcoin BLAKE2b only ----------
-  var MINING_API = 'https://mempool.guide/api/v1/mining';
-  // a snapshot of mempool.guide for when the API can't be reached from this page (2026-10-08)
-  var MINING_SNAPSHOT = {
+  // ---------- Find Mempool: mining pools + hashrate & difficulty (as on <site>/mining) for the Bitcoin networks ----------
+  // per network: the mempool site it comes from; Monero (xmrchain.net) has no pool statistics
+  var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide' };
+  // snapshots for when the API can't be reached from this page
+  var MINING_SNAPSHOTS = {};
+  MINING_SNAPSHOTS.blake2b = {
     at: 1791417600,
     pools: { blockCount: 1168, pools: [['AlphaPool', 369, [['Soggy Waffle', 109], ['huangyh', 33], ['BlockBuster3000', 30], ['XGLLGSZB', 29], ['Tofu Toes', 27], ['DAtumYF', 23], ['DAUMWangpeisong', 22], ['Grumpy Pickle', 22], ['MineWithMe', 14], ['Sweaty Beaver', 14], ['wo912849', 8], ['mabeigu668', 6], ['Wzyw3', 5], ['LTQS', 4], ['whbtc', 4], ['DATUM User', 3], ['Fed14', 3], ['LU007', 3], ['Wang wei', 2], ['wangyong66688', 2]]],
       ['Lazarus', 282, [['DATUM User', 55], ['XBTGW01', 38], ['Gateway', 34], ['BTCB2', 24], ['DouPool', 22], ['HKBMS3Cloud', 15], ['orionubdat', 9], ['Freedom Money', 4], ['Lunar Fleet', 4], ['nine006', 3], ['BlockFoundry', 2], ['fishnet', 2], ['HARUSERVER', 2], ['ibs DATUM User', 2], ['JH Gateway', 2], ['MBGA', 2], ['nomadshiba xbt', 2], ['SOVEROOT', 2], ['this is so big', 2], ['cryptographic proof instead of trust', 1]]],
@@ -57,42 +59,56 @@
       hashrates: [[1760486400, 1.2841e21], [1761091200, 1.0956e21], [1761696000, 1.1871e21], [1762300800, 1.0235e21], [1762905600, 1.183e21], [1763510400, 1.0148e21], [1764115200, 8.768e20], [1764720000, 9.424e20], [1765324800, 9.501e20], [1765929600, 1.0899e21], [1766534400, 1.0609e21], [1767139200, 8.732e20], [1767744000, 9.533e20], [1768348800, 9.8e20], [1768953600, 9.83e20], [1769558400, 8.488e20], [1770163200, 9.205e20], [1770768000, 8.967e20], [1771372800, 1.0302e21], [1771977600, 1.1754e21], [1772582400, 9.686e20], [1773187200, 1.0107e21], [1773792000, 8.974e20], [1774396800, 8.522e20], [1775001600, 9.067e20], [1775606400, 9.536e20], [1776211200, 1.1292e21], [1776816000, 9.083e20], [1777420800, 9.339e20], [1778025600, 9.851e20], [1778630400, 8.649e20], [1779235200, 9.629e20], [1779840000, 9.404e20], [1780444800, 7.598e20], [1781049600, 8.608e20], [1781654400, 1.0058e21], [1782259200, 1.0799e21], [1782864000, 9.785e20], [1783468800, 9.385e20], [1784073600, 1.0191e21], [1784678400, 8.668e20], [1785283200, 7.843e20], [1785888000, 8.801e20], [1786492800, 0], [1787097600, 0], [1787702400, 0], [1788307200, 2.1635e15], [1788912000, 1.9286e16], [1789516800, 3.3150e16], [1790121600, 3.4696e16], [1790726400, 3.9714e16], [1791331200, 4.0437e16], [1791417600, 4.0619e16]],
       difficulty: [[1760594746, 1.46716e14], [1761732893, 1.55973e14], [1762972230, 1.52271e14], [1764206208, 1.49301e14], [1765424862, 1.48195e14], [1766634486, 1.48258e14], [1767859543, 1.46473e14], [1769110282, 1.41668e14], [1770472605, 1.25865e14], [1771527275, 1.44398e14], [1772731727, 1.45042e14], [1774043659, 1.33793e14], [1775208520, 1.38967e14], [1776448537, 1.35595e14], [1777687605, 1.32472e14], [1778860884, 1.36607e14], [1780050586, 1.38955e14], [1781396637, 1.24933e14], [1782525607, 1.3387e14], [1783800551, 1.27171e14], [1785019866, 1.26232e14], [1786219932, 1.2748e14], [1788070477, 1.30542e17], [1788280416, 7.66357e16], [1788343545, 3.06543e17], [1788540388, 1.22617e18], [1788831998, 4.90468e18], [1789236249, 1.46771e19], [1790130520, 1.98647e19], [1791230424, 2.18462e19]] },
   };
+  MINING_SNAPSHOTS.sha256 = {
+    at: 1791417600,
+    pools: { blockCount: 1051, pools: [['Foundry USA', 276], ['AntPool', 217], ['F2Pool', 185], ['ViaBTC', 99], ['SpiderPool', 72], ['SECPOOL', 43], ['MARA Pool', 41], ['Luxor', 38], ['OCEAN', 30], ['Braiins Pool', 12], ['NiceHash', 12], ['BTC.com', 9], ['Unknown', 8], ['Binance Pool', 4], ['WhitePool', 3], ['Poolin', 2]] },
+    hashrate: { currentHashrate: 987326967307282400000, currentDifficulty: 132716002350731.3,
+      hashrates: MINING_SNAPSHOTS.blake2b.hashrate.hashrates.slice(0, 43).concat([[1786492800, 8.228e20], [1787097600, 9.411e20], [1787702400, 8.904e20], [1788307200, 9.017e20], [1788912000, 8.579e20], [1789516800, 1.0209e21], [1790121600, 9.344e20], [1790726400, 1.051e21], [1791331200, 1.0246e21], [1791417600, 1.0189e21]]),
+      difficulty: MINING_SNAPSHOTS.blake2b.hashrate.difficulty.slice(0, 21).concat([[1786217755, 1.2748e14], [1787446127, 1.25807e14], [1788640367, 1.27451e14], [1789801745, 1.32757e14], [1791011796, 1.32716e14]]) },
+  };
+  var miningBy = {}; // per network: { live, at, pools: [{ name, blocks, miners: [[name, blocks]] }], blockCount, hashrates: [[t, h]], difficulty: [[t, d]], hash, diff }
   var mining = null; // { live, at, pools: [{ name, blocks, miners: [[name, blocks]] }], blockCount, hashrates: [[t, h]], difficulty: [[t, d]], hash, diff }
   var SI = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
   function si(v, digits) { if (!v) return '0'; let i = 0; while (Math.abs(v) >= 1000 && i < SI.length - 1) { v /= 1000; i++; } return `${v.toFixed(digits ?? (v >= 100 ? 1 : 2))} ${SI[i]}`.trim(); }
   function siShort(v) { let i = 0; while (v >= 1000 && i < SI.length - 1) { v /= 1000; i++; } return `${+v.toFixed(2)} ${SI[i]}`; }
-  async function getJson(path) {
+  async function getJson(site, path) {
     const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
-    try { const r = await fetch(MINING_API + path, { signal: ctl.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(to); }
+    try { const r = await fetch(`https://${site}/api/v1/mining${path}`, { signal: ctl.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(to); }
   }
-  async function loadMining() {
+  async function loadMining() { await Promise.all(Object.keys(MINING_SITES).map(loadMiningFor)); }
+  async function loadMiningFor(net) {
+    const site = MINING_SITES[net];
     try {
-      const [p, h] = await Promise.all([getJson('/pools/1w'), getJson('/hashrate/1y')]);
-      mining = { live: true, at: Date.now() / 1000, blockCount: p.blockCount,
+      const [p, h] = await Promise.all([getJson(site, '/pools/1w'), getJson(site, '/hashrate/1y')]);
+      miningBy[net] = { live: true, at: Date.now() / 1000, blockCount: p.blockCount,
         pools: p.pools.map((x) => ({ name: x.name, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
         hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: h.difficulty.map((x) => [x.time, x.difficulty]),
         hash: h.currentHashrate, diff: h.currentDifficulty };
     } catch {
-      if (mining?.live) return; // keep the last live numbers
-      const s = MINING_SNAPSHOT;
-      mining = { live: false, at: s.at, blockCount: s.pools.blockCount, pools: s.pools.pools.map(([name, blocks, miners]) => ({ name, blocks, miners: miners || [] })),
+      if (miningBy[net]?.live) return; // keep the last live numbers
+      const s = MINING_SNAPSHOTS[net];
+      miningBy[net] = { live: false, at: s.at, blockCount: s.pools.blockCount, pools: s.pools.pools.map(([name, blocks, miners]) => ({ name, blocks, miners: miners || [] })),
         hashrates: s.hashrate.hashrates, difficulty: s.hashrate.difficulty, hash: s.hashrate.currentHashrate, diff: s.hashrate.currentDifficulty };
     }
-    renderMiningStats();
+    if (net === netId) renderMiningStats();
   }
   function renderMiningStats() {
     const sec = $('mining-stats'); if (!sec) return;
-    sec.hidden = netId !== 'blake2b' || !mining;
+    mining = miningBy[netId] ?? null; const site = MINING_SITES[netId];
+    sec.hidden = !site || !mining;
     if (sec.hidden) return;
     const m = mining;
+    sec.setAttribute('aria-label', `Mining on ${network().chain}`);
+    $('ms-more-hr').href = `https://${site}/graphs/mining/hashrate-difficulty`;
+    $('ms-more-pools').href = `https://${site}/mining/pools`;
     $('ms-luck').textContent = `${((m.blockCount / 1008) * 100).toFixed(2)}%`; // expected: 6 blocks an hour, 1,008 a week
     $('ms-blocks').textContent = fmt(m.blockCount);
     $('ms-pools').textContent = fmt(m.pools.length);
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
     $('ms-diff').textContent = si(m.diff, 2).replace(' ', '');
     $('ms-source').textContent = m.live
-      ? `Live from mempool.guide/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      : `Snapshot of mempool.guide/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (mempool.guide is not reachable from this page)`;
+      ? `Live from ${site}/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
     drawPie(m); drawChart(m);
   }
   const svgEl = (tag, attrs, text) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
