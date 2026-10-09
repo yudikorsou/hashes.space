@@ -7,6 +7,7 @@
   .mcard { position: relative; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(70, 78, 140, 0.16), rgba(70, 78, 140, 0) 72%); border: 0; border-radius: 40px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .mcard + .mcard::before { content: ''; position: absolute; left: -10px; top: 12%; bottom: 12%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
   @media (max-width: 900px) { .mcard + .mcard::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
+  .mcard .mtitle { margin: 0; text-align: center; font: 600 14px/1.2 var(--sans); color: var(--link); }
   .mcard .kpis dd { text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); }
   .mcard .plot { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
   .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
@@ -35,12 +36,7 @@
     <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard" aria-labelledby="pools-title">
-    <h2 class="sr-only" id="pools-title">Mining pools, last week</h2>
-    <dl class="kpis">
-      <div><dt title="Blocks found this week as a share of the 1,008 blocks expected in a week (one every 10 minutes)">Pools Luck</dt><dd id="ms-luck">–</dd></div>
-      <div><dt>Blocks (1w)</dt><dd id="ms-blocks">–</dd></div>
-      <div><dt>Pools Count</dt><dd id="ms-pools">–</dd></div>
-    </dl>
+    <h2 class="mtitle" id="pools-title">Mining pools</h2>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
   </article>
@@ -104,9 +100,6 @@
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
     $('ms-more-hr').href = `https://${site}/graphs/mining/hashrate-difficulty`;
     $('ms-more-pools').href = `https://${site}/mining/pools`;
-    $('ms-luck').textContent = `${((m.blockCount / 1008) * 100).toFixed(2)}%`; // expected: 6 blocks an hour, 1,008 a week
-    $('ms-blocks').textContent = fmt(m.blockCount);
-    $('ms-pools').textContent = fmt(m.pools.length);
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
     $('ms-source').textContent = m.live
       ? `Live from ${site}/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
