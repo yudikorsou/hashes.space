@@ -78,10 +78,10 @@
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard m-pcalc" aria-labelledby="pcalc-title">
-    <h2 class="mtitle" id="pcalc-title">Mining pool calculator</h2>
+    <h2 class="mtitle" id="pcalc-title">DATUM pool calculator</h2>
     <form class="calc" id="pcalc-form" novalidate>
       <div class="calc-row">
-        <label class="calc-in pool-in" for="pcalc-pool"><span class="sr-only">Mining pool you join</span>
+        <label class="calc-in pool-in" for="pcalc-pool"><span class="sr-only">DATUM pool you mine with</span>
           <select id="pcalc-pool"></select>
         </label>
         <label class="calc-in" for="pcalc-hash"><span class="sr-only">Your hashrate</span>
@@ -175,7 +175,8 @@
   function oneIn(p) { const n = 1 / p; return p > 0.5 ? '' : `about 1 in ${n >= 1e6 ? si(n, 1).replace(' ', '') : fmt(Math.round(n))}`; }
   function ageText(sec) {
     const d = sec / 86400;
-    return d < 1 ? `${Math.max(1, Math.round(sec / 3600))} hours` : d < 60 ? `${fmt(Math.round(d))} days` : d < 730 ? `${fmt(Math.round(d / 30.4))} months` : `${fmt(Math.round(d / 365))} years`;
+    const hrs = Math.max(1, Math.round(sec / 3600));
+    return d < 1 ? `${hrs} hour${hrs === 1 ? '' : 's'}` : d < 60 ? `${fmt(Math.round(d))} days` : d < 730 ? `${fmt(Math.round(d / 30.4))} months` : `${fmt(Math.round(d / 365))} years`;
   }
   function smallPct(f) { const v = f * 100; if (!v) return '0%'; if (v >= 0.1) return pct(f); const d = Math.min(14, 1 - Math.floor(Math.log10(v))); return v.toFixed(d) + '%'; }
   function renderCalc() {
@@ -196,39 +197,57 @@
   }
   $('calc-form').addEventListener('input', renderCalc);
 
-  // ---- mining pool calculator: the chance that the pool you join (with your hashrate) finds a block, and your share ----
-  // The pool's hashrate is its share of last week's blocks × the global hashrate.
+  // ---- DATUM pool calculator: TIDES payouts for miners on their own node + DATUM Gateway ----
+  // Only DATUM pools that pay with TIDES (for now): OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b.
+  // TIDES: every block's reward (subsidy + fees) is split over the shares in a window of 8 × the network difficulty,
+  // so each share is paid about 8 times; the pool keeps its fee. Your part of a block = your hashrate / the pool's.
+  var DATUM_TIDES_POOLS = {
+    sha256: [{ name: 'OCEAN', url: 'https://ocean.xyz', fee: 0.01, feeNote: '1% for DATUM Gateway miners; 2% on OCEAN\'s own templates', window: 8, threshold: 0.01048576, subsidy: 3.125, ticker: 'BTC' }],
+    blake2b: [{ name: 'CONVOY', url: 'https://convoy.xyz', fee: 0.01, feeNote: '1% for DATUM Gateway miners; 2% when you fail over to its node', window: 8, threshold: 0.01048576, subsidy: 3.125, ticker: 'BTCB2' }],
+  };
   var poolPick = {}; // per network: the pool picked
   function fillPools() {
     const sel = $('pcalc-pool'), m = mining; if (!m) return;
-    const list = m.pools.filter((p) => p.blocks > 0 && !/^unknown$/i.test(p.name)).sort((a, b) => b.blocks - a.blocks);
+    const list = (DATUM_TIDES_POOLS[netId] ?? []).map((cfg) => ({ cfg, stat: m.pools.find((p) => p.name.toLowerCase() === cfg.name.toLowerCase()) }));
     const want = poolPick[netId] ?? sel.value;
-    const opts = [['', 'Choose a mining pool…'], ...list.map((p) => [p.name, `${p.name} · ${(100 * p.blocks / m.blockCount).toFixed(1)}%`])];
-    const key = netId + ':' + opts.map((o) => o[0]).join('|');
+    const opts = [['', 'Choose a DATUM pool…'], ...list.map(({ cfg, stat }) => [cfg.name, `${cfg.name} · TIDES · ${(cfg.fee * 100).toFixed(cfg.fee * 100 % 1 ? 1 : 0)}% fee`])];
+    const key = netId + ':' + opts.map((o) => o[1]).join('|');
     if (sel.dataset.key !== key) {
       sel.replaceChildren(...opts.map(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (!v) o.disabled = true; return o; }));
       sel.dataset.key = key;
     }
-    sel.value = list.some((p) => p.name === want) ? want : '';
+    sel.value = list.some(({ cfg }) => cfg.name === want) ? want : '';
   }
-  function sig(x) { if (!x) return '0'; if (x >= 1) return fmt(x, x >= 100 ? 0 : 2); const d = Math.min(12, 1 - Math.floor(Math.log10(x))); return x.toFixed(d); }
+  // the average transaction fees per block, from the blocks shown (sats); estimated from size × median fee when a source leaves them out
+  function avgFeesSats() {
+    const bl = chain().blocks ?? []; if (!bl.length) return 0;
+    return bl.reduce((a, b) => a + (b.totalFees || (b.medianFee || 0) * (b.weight || 0) / 4), 0) / bl.length;
+  }
+  const coins = (x, t) => `${x >= 1 ? fmt(x, 3) : x >= 0.001 ? fmt(x, 5) : fmt(Math.round(x * 1e8))} ${x >= 0.001 ? t : 'sats'}`;
   function renderPoolCalc() {
     const m = mining; if (!m || !$('pcalc-form')) return;
-    const name = $('pcalc-pool').value, pool = m.pools.find((p) => p.name === name);
+    const cfg = (DATUM_TIDES_POOLS[netId] ?? []).find((c) => c.name === $('pcalc-pool').value);
+    const stat = cfg && m.pools.find((p) => p.name.toLowerCase() === cfg.name.toLowerCase());
     const h = Math.max(0, Number($('pcalc-hash').value) || 0) * Number($('pcalc-unit').value);
     const set = (id, big, small) => { const dd = $(id); dd.querySelector('b').textContent = big; dd.querySelector('span').textContent = small; };
-    if (!pool) {
+    if (!cfg) {
       CALC_PERIODS.forEach(([id]) => set('p' + id, '–', ''));
-      $('pcalc-note').textContent = 'Choose the mining pool you join first, then enter your hashrate.';
+      $('pcalc-note').textContent = 'Choose the DATUM pool you mine with first, then enter your hashrate. You run your own node and DATUM Gateway; the pool pays you with TIDES.';
       return;
     }
     const perBlock = m.diff * (HASHES_PER_DIFFICULTY[netId] ?? 2 ** 32);
-    const poolHash = (pool.blocks / m.blockCount) * m.hash; // estimated from its blocks last week
+    const poolHash = stat ? (stat.blocks / m.blockCount) * m.hash : 0; // estimated from its blocks last week
     const total = poolHash + h, rate = perBlock > 0 ? total / perBlock : 0; // the pool's blocks per second, you included
-    const yours = total ? h / total : 0; // your part of every block the pool finds
-    CALC_PERIODS.forEach(([id, t]) => set('p' + id, pct(-Math.expm1(-rate * t)), h ? `you ≈ ${sig(rate * t * yours)} block` : ''));
-    $('pcalc-note').textContent = `Chance that ${pool.name} finds at least one block, with your hashrate added to its estimated ${si(poolHash, 1)}H/s (${(100 * pool.blocks / m.blockCount).toFixed(1)}% of last week's blocks). `
-      + (h ? `Your share of every block it finds is about ${smallPct(yours)}; "you ≈" is your part of the blocks it finds on average.` : 'Enter your hashrate to see your share.');
+    const yours = total ? h / total : 0; // your part of every block's reward in the TIDES window
+    const reward = cfg.subsidy + avgFeesSats() / 1e8; // subsidy + average fees per block
+    const perBlockForYou = yours * reward * (1 - cfg.fee); // what you get each time the pool finds a block
+    CALC_PERIODS.forEach(([id, t]) => set('p' + id, pct(-Math.expm1(-rate * t)), h ? `you ≈ ${coins(rate * t * perBlockForYou, cfg.ticker)}` : ''));
+    const windowSec = total ? (cfg.window * perBlock) / total : 0; // how long a share stays in the TIDES window
+    const perDay = rate * 86400 * perBlockForYou;
+    $('pcalc-note').textContent = `Chance that ${cfg.name} finds at least one block, and your TIDES earnings after its fee (${cfg.feeNote}). `
+      + `${cfg.name} ≈ ${poolHash ? `${si(poolHash, 1)}H/s (${(100 * stat.blocks / m.blockCount).toFixed(1)}% of last week's blocks)` : 'unknown hashrate'}; a block pays about ${fmt(reward, 3)} ${cfg.ticker} (${fmt(cfg.subsidy, 3)} subsidy + fees). `
+      + (h ? `You get about ${smallPct(yours)} of every block it finds; each share stays in the TIDES window (${cfg.window} × difficulty) for about ${ageText(windowSec)}, so it is paid about ${cfg.window} times. `
+        + `On-chain payout at ${fmt(cfg.threshold, 8)} ${cfg.ticker}: about every ${perDay > 0 ? ageText((cfg.threshold / perDay) * 86400) : '–'}.` : 'Enter your hashrate to see your share.');
   }
   $('pcalc-form').addEventListener('input', (e) => { if (e.target.id === 'pcalc-pool') poolPick[netId] = e.target.value; renderPoolCalc(); });
   $('pcalc-form').addEventListener('submit', (e) => e.preventDefault());
