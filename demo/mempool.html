@@ -53,6 +53,10 @@
   /* 3D block: front face + mempool-style dark top and left faces */
   .cube { --s: 125px; --d: 16px; position: relative; width: var(--s); height: var(--s); margin: var(--d) 0 0 var(--d); }
   .face { position: absolute; }
+  /* the coin of the chain shown, small in the top left corner of every block */
+  .front:has(.cube-coin) .txt { padding-top: 22px; }
+  .cube-coin { position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; border-radius: 50%; z-index: 1; opacity: .95; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); pointer-events: none; }
+  @media (max-width: 640px) { .cube-coin { top: 4px; left: 4px; width: 12px; height: 12px; } .front:has(.cube-coin) .txt { padding-top: 16px; } }
   .front { inset: 0; }
   .top { left: 0; top: calc(var(--d) * -1); width: var(--s); height: var(--d); transform-origin: bottom left; transform: skewX(45deg); background: #232838; }
   .side { left: calc(var(--d) * -1); top: 0; width: var(--d); height: var(--s); transform-origin: top right; transform: skewY(45deg); background: #191c27; }
@@ -1702,7 +1706,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   function cube(b, mined) {
     const lo = b.feeRange[0], hi = b.feeRange[b.feeRange.length - 1], unit = chain().feeUnit ?? 'sat/vB';
     return `<div class="cube" ${!mined && b.index === 0 ? 'id="mining-block"' : ''}>
-      <div class="face front" style="background:${frontBg(b, mined)}"><div class="txt">
+      <div class="face front" style="background:${frontBg(b, mined)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt">
         <span class="fee">~${fmt(b.medianFee)} ${unit}</span><span class="range">${fmt(lo)} - ${fmt(hi)} ${unit}</span>
         <span class="size">${mined ? sizeLabel(b.size) : b.bytes !== undefined ? sizeLabel(b.bytes) : fmt(b.vsize / 1e6, 2) + ' MvB'}</span>
         <span class="txs">${fmt(mined ? b.txCount : b.nTx)} transactions</span>

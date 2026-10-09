@@ -27,6 +27,9 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
             <div class="above">{{ b.index === 0 ? 'Mining now' : '' }}</div>
             <div class="cube" [attr.id]="b.index === 0 ? 'mining-block' : null">
               <div class="face front" [style.background]="projectedBg(b)">
+                @if (socket.network()?.logo; as logo) {
+                  <img class="cube-coin" [src]="logo" alt="" />
+                }
                 <div class="txt">
                   <span class="fee">~{{ b.medianFee | number: '1.0-0' }} {{ unit() }}</span>
                   <span class="range">{{ b.feeRange[0] | number: '1.0-0' }} - {{ b.feeRange[b.feeRange.length - 1] | number: '1.0-0' }} {{ unit() }}</span>
@@ -55,6 +58,9 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
             <div class="above height">{{ b.height | number: '1.0-0' }}</div>
             <div class="cube">
               <div class="face front" [style.background]="minedBg(b)">
+                @if (socket.network()?.logo; as logo) {
+                  <img class="cube-coin" [src]="logo" alt="" />
+                }
                 @if (b.partial) {
                   <!-- Electrum only: no size, fees or tx count -->
                   <div class="txt">
