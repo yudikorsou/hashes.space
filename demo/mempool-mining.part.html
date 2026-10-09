@@ -1,14 +1,31 @@
 <!--CSS-->
   /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
-  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 20px; }
-  @media (max-width: 900px) { .mstats { grid-template-columns: 1fr; } }
+  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'hr pools' 'calc pools' 'src src'; align-items: stretch; gap: 20px; }
+  .mcard.m-hr { grid-area: hr; } .mcard.m-calc { grid-area: calc; } .mcard.m-pools { grid-area: pools; } .msource { grid-area: src; }
+  @media (max-width: 900px) { .mstats { grid-template-columns: 1fr; grid-template-areas: 'hr' 'calc' 'pools' 'src'; } }
   .mstats[hidden] { display: none !important; }
   /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
   .mcard { position: relative; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(70, 78, 140, 0.16), rgba(70, 78, 140, 0) 72%); border: 0; border-radius: 40px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
-  .mcard + .mcard::before { content: ''; position: absolute; left: -10px; top: 12%; bottom: 12%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
-  @media (max-width: 900px) { .mcard + .mcard::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
+  .mcard.m-pools::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
+  .mcard.m-calc::before { content: ''; position: absolute; left: 15%; right: 15%; top: -10px; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); }
+  @media (max-width: 900px) { .mcard.m-pools::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
   .mcard .mtitle { margin: 0; text-align: center; font: 600 14px/1.2 var(--sans); color: var(--link); }
   .mcard .kpis dd { text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); }
+  /* hashrate calculator: the chance to find a block yourself */
+  .calc { display: grid; gap: 14px; justify-items: center; margin: 0; }
+  .calc-in { display: inline-flex; align-items: stretch; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, 0.5); overflow: hidden; }
+  .calc-in:focus-within { border-color: var(--link); box-shadow: 0 0 0 3px rgba(27, 216, 244, 0.15); }
+  .calc-in input { width: 9ch; background: none; border: 0; color: var(--text); font: 500 20px/1 var(--mono); padding: 10px 6px 10px 18px; text-align: right; outline: none; -moz-appearance: textfield; }
+  .calc-in input::-webkit-outer-spin-button, .calc-in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .calc-in select { background: none; border: 0; border-left: 1px solid var(--line); color: var(--link); font: 600 14px/1 var(--sans); padding: 0 14px 0 12px; cursor: pointer; outline: none; }
+  .calc-in select option { background: #151829; color: var(--text); }
+  .calc-out { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin: 0; text-align: center; }
+  .calc-out dt { color: var(--muted); font: 500 12.5px/1.2 var(--sans); }
+  .calc-out dd { margin: 6px 0 0; display: grid; gap: 3px; }
+  .calc-out dd b { font: 500 22px/1.15 var(--mono); color: var(--text); text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); font-variant-numeric: tabular-nums; }
+  .calc-out dd span { color: var(--muted); font-size: 12px; }
+  .calc-note { margin: 0; color: var(--muted); font-size: 12.5px; text-align: center; max-width: 52ch; }
+  @media (max-width: 520px) { .calc-out dd b { font-size: 17px; } }
   .mcard .plot { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
   .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
   .mcard .kpis dt { font: 600 14px/1.2 var(--sans); color: var(--link); text-transform: none; letter-spacing: 0; }
@@ -26,7 +43,7 @@
   @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mcard .kpis dd { font-size: 17px; } }
 <!--HTML-->
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
-  <article class="mcard" aria-labelledby="hr-title">
+  <article class="mcard m-hr" aria-labelledby="hr-title">
     <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
     <dl class="kpis">
       <div><dt>Global hashrate (1w)</dt><dd id="ms-hash">–</dd></div>
@@ -35,7 +52,22 @@
     <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i>Hashrate (7-day average)</li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
     <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
-  <article class="mcard" aria-labelledby="pools-title">
+  <article class="mcard m-calc" aria-labelledby="calc-title">
+    <h2 class="mtitle" id="calc-title">Hashrate calculator</h2>
+    <form class="calc" id="calc-form" novalidate>
+      <label class="calc-in" for="calc-hash"><span class="sr-only">Your hashrate</span>
+        <input id="calc-hash" type="number" inputmode="decimal" min="0" step="any" value="100" aria-describedby="calc-note">
+        <select id="calc-unit" aria-label="Unit"><option value="1e9">GH/s</option><option value="1e12" selected>TH/s</option><option value="1e15">PH/s</option></select>
+      </label>
+      <dl class="calc-out" aria-live="polite">
+        <div><dt>24 hours</dt><dd id="calc-d"><b>–</b><span></span></dd></div>
+        <div><dt>7 days</dt><dd id="calc-w"><b>–</b><span></span></dd></div>
+        <div><dt>1 month</dt><dd id="calc-m"><b>–</b><span></span></dd></div>
+      </dl>
+      <p class="calc-note" id="calc-note"></p>
+    </form>
+  </article>
+  <article class="mcard m-pools" aria-labelledby="pools-title">
     <h2 class="mtitle" id="pools-title">Mining pools</h2>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
@@ -104,8 +136,41 @@
     $('ms-source').textContent = m.live
       ? `Live from ${site}/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
-    drawPie(m); drawChart(m);
+    drawPie(m); drawChart(m); renderCalc();
   }
+  // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
+  // A block needs on average difficulty × 2^32 hashes on Bitcoin; mempool.guide gives the BLAKE2b difficulty in hashes per block.
+  var HASHES_PER_DIFFICULTY = { sha256: 2 ** 32, blake2b: 1 };
+  var CALC_PERIODS = [['calc-d', 86400], ['calc-w', 7 * 86400], ['calc-m', 30 * 86400]];
+  function pct(p) {
+    if (p >= 0.9995) return '> 99.9%';
+    const v = p * 100;
+    return v >= 10 ? v.toFixed(1) + '%' : v >= 0.1 ? v.toFixed(2) + '%' : v >= 0.001 ? v.toFixed(3) + '%' : '< 0.001%';
+  }
+  function oneIn(p) { const n = 1 / p; return p > 0.5 ? '' : `about 1 in ${n >= 1e6 ? si(n, 1).replace(' ', '') : fmt(Math.round(n))}`; }
+  function ageText(sec) {
+    const d = sec / 86400;
+    return d < 1 ? `${Math.max(1, Math.round(sec / 3600))} hours` : d < 60 ? `${fmt(Math.round(d))} days` : d < 730 ? `${fmt(Math.round(d / 30.4))} months` : `${fmt(Math.round(d / 365))} years`;
+  }
+  function smallPct(f) { const v = f * 100; if (!v) return '0%'; if (v >= 0.1) return pct(f); const d = Math.min(14, 1 - Math.floor(Math.log10(v))); return v.toFixed(d) + '%'; }
+  function renderCalc() {
+    const m = mining; if (!m || !$('calc-form')) return;
+    const h = Math.max(0, Number($('calc-hash').value) || 0) * Number($('calc-unit').value);
+    const perBlock = m.diff * (HASHES_PER_DIFFICULTY[netId] ?? 2 ** 32); // hashes needed for one block, on average
+    const rate = perBlock > 0 ? h / perBlock : 0; // blocks per second
+    // finding a block is random (a Poisson process): P(at least one block in t) = 1 − e^(−rate × t)
+    CALC_PERIODS.forEach(([id, t]) => {
+      const p = -Math.expm1(-rate * t), dd = $(id);
+      dd.querySelector('b').textContent = h ? pct(p) : '–';
+      dd.querySelector('span').textContent = h ? oneIn(p) : '';
+    });
+    const share = m.hash ? h / m.hash : 0;
+    $('calc-note').textContent = h
+      ? `Chance to find at least one block on ${network().chain} at a network difficulty of ${siShort(m.diff).replace(' ', '')}. That is ${smallPct(share)} of the global hashrate: on average one block every ${ageText(1 / rate)}.`
+      : 'Enter your hashrate to see your chance to find a block.';
+  }
+  $('calc-form').addEventListener('input', renderCalc);
+  $('calc-form').addEventListener('submit', (e) => e.preventDefault());
   const svgEl = (tag, attrs, text) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
   const poolHue = (i) => [338, 285, 262, 228, 205, 190, 172, 150, 95, 62, 45, 30, 15, 0][i % 14];
   function arcPath(cx, cy, r0, r1, a0, a1) {
