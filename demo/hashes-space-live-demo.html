@@ -541,11 +541,14 @@
      DATUM Verified (green): a DATUM Gateway verified solominer of a 100% DATUM pool. */
   .block-wrap.datum .cube { --glow: 247,147,26; animation: datum-glow 4s ease-in-out infinite; }
   .block-wrap.datum-verified .cube { --glow: 60,226,107; animation: datum-glow 4s ease-in-out infinite; }
+  /* Centralised (red): any other pool */
+  .block-wrap.datum-central .cube { --glow: 255,77,77; animation: datum-glow 4s ease-in-out infinite; }
+  .datum-badge.central { color: #ff6b6b; border-color: rgba(255,77,77,.55); background: rgba(255,77,77,.1); }
   #mined .below { display: grid; justify-items: center; gap: 6px; }
   .datum-badge { display: inline-flex; align-items: center; gap: 4px; font: 600 10.5px/1 var(--sans); letter-spacing: .04em; text-transform: uppercase; color: #f7931a; border: 1px solid rgba(247,147,26,.55); background: rgba(247,147,26,.1); border-radius: 999px; padding: 4px 8px; }
   .datum-badge.verified { color: #3ce26b; border-color: rgba(60,226,107,.55); background: rgba(60,226,107,.1); }
   @keyframes datum-glow { 0%, 100% { filter: drop-shadow(0 0 5px rgba(var(--glow),.65)) drop-shadow(0 0 14px rgba(var(--glow),.3)); } 50% { filter: drop-shadow(0 0 8px rgba(var(--glow),.85)) drop-shadow(0 0 22px rgba(var(--glow),.4)); } }
-  @media (prefers-reduced-motion: reduce) { .block-wrap.datum .cube, .block-wrap.datum-verified .cube { animation: none; filter: drop-shadow(0 0 6px rgba(var(--glow),.75)) drop-shadow(0 0 16px rgba(var(--glow),.35)); } }
+  @media (prefers-reduced-motion: reduce) { .block-wrap.datum .cube, .block-wrap.datum-verified .cube, .block-wrap.datum-central .cube { animation: none; filter: drop-shadow(0 0 6px rgba(var(--glow),.75)) drop-shadow(0 0 16px rgba(var(--glow),.35)); } }
   .net-id { display: inline-flex; align-items: center; gap: 10px; }
   .coin { width: 26px; height: 26px; flex: 0 0 auto; border-radius: 50%; }
 </style>
@@ -1490,7 +1493,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool.guide' },
     { id: 'monero', algo: 'randomx', label: 'RandomX', chain: 'Monero', ticker: 'XMR', source: 'xmrchain.net' },
   ];
-  const B2_POOLS = ['Solominers', 'Solo miner', 'DATUM miner', 'CONVOY'];
+  const B2_POOLS = ['AlphaPool', 'Lazarus', 'B2Pool', 'Solominers', 'Solo miner', 'DATUM miner', 'CONVOY'];
   const BTC_POOLS = ['Foundry USA', 'AntPool', 'ViaBTC', 'F2Pool', 'OCEAN'];
   const LTC_POOLS = ['ViaBTC', 'F2Pool', 'LitecoinPool.org', 'Binance Pool'];
   const XMR_POOLS = ['P2Pool', 'SupportXMR', 'Nanopool', 'HashVault', 'MoneroOcean'];
@@ -1576,11 +1579,12 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   //  Verified (green): a DATUM Gateway verified solominer of a 100% DATUM pool (none listed yet)
   const DATUM_POOLS = { sha256: ['OCEAN'], blake2b: ['CONVOY'] };
   const DATUM_VERIFIED = { sha256: [], blake2b: [] };
-  const DATUM_TITLE = { verified: 'DATUM Verified: mined by a DATUM Gateway verified solominer of a 100% DATUM pool', compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway' };
-  const DATUM_BADGE = { verified: '<span class="datum-badge verified"><span aria-hidden="true">✓</span> DATUM Verified</span>', compatible: '<span class="datum-badge"><span aria-hidden="true">◆</span> DATUM Compatible</span>' };
+  const DATUM_TITLE = { verified: 'DATUM Verified: mined by a DATUM Gateway verified solominer of a 100% DATUM pool', compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway', centralised: 'Centralised: mined by a pool that builds the block template for its miners' };
+  const DATUM_BADGE = { verified: '<span class="datum-badge verified"><span aria-hidden="true">✓</span> DATUM Verified</span>', compatible: '<span class="datum-badge"><span aria-hidden="true">◆</span> DATUM Compatible</span>', centralised: '<span class="datum-badge central">Centralised</span>' };
   const datumLabel = (b) => {
     const p = (b.pool ?? '').trim().toLowerCase(), has = (l) => (l?.[netId] ?? []).some((d) => d.toLowerCase() === p);
-    return !p ? null : has(DATUM_VERIFIED) ? 'verified' : has(DATUM_POOLS) ? 'compatible' : null;
+    // every other pool on a Bitcoin chain is Centralised (red); solo miners and blocks mempool can't name are no pool
+    return !p ? null : has(DATUM_VERIFIED) ? 'verified' : has(DATUM_POOLS) ? 'compatible' : netId in DATUM_POOLS && !/\bsolo|solominer|\bdatum\b|^unknown$/i.test(p) ? 'centralised' : null;
   };
   function renderMined(animateFirst) {
     const c = chain(), live = !!c.live, url = EXPLORER[netId];
@@ -1588,7 +1592,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     $('mined').innerHTML = c.blocks.map((b, i) => {
       const tag = live && url ? `a href="${url}${b.hash}" target="_blank" rel="noopener"` : 'div';
       const datum = datumLabel(b);
-      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? (datum === 'verified' ? ' datum-verified' : ' datum') : ''}"${datum ? ` title="${DATUM_TITLE[datum]}"` : ''}>
+      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? ' ' + ({ verified: 'datum-verified', compatible: 'datum', centralised: 'datum-central' })[datum] : ''}"${datum ? ` title="${DATUM_TITLE[datum]}"` : ''}>
       <div class="above height">${fmt(b.height)}</div>${cube(b, true)}<div class="below">${esc(b.pool ?? '')}${datum ? DATUM_BADGE[datum] : ''}</div></${tag.split(' ')[0]}>`;
     }).join('');
     $('tip').textContent = 'tip ' + fmt(c.tipHeight);

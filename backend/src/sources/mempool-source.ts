@@ -109,13 +109,19 @@ function coinbaseText(hex: unknown): string {
  *  'compatible' in datumPools: a pool that accepts DATUM Gateway miners, OCEAN or CONVOY (orange, "DATUM Compatible").
  * `coinbase` is kept for a later check of DATUM Gateway's tag.
  */
-export function datumLabel(pool: string | undefined, _coinbase: string, datumPools: string[], datumVerified: string[] = []): 'verified' | 'compatible' | undefined {
+export function datumLabel(pool: string | undefined, _coinbase: string, datumPools: string[], datumVerified: string[] = []): 'verified' | 'compatible' | 'centralised' | undefined {
   const p = (pool ?? '').trim().toLowerCase();
   if (!p) return undefined;
   if (datumVerified.some((d) => d.toLowerCase() === p)) return 'verified';
   if (datumPools.some((d) => d.toLowerCase() === p)) return 'compatible';
+  // every other pool builds the block template for its miners: 'centralised' (only on networks with DATUM pools set).
+  // Solo miners (and blocks mempool can't name) are no pool.
+  if (datumPools.length && !SOLO_OR_UNKNOWN.test(p)) return 'centralised';
   return undefined;
 }
+
+/** names mempool gives blocks that no pool mined: solo miners, DATUM users, unknown */
+const SOLO_OR_UNKNOWN = /\bsolo|solominer|\bdatum\b|^unknown$/i;
 
 function mapBlock(b: any, datumPools: string[], datumVerified: string[]): ChainBlock {
   return {

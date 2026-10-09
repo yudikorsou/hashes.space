@@ -54,7 +54,7 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
 
       <div class="half mined">
         @for (b of chain()?.blocks ?? []; track b.hash) {
-          <a class="block-wrap enter" [class.datum]="b.datum === 'compatible'" [class.datum-verified]="b.datum === 'verified'" [attr.title]="b.datum ? datumTitle[b.datum] : null" [attr.href]="explorer() && !b.partial ? explorer() + b.hash : null" target="_blank" rel="noopener">
+          <a class="block-wrap enter" [class.datum]="b.datum === 'compatible'" [class.datum-verified]="b.datum === 'verified'" [class.datum-central]="b.datum === 'centralised'" [attr.title]="b.datum ? datumTitle[b.datum] : null" [attr.href]="explorer() && !b.partial ? explorer() + b.hash : null" target="_blank" rel="noopener">
             <div class="above height">{{ b.height | number: '1.0-0' }}</div>
             <div class="cube">
               <div class="face front" [style.background]="minedBg(b)">
@@ -89,6 +89,8 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
                 <span class="datum-badge verified"><span aria-hidden="true">✓</span> DATUM Verified</span>
               } @else if (b.datum === 'compatible') {
                 <span class="datum-badge"><span aria-hidden="true">◆</span> DATUM Compatible</span>
+              } @else if (b.datum === 'centralised') {
+                <span class="datum-badge central">Centralised</span>
               }
             </div>
           </a>
@@ -102,6 +104,7 @@ export class ChainStripComponent implements AfterViewInit, OnDestroy {
   readonly datumTitle = {
     verified: 'DATUM Verified: mined by a DATUM Gateway verified solominer of a 100% DATUM pool',
     compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway',
+    centralised: 'Centralised: mined by a pool that builds the block template for its miners',
   };
   readonly chain = input<ChainState | null>(null);
 

@@ -63,8 +63,9 @@ export interface ChainBlock {
    * DATUM label of the block:
    *  'verified'   green glow, "DATUM Verified": a DATUM Gateway verified solominer of a 100% DATUM pool (networks.json datumVerified)
    *  'compatible' orange glow, "DATUM Compatible": a pool that accepts DATUM Gateway miners (networks.json datumPools: OCEAN, CONVOY)
+   *  'centralised' red glow, "Centralised": any other pool (not solo miners or unknown), on networks with datumPools
    */
-  datum?: 'verified' | 'compatible';
+  datum?: 'verified' | 'compatible' | 'centralised';
   /** true when the source can't tell size, tx count or fees (Electrum-only) */
   partial?: boolean;
 }

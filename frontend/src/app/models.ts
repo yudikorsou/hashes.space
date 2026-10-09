@@ -51,7 +51,7 @@ export interface ChainBlock {
   totalFees: number; // sats
   pool?: string;
   /** 'verified': green glow, "DATUM Verified" (verified solominer of a 100% DATUM pool); 'compatible': orange glow, "DATUM Compatible" (OCEAN, CONVOY) */
-  datum?: 'verified' | 'compatible';
+  datum?: 'verified' | 'compatible' | 'centralised'; // 'centralised': red glow, any other pool
   /** true when the source can't tell size, tx count or fees (Electrum-only) */
   partial?: boolean;
 }
