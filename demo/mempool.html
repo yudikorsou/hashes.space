@@ -557,32 +557,37 @@
   #miner-slot, .fleet-shares { display: none !important; }
 
   /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
-  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-areas: 'hr pools' 'calc pools' 'src src'; align-items: stretch; gap: 20px; }
-  .mcard.m-hr { grid-area: hr; } .mcard.m-calc { grid-area: calc; } .mcard.m-pools { grid-area: pools; } .msource { grid-area: src; }
-  @media (max-width: 900px) { .mstats { grid-template-columns: 1fr; grid-template-areas: 'hr' 'calc' 'pools' 'src'; } }
+  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hr pools' 'calc pcalc' 'src src'; align-items: stretch; gap: 20px; }
+  .mcard.m-hr { grid-area: hr; } .mcard.m-calc { grid-area: calc; } .mcard.m-pools { grid-area: pools; } .mcard.m-pcalc { grid-area: pcalc; } .msource { grid-area: src; }
+  @media (max-width: 900px) { .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hr' 'calc' 'pools' 'pcalc' 'src'; } }
   .mstats[hidden] { display: none !important; }
   /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
   .mcard { position: relative; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(70, 78, 140, 0.16), rgba(70, 78, 140, 0) 72%); border: 0; border-radius: 40px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .mcard.m-pools::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
+  .mcard.m-pcalc::before { content: ''; position: absolute; left: 15%; right: 15%; top: -10px; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); }
   .mcard.m-calc::before { content: ''; position: absolute; left: 15%; right: 15%; top: -10px; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); }
   @media (max-width: 900px) { .mcard.m-pools::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
   .mcard .mtitle { margin: 0; text-align: center; font: 600 14px/1.2 var(--sans); color: var(--link); }
   .mcard .kpis dd { text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); }
   /* hashrate calculator: the chance to find a block yourself */
-  .calc { display: grid; gap: 14px; justify-items: center; margin: 0; }
+  .calc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; justify-items: center; margin: 0; width: 100%; min-width: 0; }
   .calc-in { display: inline-flex; align-items: stretch; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, 0.5); overflow: hidden; }
   .calc-in:focus-within { border-color: var(--link); box-shadow: 0 0 0 3px rgba(27, 216, 244, 0.15); }
   .calc-in input { width: 9ch; background: none; border: 0; color: var(--text); font: 500 20px/1 var(--mono); padding: 10px 6px 10px 18px; text-align: right; outline: none; -moz-appearance: textfield; }
   .calc-in input::-webkit-outer-spin-button, .calc-in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .calc-in select { background: none; border: 0; border-left: 1px solid var(--line); color: var(--link); font: 600 14px/1 var(--sans); padding: 0 14px 0 12px; cursor: pointer; outline: none; }
   .calc-in select option { background: #151829; color: var(--text); }
-  .calc-out { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin: 0; text-align: center; }
+  .calc-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .calc-in { max-width: 100%; }
+  .pool-in select { border-left: 0; padding: 10px 16px; font: 600 14px/1 var(--sans); color: var(--text); max-width: 100%; width: 260px; }
+  .calc-out { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; margin: 0; text-align: center; }
   .calc-out dt { color: var(--muted); font: 500 12.5px/1.2 var(--sans); }
   .calc-out dd { margin: 6px 0 0; display: grid; gap: 3px; }
   .calc-out dd b { font: 500 22px/1.15 var(--mono); color: var(--text); text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); font-variant-numeric: tabular-nums; }
-  .calc-out dd span { color: var(--muted); font-size: 12px; }
+  .calc-out dd span { color: var(--muted); font-size: 12px; white-space: normal; overflow-wrap: anywhere; min-width: 0; }
+  .calc-out > div { min-width: 0; }
   .calc-note { margin: 0; color: var(--muted); font-size: 12.5px; text-align: center; max-width: 52ch; }
-  @media (max-width: 520px) { .calc-out dd b { font-size: 17px; } }
+  @media (max-width: 520px) { .calc-out dd b { font-size: 16px; } .calc-out dd span { font-size: 11px; } }
   .mcard .plot { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
   .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
   .mcard .kpis dt { font: 600 14px/1.2 var(--sans); color: var(--link); text-transform: none; letter-spacing: 0; }
@@ -789,6 +794,26 @@
     <h2 class="mtitle" id="pools-title">Mining pools</h2>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
+  </article>
+  <article class="mcard m-pcalc" aria-labelledby="pcalc-title">
+    <h2 class="mtitle" id="pcalc-title">Mining pool calculator</h2>
+    <form class="calc" id="pcalc-form" novalidate>
+      <div class="calc-row">
+        <label class="calc-in pool-in" for="pcalc-pool"><span class="sr-only">Mining pool you join</span>
+          <select id="pcalc-pool"></select>
+        </label>
+        <label class="calc-in" for="pcalc-hash"><span class="sr-only">Your hashrate</span>
+          <input id="pcalc-hash" type="number" inputmode="decimal" min="0" step="any" value="100" aria-describedby="pcalc-note">
+          <select id="pcalc-unit" aria-label="Unit"><option value="1e9">GH/s</option><option value="1e12" selected>TH/s</option><option value="1e15">PH/s</option></select>
+        </label>
+      </div>
+      <dl class="calc-out" aria-live="polite">
+        <div><dt>24 hours</dt><dd id="pcalc-d"><b>–</b><span></span></dd></div>
+        <div><dt>7 days</dt><dd id="pcalc-w"><b>–</b><span></span></dd></div>
+        <div><dt>1 month</dt><dd id="pcalc-m"><b>–</b><span></span></dd></div>
+      </dl>
+      <p class="calc-note" id="pcalc-note"></p>
+    </form>
   </article>
   <p class="msource" id="ms-source"></p>
 </section>
@@ -2831,7 +2856,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     $('ms-source').textContent = m.live
       ? `Live from ${site}/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
-    drawPie(m); drawChart(m); renderCalc();
+    drawPie(m); drawChart(m); renderCalc(); fillPools(); renderPoolCalc();
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
   // A block needs on average difficulty × 2^32 hashes on Bitcoin; mempool.guide gives the BLAKE2b difficulty in hashes per block.
@@ -2865,6 +2890,43 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       : 'Enter your hashrate to see your chance to find a block.';
   }
   $('calc-form').addEventListener('input', renderCalc);
+
+  // ---- mining pool calculator: the chance that the pool you join (with your hashrate) finds a block, and your share ----
+  // The pool's hashrate is its share of last week's blocks × the global hashrate.
+  var poolPick = {}; // per network: the pool picked
+  function fillPools() {
+    const sel = $('pcalc-pool'), m = mining; if (!m) return;
+    const list = m.pools.filter((p) => p.blocks > 0 && !/^unknown$/i.test(p.name)).sort((a, b) => b.blocks - a.blocks);
+    const want = poolPick[netId] ?? sel.value;
+    const opts = [['', 'Choose a mining pool…'], ...list.map((p) => [p.name, `${p.name} · ${(100 * p.blocks / m.blockCount).toFixed(1)}%`])];
+    const key = netId + ':' + opts.map((o) => o[0]).join('|');
+    if (sel.dataset.key !== key) {
+      sel.replaceChildren(...opts.map(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (!v) o.disabled = true; return o; }));
+      sel.dataset.key = key;
+    }
+    sel.value = list.some((p) => p.name === want) ? want : '';
+  }
+  function sig(x) { if (!x) return '0'; if (x >= 1) return fmt(x, x >= 100 ? 0 : 2); const d = Math.min(12, 1 - Math.floor(Math.log10(x))); return x.toFixed(d); }
+  function renderPoolCalc() {
+    const m = mining; if (!m || !$('pcalc-form')) return;
+    const name = $('pcalc-pool').value, pool = m.pools.find((p) => p.name === name);
+    const h = Math.max(0, Number($('pcalc-hash').value) || 0) * Number($('pcalc-unit').value);
+    const set = (id, big, small) => { const dd = $(id); dd.querySelector('b').textContent = big; dd.querySelector('span').textContent = small; };
+    if (!pool) {
+      CALC_PERIODS.forEach(([id]) => set('p' + id, '–', ''));
+      $('pcalc-note').textContent = 'Choose the mining pool you join first, then enter your hashrate.';
+      return;
+    }
+    const perBlock = m.diff * (HASHES_PER_DIFFICULTY[netId] ?? 2 ** 32);
+    const poolHash = (pool.blocks / m.blockCount) * m.hash; // estimated from its blocks last week
+    const total = poolHash + h, rate = perBlock > 0 ? total / perBlock : 0; // the pool's blocks per second, you included
+    const yours = total ? h / total : 0; // your part of every block the pool finds
+    CALC_PERIODS.forEach(([id, t]) => set('p' + id, pct(-Math.expm1(-rate * t)), h ? `you ≈ ${sig(rate * t * yours)} block` : ''));
+    $('pcalc-note').textContent = `Chance that ${pool.name} finds at least one block, with your hashrate added to its estimated ${si(poolHash, 1)}H/s (${(100 * pool.blocks / m.blockCount).toFixed(1)}% of last week's blocks). `
+      + (h ? `Your share of every block it finds is about ${smallPct(yours)}; "you ≈" is your part of the blocks it finds on average.` : 'Enter your hashrate to see your share.');
+  }
+  $('pcalc-form').addEventListener('input', (e) => { if (e.target.id === 'pcalc-pool') poolPick[netId] = e.target.value; renderPoolCalc(); });
+  $('pcalc-form').addEventListener('submit', (e) => e.preventDefault());
   $('calc-form').addEventListener('submit', (e) => e.preventDefault());
   const svgEl = (tag, attrs, text) => { const e = document.createElementNS('http://www.w3.org/2000/svg', tag); for (const k in attrs) e.setAttribute(k, attrs[k]); if (text != null) e.textContent = text; return e; };
   const poolHue = (i) => [338, 285, 262, 228, 205, 190, 172, 150, 95, 62, 45, 30, 15, 0][i % 14];
