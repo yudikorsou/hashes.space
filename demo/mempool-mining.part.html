@@ -25,7 +25,6 @@
     <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
     <dl class="kpis">
       <div><dt>Global hashrate (1w)</dt><dd id="ms-hash">–</dd></div>
-      <div><dt>Difficulty</dt><dd id="ms-diff">–</dd></div>
     </dl>
     <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
     <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i>Hashrate (7-day average)</li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
@@ -105,7 +104,6 @@
     $('ms-blocks').textContent = fmt(m.blockCount);
     $('ms-pools').textContent = fmt(m.pools.length);
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
-    $('ms-diff').textContent = si(m.diff, 2).replace(' ', '');
     $('ms-source').textContent = m.live
       ? `Live from ${site}/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
