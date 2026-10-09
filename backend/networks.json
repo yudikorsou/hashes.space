@@ -12,7 +12,8 @@
     "datumPools": [
       "CONVOY"
     ],
-    "logo": "coins/bitcoin-blake2b.png"
+    "logo": "coins/bitcoin-blake2b.png",
+    "datumVerified": []
   },
   {
     "id": "monero",

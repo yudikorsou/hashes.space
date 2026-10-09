@@ -382,8 +382,11 @@ HashesThemes.register({
 
 The visitor's choice is remembered in their browser, and visitors who ask their device to reduce motion get a still frame.
 
-## DATUM Verified blocks
+## DATUM Compatible and DATUM Verified blocks
 
-A mined block glows green and gets a **DATUM Verified** notice when it was mined in a DATUM pool, where every miner builds the block template with their own node and [DATUM Gateway](https://github.com/OCEAN-xyz/datum_gateway). For now these are **OCEAN** on Bitcoin SHA-256 and **CONVOY** on Bitcoin BLAKE2b, set per network in `networks.json` with `"datumPools"` (`["OCEAN"]`, `["CONVOY"]`).
+Mined blocks of pools that work with [DATUM Gateway](https://github.com/OCEAN-xyz/datum_gateway) glow:
 
-Blocks of other pools, solo blocks and Monero blocks don't get the notice.
+- **DATUM Compatible** (orange glow): a pool that accepts miners with their own node and DATUM Gateway. For now **OCEAN** on Bitcoin SHA-256 and **CONVOY** on Bitcoin BLAKE2b, set per network in `networks.json` with `"datumPools"`.
+- **DATUM Verified** (green glow): only DATUM Gateway verified solominers of 100% DATUM pools, listed per network in `networks.json` with `"datumVerified"` (pool or miner names as mempool shows them). None are listed yet.
+
+Other blocks, and Monero blocks, get neither.

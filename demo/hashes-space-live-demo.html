@@ -537,12 +537,15 @@
     .modes { grid-template-columns: 1fr; }
     .empty { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   }
-  /* DATUM Verified: mined through DATUM Gateway (solo with the miner's own node, or a DATUM pool: OCEAN, CONVOY) */
-  .block-wrap.datum .cube { animation: datum-glow 4s ease-in-out infinite; }
+  /* DATUM Compatible (orange): a pool that accepts DATUM Gateway miners, OCEAN or CONVOY.
+     DATUM Verified (green): a DATUM Gateway verified solominer of a 100% DATUM pool. */
+  .block-wrap.datum .cube { --glow: 247,147,26; animation: datum-glow 4s ease-in-out infinite; }
+  .block-wrap.datum-verified .cube { --glow: 60,226,107; animation: datum-glow 4s ease-in-out infinite; }
   #mined .below { display: grid; justify-items: center; gap: 6px; }
-  .datum-badge { display: inline-flex; align-items: center; gap: 4px; font: 600 10.5px/1 var(--sans); letter-spacing: .04em; text-transform: uppercase; color: #3ce26b; border: 1px solid rgba(60,226,107,.55); background: rgba(60,226,107,.1); border-radius: 999px; padding: 4px 8px; }
-  @keyframes datum-glow { 0%, 100% { filter: drop-shadow(0 0 5px rgba(60,226,107,.65)) drop-shadow(0 0 14px rgba(60,226,107,.3)); } 50% { filter: drop-shadow(0 0 8px rgba(60,226,107,.85)) drop-shadow(0 0 22px rgba(60,226,107,.4)); } }
-  @media (prefers-reduced-motion: reduce) { .block-wrap.datum .cube { animation: none; filter: drop-shadow(0 0 6px rgba(60,226,107,.75)) drop-shadow(0 0 16px rgba(60,226,107,.35)); } }
+  .datum-badge { display: inline-flex; align-items: center; gap: 4px; font: 600 10.5px/1 var(--sans); letter-spacing: .04em; text-transform: uppercase; color: #f7931a; border: 1px solid rgba(247,147,26,.55); background: rgba(247,147,26,.1); border-radius: 999px; padding: 4px 8px; }
+  .datum-badge.verified { color: #3ce26b; border-color: rgba(60,226,107,.55); background: rgba(60,226,107,.1); }
+  @keyframes datum-glow { 0%, 100% { filter: drop-shadow(0 0 5px rgba(var(--glow),.65)) drop-shadow(0 0 14px rgba(var(--glow),.3)); } 50% { filter: drop-shadow(0 0 8px rgba(var(--glow),.85)) drop-shadow(0 0 22px rgba(var(--glow),.4)); } }
+  @media (prefers-reduced-motion: reduce) { .block-wrap.datum .cube, .block-wrap.datum-verified .cube { animation: none; filter: drop-shadow(0 0 6px rgba(var(--glow),.75)) drop-shadow(0 0 16px rgba(var(--glow),.35)); } }
   .net-id { display: inline-flex; align-items: center; gap: 10px; }
   .coin { width: 26px; height: 26px; flex: 0 0 auto; border-radius: 50%; }
 </style>
@@ -1568,23 +1571,25 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       <div class="above">${b.index === 0 ? 'Mining now' : ''}</div>${cube(b, false)}
       <div class="below">${b.index === 0 ? `<span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span>` : ''}</div></div>`).join('');
   }
-  // DATUM Verified (backend isDatumBlock): for now only blocks of this network's DATUM pool, OCEAN on Bitcoin and CONVOY on
-  // Bitcoin BLAKE2b, whose miners build their own block templates with DATUM Gateway and their own node
+  // DATUM labels (backend datumLabel), by the pool mempool names:
+  //  Compatible (orange): a pool that accepts miners with their own node and DATUM Gateway, for now OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b
+  //  Verified (green): a DATUM Gateway verified solominer of a 100% DATUM pool (none listed yet)
   const DATUM_POOLS = { sha256: ['OCEAN'], blake2b: ['CONVOY'] };
-  const DATUM_TITLE = 'DATUM Verified: mined in a DATUM pool through DATUM Gateway, with the miner\'s own node building the block template';
-  const isDatum = (b) => {
-    if (!(netId in DATUM_POOLS)) return false;
-    const p = (b.pool ?? '').trim().toLowerCase();
-    return DATUM_POOLS[netId].some((d) => d.toLowerCase() === p);
+  const DATUM_VERIFIED = { sha256: [], blake2b: [] };
+  const DATUM_TITLE = { verified: 'DATUM Verified: mined by a DATUM Gateway verified solominer of a 100% DATUM pool', compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway' };
+  const DATUM_BADGE = { verified: '<span class="datum-badge verified"><span aria-hidden="true">✓</span> DATUM Verified</span>', compatible: '<span class="datum-badge"><span aria-hidden="true">◆</span> DATUM Compatible</span>' };
+  const datumLabel = (b) => {
+    const p = (b.pool ?? '').trim().toLowerCase(), has = (l) => (l?.[netId] ?? []).some((d) => d.toLowerCase() === p);
+    return !p ? null : has(DATUM_VERIFIED) ? 'verified' : has(DATUM_POOLS) ? 'compatible' : null;
   };
   function renderMined(animateFirst) {
     const c = chain(), live = !!c.live, url = EXPLORER[netId];
     // live blocks link to their explorer page; simulated ones have made-up hashes, so no link
     $('mined').innerHTML = c.blocks.map((b, i) => {
       const tag = live && url ? `a href="${url}${b.hash}" target="_blank" rel="noopener"` : 'div';
-      const datum = isDatum(b);
-      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? ' datum' : ''}"${datum ? ` title="${DATUM_TITLE}"` : ''}>
-      <div class="above height">${fmt(b.height)}</div>${cube(b, true)}<div class="below">${esc(b.pool ?? '')}${datum ? '<span class="datum-badge"><span aria-hidden="true">✓</span> DATUM Verified</span>' : ''}</div></${tag.split(' ')[0]}>`;
+      const datum = datumLabel(b);
+      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? (datum === 'verified' ? ' datum-verified' : ' datum') : ''}"${datum ? ` title="${DATUM_TITLE[datum]}"` : ''}>
+      <div class="above height">${fmt(b.height)}</div>${cube(b, true)}<div class="below">${esc(b.pool ?? '')}${datum ? DATUM_BADGE[datum] : ''}</div></${tag.split(' ')[0]}>`;
     }).join('');
     $('tip').textContent = 'tip ' + fmt(c.tipHeight);
     $('src-label').textContent = netId === 'own' ? `${network().chain} · ${network().source}` : live ? `${network().chain} · live from ${network().source}` : c.connecting ? `Connecting to ${network().source}…` : `${network().chain} · simulated (${network().source} not reachable from this page)`;

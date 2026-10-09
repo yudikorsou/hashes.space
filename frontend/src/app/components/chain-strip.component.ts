@@ -54,7 +54,7 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
 
       <div class="half mined">
         @for (b of chain()?.blocks ?? []; track b.hash) {
-          <a class="block-wrap enter" [class.datum]="b.datum" [attr.title]="b.datum ? datumTitle : null" [attr.href]="explorer() && !b.partial ? explorer() + b.hash : null" target="_blank" rel="noopener">
+          <a class="block-wrap enter" [class.datum]="b.datum === 'compatible'" [class.datum-verified]="b.datum === 'verified'" [attr.title]="b.datum ? datumTitle[b.datum] : null" [attr.href]="explorer() && !b.partial ? explorer() + b.hash : null" target="_blank" rel="noopener">
             <div class="above height">{{ b.height | number: '1.0-0' }}</div>
             <div class="cube">
               <div class="face front" [style.background]="minedBg(b)">
@@ -85,8 +85,10 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
             </div>
             <div class="below">
               {{ b.pool ?? '' }}
-              @if (b.datum) {
-                <span class="datum-badge"><span aria-hidden="true">✓</span> DATUM Verified</span>
+              @if (b.datum === 'verified') {
+                <span class="datum-badge verified"><span aria-hidden="true">✓</span> DATUM Verified</span>
+              } @else if (b.datum === 'compatible') {
+                <span class="datum-badge"><span aria-hidden="true">◆</span> DATUM Compatible</span>
               }
             </div>
           </a>
@@ -97,7 +99,10 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
   styleUrl: './chain-strip.component.scss',
 })
 export class ChainStripComponent implements AfterViewInit, OnDestroy {
-  readonly datumTitle = 'DATUM Verified: mined in a DATUM pool through DATUM Gateway, with the miner\'s own node building the block template';
+  readonly datumTitle = {
+    verified: 'DATUM Verified: mined by a DATUM Gateway verified solominer of a 100% DATUM pool',
+    compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway',
+  };
   readonly chain = input<ChainState | null>(null);
 
   readonly socket = inject(FleetSocketService);

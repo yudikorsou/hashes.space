@@ -122,19 +122,22 @@ $depth: 16px;
   .enter, :host ::ng-deep .cube.hit { animation: none; }
 }
 
-/* DATUM Verified: mined through DATUM Gateway (solo with the miner's own node, or a DATUM pool) */
-.block-wrap.datum .cube { animation: datum-glow 4s ease-in-out infinite; }
+/* DATUM Compatible (orange): a pool that accepts DATUM Gateway miners, OCEAN or CONVOY.
+   DATUM Verified (green): a DATUM Gateway verified solominer of a 100% DATUM pool. */
+.block-wrap.datum .cube { --glow: 247, 147, 26; animation: datum-glow 4s ease-in-out infinite; }
+.block-wrap.datum-verified .cube { --glow: 60, 226, 107; animation: datum-glow 4s ease-in-out infinite; }
 .mined .below { display: grid; justify-items: center; gap: 6px; }
 .datum-badge {
   display: inline-flex; align-items: center; gap: 4px;
   font: 600 10.5px/1 var(--sans); letter-spacing: 0.04em; text-transform: uppercase;
-  color: #3ce26b; border: 1px solid rgba(60, 226, 107, 0.55); background: rgba(60, 226, 107, 0.1);
+  color: #f7931a; border: 1px solid rgba(247, 147, 26, 0.55); background: rgba(247, 147, 26, 0.1);
   border-radius: 999px; padding: 4px 8px;
 }
+.datum-badge.verified { color: #3ce26b; border-color: rgba(60, 226, 107, 0.55); background: rgba(60, 226, 107, 0.1); }
 @keyframes datum-glow {
-  0%, 100% { filter: drop-shadow(0 0 5px rgba(60, 226, 107, 0.65)) drop-shadow(0 0 14px rgba(60, 226, 107, 0.3)); }
-  50% { filter: drop-shadow(0 0 8px rgba(60, 226, 107, 0.85)) drop-shadow(0 0 22px rgba(60, 226, 107, 0.4)); }
+  0%, 100% { filter: drop-shadow(0 0 5px rgba(var(--glow), 0.65)) drop-shadow(0 0 14px rgba(var(--glow), 0.3)); }
+  50% { filter: drop-shadow(0 0 8px rgba(var(--glow), 0.85)) drop-shadow(0 0 22px rgba(var(--glow), 0.4)); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .block-wrap.datum .cube { animation: none; filter: drop-shadow(0 0 6px rgba(60, 226, 107, 0.75)) drop-shadow(0 0 16px rgba(60, 226, 107, 0.35)); }
+  .block-wrap.datum .cube, .block-wrap.datum-verified .cube { animation: none; filter: drop-shadow(0 0 6px rgba(var(--glow), 0.75)) drop-shadow(0 0 16px rgba(var(--glow), 0.35)); }
 }

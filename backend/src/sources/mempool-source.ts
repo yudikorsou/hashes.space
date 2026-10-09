@@ -17,12 +17,12 @@ export class MempoolSource extends ChainSource {
   private pingTimer?: NodeJS.Timeout;
   private stopped = false;
 
-  constructor(private url: string, label: string, private datumPools: string[] = []) {
+  constructor(private url: string, label: string, private datumPools: string[] = [], private datumVerified: string[] = []) {
     super(label);
   }
 
   private mapBlock(b: any): ChainBlock {
-    return mapBlock(b, this.datumPools);
+    return mapBlock(b, this.datumPools, this.datumVerified);
   }
 
   start(): void {
@@ -104,16 +104,20 @@ function coinbaseText(hex: unknown): string {
 }
 
 /**
- * DATUM Verified: mined in one of this network's DATUM pools (for now OCEAN on Bitcoin, CONVOY on
- * Bitcoin BLAKE2b), whose miners build their own block templates with DATUM Gateway and their own node.
- * `coinbase` is kept for a later check of solo DATUM Gateway blocks.
+ * The DATUM label of a block, by the pool (or solo miner) mempool names:
+ *  'verified'   in datumVerified: a DATUM Gateway verified solominer of a 100% DATUM pool (green, "DATUM Verified");
+ *  'compatible' in datumPools: a pool that accepts DATUM Gateway miners, OCEAN or CONVOY (orange, "DATUM Compatible").
+ * `coinbase` is kept for a later check of DATUM Gateway's tag.
  */
-export function isDatumBlock(pool: string | undefined, _coinbase: string, datumPools: string[]): boolean {
+export function datumLabel(pool: string | undefined, _coinbase: string, datumPools: string[], datumVerified: string[] = []): 'verified' | 'compatible' | undefined {
   const p = (pool ?? '').trim().toLowerCase();
-  return !!p && datumPools.some((d) => d.toLowerCase() === p);
+  if (!p) return undefined;
+  if (datumVerified.some((d) => d.toLowerCase() === p)) return 'verified';
+  if (datumPools.some((d) => d.toLowerCase() === p)) return 'compatible';
+  return undefined;
 }
 
-function mapBlock(b: any, datumPools: string[]): ChainBlock {
+function mapBlock(b: any, datumPools: string[], datumVerified: string[]): ChainBlock {
   return {
     height: b.height,
     hash: b.id,
@@ -125,6 +129,6 @@ function mapBlock(b: any, datumPools: string[]): ChainBlock {
     feeRange: b.extras?.feeRange ?? [],
     totalFees: b.extras?.totalFees ?? 0,
     pool: b.extras?.pool?.name,
-    datum: isDatumBlock(b.extras?.pool?.name, coinbaseText(b.extras?.coinbaseRaw), datumPools),
+    datum: datumLabel(b.extras?.pool?.name, coinbaseText(b.extras?.coinbaseRaw), datumPools, datumVerified),
   };
 }

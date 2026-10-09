@@ -30,11 +30,15 @@ export interface NetworkConfig {
   /** shown as the data source, e.g. "mempool.space" */
   sourceLabel?: string;
   /**
-   * DATUM Verified: blocks from these pools get a glow and a "DATUM Verified" notice (pools whose
-   * miners build their own block templates with DATUM Gateway), e.g. ["OCEAN"] on Bitcoin SHA-256,
-   * ["CONVOY"] on Bitcoin BLAKE2b. Only these pools' blocks count (for now).
+   * DATUM Compatible: blocks from these pools get an orange glow and a "DATUM Compatible" notice (pools that
+   * accept miners with their own DATUM Gateway), e.g. ["OCEAN"] on Bitcoin SHA-256, ["CONVOY"] on Bitcoin BLAKE2b.
    */
   datumPools?: string[];
+  /**
+   * DATUM Verified: blocks whose pool or miner name is in this list get a green glow and a "DATUM Verified" notice:
+   * DATUM Gateway verified solominers of 100% DATUM pools. Empty for now.
+   */
+  datumVerified?: string[];
   /** coin logo for the PoW picker: a path under the frontend's public folder (coins/bitcoin.png) or a URL */
   logo?: string;
   /** block page link prefix, e.g. https://mempool.space/block/ */
