@@ -97,7 +97,7 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
   styleUrl: './chain-strip.component.scss',
 })
 export class ChainStripComponent implements AfterViewInit, OnDestroy {
-  readonly datumTitle = 'DATUM Verified: mined through DATUM Gateway, the miner built this block template with their own node';
+  readonly datumTitle = 'DATUM Verified: mined in a DATUM pool through DATUM Gateway, with the miner\'s own node building the block template';
   readonly chain = input<ChainState | null>(null);
 
   readonly socket = inject(FleetSocketService);

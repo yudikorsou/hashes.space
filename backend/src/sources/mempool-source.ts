@@ -104,14 +104,13 @@ function coinbaseText(hex: unknown): string {
 }
 
 /**
- * DATUM Verified: mined through DATUM Gateway. Either solo, with the miner's own node and gateway
- * (DATUM Gateway writes its tag into the coinbase, mempool names the miner "DATUM …"), or in one of
- * this network's DATUM pools (OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b).
+ * DATUM Verified: mined in one of this network's DATUM pools (for now OCEAN on Bitcoin, CONVOY on
+ * Bitcoin BLAKE2b), whose miners build their own block templates with DATUM Gateway and their own node.
+ * `coinbase` is kept for a later check of solo DATUM Gateway blocks.
  */
-export function isDatumBlock(pool: string | undefined, coinbase: string, datumPools: string[]): boolean {
+export function isDatumBlock(pool: string | undefined, _coinbase: string, datumPools: string[]): boolean {
   const p = (pool ?? '').trim().toLowerCase();
-  if (p && datumPools.some((d) => d.toLowerCase() === p)) return true;
-  return /\bdatum\b/i.test(pool ?? '') || /DATUM Gateway/i.test(coinbase);
+  return !!p && datumPools.some((d) => d.toLowerCase() === p);
 }
 
 function mapBlock(b: any, datumPools: string[]): ChainBlock {

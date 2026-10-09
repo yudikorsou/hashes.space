@@ -934,14 +934,14 @@
       <div class="above">${b.index === 0 ? 'Mining now' : ''}</div>${cube(b, false)}
       <div class="below">${b.index === 0 ? `<span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span>` : ''}</div></div>`).join('');
   }
-  // DATUM Verified (backend isDatumBlock): mined through DATUM Gateway, solo with the miner's own node and gateway
-  // (its tag in the coinbase, or a "DATUM …" miner name), or in this network's DATUM pool: OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b
+  // DATUM Verified (backend isDatumBlock): for now only blocks of this network's DATUM pool, OCEAN on Bitcoin and CONVOY on
+  // Bitcoin BLAKE2b, whose miners build their own block templates with DATUM Gateway and their own node
   const DATUM_POOLS = { sha256: ['OCEAN'], blake2b: ['CONVOY'] };
-  const DATUM_TITLE = 'DATUM Verified: mined through DATUM Gateway, the miner built this block template with their own node';
+  const DATUM_TITLE = 'DATUM Verified: mined in a DATUM pool through DATUM Gateway, with the miner\'s own node building the block template';
   const isDatum = (b) => {
     if (!(netId in DATUM_POOLS)) return false;
     const p = (b.pool ?? '').trim().toLowerCase();
-    return DATUM_POOLS[netId].some((d) => d.toLowerCase() === p) || /\bdatum\b/i.test(b.pool ?? '') || /DATUM Gateway/i.test(b.coinbase ?? '');
+    return DATUM_POOLS[netId].some((d) => d.toLowerCase() === p);
   };
   function renderMined(animateFirst) {
     const c = chain(), live = !!c.live, url = EXPLORER[netId];

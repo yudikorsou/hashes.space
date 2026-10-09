@@ -32,7 +32,7 @@ export interface NetworkConfig {
   /**
    * DATUM Verified: blocks from these pools get a glow and a "DATUM Verified" notice (pools whose
    * miners build their own block templates with DATUM Gateway), e.g. ["OCEAN"] on Bitcoin SHA-256,
-   * ["CONVOY"] on Bitcoin BLAKE2b. Solo blocks from a DATUM Gateway (its tag in the coinbase) always count.
+   * ["CONVOY"] on Bitcoin BLAKE2b. Only these pools' blocks count (for now).
    */
   datumPools?: string[];
   /** coin logo for the PoW picker: a path under the frontend's public folder (coins/bitcoin.png) or a URL */
