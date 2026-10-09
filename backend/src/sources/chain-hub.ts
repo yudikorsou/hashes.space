@@ -42,7 +42,7 @@ export class ChainHub extends EventEmitter {
             ? new XmrchainSource(n.apiUrl!, n.sourceLabel ?? new URL(n.apiUrl!).host)
           : kind === 'simulated'
             ? new SimulatedSource(`Simulated ${n.chain} chain`, undefined, Math.max(20_000, (n.blockSeconds ?? 600) * 125))
-            : new MempoolSource(n.wsUrl!, n.sourceLabel ?? new URL(n.wsUrl!).host);
+            : new MempoolSource(n.wsUrl!, n.sourceLabel ?? new URL(n.wsUrl!).host, n.datumPools);
       this.add(n.id, src);
       return { id: n.id, algo: n.algo, label: n.label, chain: n.chain, ticker: n.ticker, source: src.getState().source, explorerBlockUrl: kind === 'mempool' || kind === 'xmrchain' ? n.explorer : undefined };
     });

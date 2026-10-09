@@ -17,8 +17,12 @@ export class MempoolSource extends ChainSource {
   private pingTimer?: NodeJS.Timeout;
   private stopped = false;
 
-  constructor(private url: string, label: string) {
+  constructor(private url: string, label: string, private datumPools: string[] = []) {
     super(label);
+  }
+
+  private mapBlock(b: any): ChainBlock {
+    return mapBlock(b, this.datumPools);
   }
 
   start(): void {
@@ -70,11 +74,11 @@ export class MempoolSource extends ChainSource {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private handle(msg: any): void {
     if (Array.isArray(msg.blocks)) {
-      const blocks = msg.blocks.map(mapBlock).sort((a: ChainBlock, b: ChainBlock) => b.height - a.height).slice(0, 8);
+      const blocks = msg.blocks.map((b: any) => this.mapBlock(b)).sort((a: ChainBlock, b: ChainBlock) => b.height - a.height).slice(0, 8);
       this.publish({ blocks, tipHeight: blocks[0]?.height ?? this.state.tipHeight });
     }
     if (msg.block) {
-      this.pushBlock(mapBlock(msg.block));
+      this.pushBlock(this.mapBlock(msg.block));
     }
     if (Array.isArray(msg['mempool-blocks'])) {
       const projected: ProjectedBlock[] = msg['mempool-blocks'].slice(0, 8).map(
@@ -94,7 +98,23 @@ export class MempoolSource extends ChainSource {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function mapBlock(b: any): ChainBlock {
+/** the coinbase's readable text (mempool sends it as hex in extras.coinbaseRaw) */
+function coinbaseText(hex: unknown): string {
+  return typeof hex === 'string' ? Buffer.from(hex, 'hex').toString('latin1') : '';
+}
+
+/**
+ * DATUM Verified: mined through DATUM Gateway. Either solo, with the miner's own node and gateway
+ * (DATUM Gateway writes its tag into the coinbase, mempool names the miner "DATUM …"), or in one of
+ * this network's DATUM pools (OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b).
+ */
+export function isDatumBlock(pool: string | undefined, coinbase: string, datumPools: string[]): boolean {
+  const p = (pool ?? '').trim().toLowerCase();
+  if (p && datumPools.some((d) => d.toLowerCase() === p)) return true;
+  return /\bdatum\b/i.test(pool ?? '') || /DATUM Gateway/i.test(coinbase);
+}
+
+function mapBlock(b: any, datumPools: string[]): ChainBlock {
   return {
     height: b.height,
     hash: b.id,
@@ -106,5 +126,6 @@ function mapBlock(b: any): ChainBlock {
     feeRange: b.extras?.feeRange ?? [],
     totalFees: b.extras?.totalFees ?? 0,
     pool: b.extras?.pool?.name,
+    datum: isDatumBlock(b.extras?.pool?.name, coinbaseText(b.extras?.coinbaseRaw), datumPools),
   };
 }

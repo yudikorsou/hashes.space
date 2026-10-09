@@ -8,7 +8,10 @@
     "source": "mempool",
     "wsUrl": "wss://mempool.guide/api/v1/ws",
     "sourceLabel": "mempool.guide",
-    "explorer": "https://mempool.guide/block/"
+    "explorer": "https://mempool.guide/block/",
+    "datumPools": [
+      "CONVOY"
+    ]
   },
   {
     "id": "monero",

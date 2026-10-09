@@ -29,6 +29,12 @@ export interface NetworkConfig {
   apiUrl?: string;
   /** shown as the data source, e.g. "mempool.space" */
   sourceLabel?: string;
+  /**
+   * DATUM Verified: blocks from these pools get a glow and a "DATUM Verified" notice (pools whose
+   * miners build their own block templates with DATUM Gateway), e.g. ["OCEAN"] on Bitcoin SHA-256,
+   * ["CONVOY"] on Bitcoin BLAKE2b. Solo blocks from a DATUM Gateway (its tag in the coinbase) always count.
+   */
+  datumPools?: string[];
   /** block page link prefix, e.g. https://mempool.space/block/ */
   explorer?: string;
   /** node: JSON-RPC address and login (default: the BITCOIN_RPC_* settings) */
@@ -41,7 +47,7 @@ export interface NetworkConfig {
 }
 
 const BUILT_IN: NetworkConfig[] = [
-  { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool', wsUrl: 'wss://mempool.guide/api/v1/ws', sourceLabel: 'mempool.guide', explorer: 'https://mempool.guide/block/' },
+  { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool', wsUrl: 'wss://mempool.guide/api/v1/ws', sourceLabel: 'mempool.guide', explorer: 'https://mempool.guide/block/', datumPools: ['CONVOY'] },
 ];
 
 /** labels for hash functions without a network in networks.json (a miner can still be set to them) */

@@ -381,3 +381,12 @@ HashesThemes.register({
 ```
 
 The visitor's choice is remembered in their browser, and visitors who ask their device to reduce motion get a still frame.
+
+## DATUM Verified blocks
+
+A mined block glows green and gets a **DATUM Verified** notice when it was mined through [DATUM Gateway](https://github.com/OCEAN-xyz/datum_gateway), where the miner builds the block template with their own node:
+
+- **solo**, with the miner's own node and DATUM Gateway: recognised by DATUM Gateway's tag in the coinbase, or a "DATUM …" miner name on mempool;
+- **in a DATUM pool** of that network, set per network in `networks.json` with `"datumPools"`: **OCEAN** on Bitcoin SHA-256 (`"datumPools": ["OCEAN"]`), **CONVOY** on Bitcoin BLAKE2b (`"datumPools": ["CONVOY"]`).
+
+Other pools' blocks, and Monero blocks, never get the notice.

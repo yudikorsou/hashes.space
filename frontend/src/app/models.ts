@@ -48,6 +48,8 @@ export interface ChainBlock {
   feeRange: number[]; // [min, ..., max] sat/vB
   totalFees: number; // sats
   pool?: string;
+  /** mined through DATUM Gateway (solo with own node, or a DATUM pool: OCEAN, CONVOY): glows, "DATUM Verified" */
+  datum?: boolean;
   /** true when the source can't tell size, tx count or fees (Electrum-only) */
   partial?: boolean;
 }

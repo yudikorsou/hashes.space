@@ -51,7 +51,7 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
 
       <div class="half mined">
         @for (b of chain()?.blocks ?? []; track b.hash) {
-          <a class="block-wrap enter" [attr.href]="explorer() && !b.partial ? explorer() + b.hash : null" target="_blank" rel="noopener">
+          <a class="block-wrap enter" [class.datum]="b.datum" [attr.title]="b.datum ? datumTitle : null" [attr.href]="explorer() && !b.partial ? explorer() + b.hash : null" target="_blank" rel="noopener">
             <div class="above height">{{ b.height | number: '1.0-0' }}</div>
             <div class="cube">
               <div class="face front" [style.background]="minedBg(b)">
@@ -77,7 +77,12 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
               <div class="face top"></div>
               <div class="face side"></div>
             </div>
-            <div class="below">{{ b.pool ?? '' }}</div>
+            <div class="below">
+              {{ b.pool ?? '' }}
+              @if (b.datum) {
+                <span class="datum-badge"><span aria-hidden="true">✓</span> DATUM Verified</span>
+              }
+            </div>
           </a>
         }
       </div>
@@ -86,6 +91,7 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
   styleUrl: './chain-strip.component.scss',
 })
 export class ChainStripComponent implements AfterViewInit, OnDestroy {
+  readonly datumTitle = 'DATUM Verified: mined through DATUM Gateway, the miner built this block template with their own node';
   readonly chain = input<ChainState | null>(null);
 
   readonly socket = inject(FleetSocketService);
