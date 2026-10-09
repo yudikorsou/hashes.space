@@ -3,7 +3,11 @@
   .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: 1fr 1fr; align-items: stretch; gap: 20px; }
   @media (max-width: 900px) { .mstats { grid-template-columns: 1fr; } }
   .mstats[hidden] { display: none !important; }
-  .mcard { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
+  .mcard { position: relative; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(70, 78, 140, 0.16), rgba(70, 78, 140, 0) 72%); border: 0; border-radius: 40px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .mcard + .mcard::before { content: ''; position: absolute; left: -10px; top: 12%; bottom: 12%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
+  @media (max-width: 900px) { .mcard + .mcard::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
+  .mcard .kpis dd { text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); }
   .mcard .plot { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
   .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
   .mcard .kpis dt { font: 600 14px/1.2 var(--sans); color: var(--link); text-transform: none; letter-spacing: 0; }
