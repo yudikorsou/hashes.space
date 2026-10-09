@@ -680,7 +680,6 @@
   .themes-menu button { width: 100%; display: grid; grid-template-columns: 16px 1fr auto; align-items: center; gap: 10px; text-align: left; background: none; border: 0; border-radius: 5px; padding: 8px; color: var(--text); font: 500 13px/1.25 var(--sans); cursor: pointer; }
   .themes-menu button:hover { background: var(--surface); }
   .themes-menu .sw { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--sw); }
-  .themes-menu .note { color: var(--muted); font-size: 11.5px; font-weight: 400; }
   .themes-menu [aria-checked="true"]::after { content: '✓'; color: var(--link); }
 </style>
 
@@ -3211,8 +3210,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
  * Themes for hashes.space. Space is the default. Add your own with:
  *
  *   HashesThemes.register({
- *     id: 'aurora', label: 'Aurora', note: 'Green northern lights',
- *     swatch: '#0b2a2a',                 // the colour dot in the menu (any CSS background)
+ *     id: 'aurora', label: 'Aurora',     swatch: '#0b2a2a',                 // the colour dot in the menu (any CSS background)
  *     background: '#05100f',             // page colour behind the canvas
  *     setup(ctx, width, height) {        // called when the theme starts and when the window resizes
  *       return { frame(dt, t) { … draw one frame on ctx … } };   // dt and t in seconds
@@ -3259,7 +3257,6 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       b.setAttribute('aria-checked', String(th === current)); b.dataset.theme = th.id;
       const sw = document.createElement('span'); sw.className = 'sw'; sw.style.setProperty('--sw', th.swatch || '#11131f');
       const tx = document.createElement('span'); tx.textContent = th.label;
-      if (th.note) { const n = document.createElement('span'); n.className = 'note'; n.textContent = th.note; tx.append(document.createElement('br'), n); }
       b.append(sw, tx); li.append(b); return li;
     }));
   }
@@ -3290,7 +3287,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // ---- built-in themes ----
   // Space (default): a soothing starfield drifting slowly to the lower left, with faint nebula clouds
   HashesThemes.register({
-    id: 'space', label: 'Space', note: 'Slow drifting stars', background: '#070913',
+    id: 'space', label: 'Space', background: '#070913',
     swatch: 'radial-gradient(circle at 35% 35%, #cfd8ff 0 14%, #2b2f6a 15% 100%)',
     setup(ctx, w, h) {
       const rnd = (a, b) => a + Math.random() * (b - a), n = Math.min(520, Math.round((w * h) / 2600));
@@ -3316,7 +3313,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     },
   });
   // Plain: the page's own dark background, no animation
-  HashesThemes.register({ id: 'plain', label: 'Plain', note: 'No background animation', swatch: '#11131f' });
+  HashesThemes.register({ id: 'plain', label: 'Plain', swatch: '#11131f' });
 })();
 </script>
 </body>

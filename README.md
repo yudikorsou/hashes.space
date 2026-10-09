@@ -371,7 +371,7 @@ hashes.space is an independent project and is not affiliated with or endorsed by
 
 ```js
 HashesThemes.register({
-  id: 'aurora', label: 'Aurora', note: 'Green northern lights',
+  id: 'aurora', label: 'Aurora',
   swatch: '#0b2a2a',          // the colour dot in the Themes menu
   background: '#05100f',      // page colour behind the animation
   setup(ctx, width, height) { // draw on a full-page canvas behind everything
