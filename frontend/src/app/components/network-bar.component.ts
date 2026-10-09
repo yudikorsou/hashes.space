@@ -39,7 +39,12 @@ interface OwnForm {
           (click)="toggle()"
         >
           @if (socket.network(); as n) {
-            <span class="algo" [class]="'algo ' + n.algo">{{ n.label }}</span>
+            <span class="net-id">
+              @if (n.logo) {
+                <img class="coin" [src]="n.logo" alt="" width="26" height="26" />
+              }
+              <span class="algo" [class]="'algo ' + n.algo">{{ n.label }}</span>
+            </span>
             <span id="net-current" class="dd-text">
               <b>{{ n.id === 'own' ? 'Your node' : n.chain }}</b>
               <small>{{ n.id === 'own' ? n.chain + ' · ' + n.source : n.ticker + ' · ' + n.source }}</small>
@@ -61,7 +66,12 @@ interface OwnForm {
                 (mouseenter)="active.set(i)"
                 (click)="choose(n)"
               >
-                <span class="algo" [class]="'algo ' + n.algo">{{ n.label }}</span>
+                <span class="net-id">
+              @if (n.logo) {
+                <img class="coin" [src]="n.logo" alt="" width="26" height="26" />
+              }
+              <span class="algo" [class]="'algo ' + n.algo">{{ n.label }}</span>
+            </span>
                 <span class="dd-text">
                   <b>{{ n.id === 'own' ? 'Your node' : n.chain }} <em>{{ n.ticker }}</em></b>
                   <small>{{ describe(n) }}</small>
@@ -191,6 +201,8 @@ interface OwnForm {
       /* a colour per hash function; any other one gets the neutral badge above */
       .algo.sha256 { color: #1a1206; background: #f7931a; } /* Bitcoin orange */
       .algo.blake2b { color: #1a1406; background: #e2b33c; } /* Bitcoin BLAKE2b gold */
+      .net-id { display: inline-flex; align-items: center; gap: 10px; }
+      .coin { width: 26px; height: 26px; flex: 0 0 auto; border-radius: 50%; }
       .algo.scrypt { color: #0b1530; background: #bfc8dc; } /* Litecoin silver */
       .algo.kheavyhash { color: #04211c; background: #49eacb; }
       .algo.equihash { color: #1a1406; background: #f4b728; }

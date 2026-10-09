@@ -11,7 +11,8 @@
     "explorer": "https://mempool.guide/block/",
     "datumPools": [
       "CONVOY"
-    ]
+    ],
+    "logo": "coins/bitcoin-blake2b.png"
   },
   {
     "id": "monero",
@@ -23,6 +24,7 @@
     "apiUrl": "https://xmrchain.net/api",
     "sourceLabel": "xmrchain.net",
     "explorer": "https://xmrchain.net/block/",
-    "blockSeconds": 120
+    "blockSeconds": 120,
+    "logo": "coins/monero.png"
   }
 ]

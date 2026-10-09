@@ -20,6 +20,8 @@ export interface NetworkInfo {
   source: string; // "mempool.guide", "Your node (Bitcoin Knots)"
   /** block page link prefix, if the stream has a public explorer */
   explorerBlockUrl?: string;
+  /** coin logo shown in the PoW picker, e.g. coins/bitcoin.png */
+  logo?: string;
 }
 
 /** "Connect your own node and Electrum server" – per account. */

@@ -35,6 +35,8 @@ export interface NetworkConfig {
    * ["CONVOY"] on Bitcoin BLAKE2b. Solo blocks from a DATUM Gateway (its tag in the coinbase) always count.
    */
   datumPools?: string[];
+  /** coin logo for the PoW picker: a path under the frontend's public folder (coins/bitcoin.png) or a URL */
+  logo?: string;
   /** block page link prefix, e.g. https://mempool.space/block/ */
   explorer?: string;
   /** node: JSON-RPC address and login (default: the BITCOIN_RPC_* settings) */
