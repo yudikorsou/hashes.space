@@ -38,7 +38,7 @@ RUN cd explorer && mkdir build && cd build \
 FROM ${ALPINE}
 RUN apk add --no-cache \
       boost-chrono boost-date_time boost-filesystem boost-program_options boost-regex boost-serialization \
-      boost-system boost-thread ca-certificates hidapi libcurl libsodium libssl3 libstdc++ libunwind \
+      boost-system boost-thread ca-certificates hidapi libatomic libcurl libsodium libssl3 libstdc++ libunwind \
       libusb miniupnpc readline unbound-libs zeromq \
  && adduser -D -u 1000 monero && mkdir -p /home/monero/.bitmonero && chown monero:monero /home/monero/.bitmonero
 COPY --from=build /src/explorer/build/xmrblocks /home/monero/xmrblocks
