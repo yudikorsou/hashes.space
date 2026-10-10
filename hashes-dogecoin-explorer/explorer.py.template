@@ -1,0 +1,542 @@
+"""Dogecoin block explorer for Umbrel, on your own Dogecoin Core node (Python standard library only).
+
+Reads everything from the Dogecoin Core app's RPC: blocks (parsed from the raw block, AuxPoW included),
+transactions and the mempool. Serves:
+
+  /                      latest blocks and the mempool
+  /block/<hash|height>   a block with its transactions
+  /tx/<txid>             a transaction (mempool, a block from this explorer, or any tx with -txindex)
+  /search?q=             height, block hash or txid
+  /api/v1/blocks         the last blocks, in mempool.space's format (for hashes.space)
+  /api/v1/fees/mempool-blocks   the mempool cut into blocks of 1 MB, best fee first
+  /api/blocks/tip/height
+  /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
+
+Fees are in koinu per byte (1 DOGE = 100,000,000 koinu).
+"""
+
+import base64
+import hashlib
+import html
+import json
+import os
+import re
+import socket
+import struct
+import threading
+import time
+import urllib.error
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT = int(os.environ.get("PORT", "3000"))
+RPC_URL = "http://" + os.environ["RPC_HOST"] + ":" + os.environ["RPC_PORT"] + "/"
+AUTH = "Basic " + base64.b64encode((os.environ["RPC_USER"] + ":" + os.environ["RPC_PASS"]).encode()).decode()
+COIN = 100_000_000
+SUBSIDY = 10_000 * COIN  # every Dogecoin block since height 600,000
+MAX_BLOCK = 1_000_000
+WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+HEX64 = re.compile(r"[0-9a-fA-F]{64}")
+
+
+def log(msg):
+    print("[explorer] " + msg, flush=True)
+
+
+class RpcError(Exception):
+    pass
+
+
+def rpc(method, *params):
+    body = json.dumps({"jsonrpc": "1.0", "id": "x", "method": method, "params": list(params)}).encode()
+    req = urllib.request.Request(RPC_URL, data=body, headers={"Authorization": AUTH, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            payload = json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        try:
+            payload = json.loads(exc.read())
+        except Exception:  # noqa: BLE001
+            raise RpcError("HTTP " + str(exc.code))
+    except OSError as exc:
+        raise RpcError("Dogecoin Core is not reachable: " + str(exc))
+    if payload.get("error"):
+        raise RpcError(payload["error"].get("message", "RPC error"))
+    return payload["result"]
+
+
+# ---------- raw block and transaction parsing (Dogecoin: no SegWit, AuxPoW merge-mined headers) ----------
+
+def sha256d(b):
+    return hashlib.sha256(hashlib.sha256(b).digest()).digest()
+
+
+class Reader:
+    def __init__(self, data):
+        self.d = data
+        self.i = 0
+
+    def take(self, n):
+        out = self.d[self.i:self.i + n]
+        if len(out) < n:
+            raise ValueError("block data ended early")
+        self.i += n
+        return out
+
+    def u32(self):
+        return struct.unpack("<I", self.take(4))[0]
+
+    def i32(self):
+        return struct.unpack("<i", self.take(4))[0]
+
+    def u64(self):
+        return struct.unpack("<Q", self.take(8))[0]
+
+    def varint(self):
+        n = self.take(1)[0]
+        if n < 0xFD:
+            return n
+        return struct.unpack("<" + {0xFD: "H", 0xFE: "I", 0xFF: "Q"}[n], self.take({0xFD: 2, 0xFE: 4, 0xFF: 8}[n]))[0]
+
+    def varbytes(self):
+        return self.take(self.varint())
+
+
+def read_tx(r):
+    start = r.i
+    version = r.i32()
+    vin = []
+    for _ in range(r.varint()):
+        prev = r.take(32)[::-1].hex()
+        index = r.u32()
+        script = r.varbytes()
+        seq = r.u32()
+        vin.append({"prev": prev, "n": index, "script": script, "seq": seq})
+    vout = []
+    for _ in range(r.varint()):
+        value = r.u64()
+        vout.append({"value": value, "script": r.varbytes()})
+    locktime = r.u32()
+    raw = r.d[start:r.i]
+    return {"txid": sha256d(raw)[::-1].hex(), "version": version, "vin": vin, "vout": vout, "locktime": locktime, "size": len(raw),
+            "coinbase": len(vin) == 1 and vin[0]["prev"] == "0" * 64}
+
+
+def parse_block(raw_hex):
+    r = Reader(bytes.fromhex(raw_hex))
+    version = r.i32()
+    r.take(76)  # rest of the 80-byte header
+    parent_coinbase = None
+    if version & 0x100:  # AuxPoW: the block was merge-mined (with Litecoin, mostly)
+        parent_coinbase = read_tx(r)
+        r.take(32)
+        r.take(32 * r.varint())
+        r.take(4)
+        r.take(32 * r.varint())
+        r.take(4)
+        r.take(80)
+    txs = [read_tx(r) for _ in range(r.varint())]
+    return {"txs": txs, "parent_coinbase": parent_coinbase}
+
+
+# ---------- addresses (base58check, Dogecoin mainnet) ----------
+
+B58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
+
+
+def b58check(prefix, payload):
+    data = bytes([prefix]) + payload
+    data += sha256d(data)[:4]
+    n = int.from_bytes(data, "big")
+    out = ""
+    while n:
+        n, rem = divmod(n, 58)
+        out = B58[rem] + out
+    return "1" * (len(data) - len(data.lstrip(b"\0"))) + out
+
+
+def address(script):
+    if len(script) == 25 and script[:3] == b"\x76\xa9\x14" and script[23:] == b"\x88\xac":
+        return b58check(0x1E, script[3:23])  # P2PKH, starts with D
+    if len(script) == 23 and script[:2] == b"\xa9\x14" and script[22] == 0x87:
+        return b58check(0x16, script[2:22])  # P2SH, starts with 9 or A
+    if len(script) in (35, 67) and script[-1] == 0xAC:
+        return b58check(0x1E, hashlib.new("ripemd160", hashlib.sha256(script[1:-1]).digest()).digest())  # P2PK
+    if script[:1] == b"\x6a":
+        return "OP_RETURN"
+    return None
+
+
+# ---------- who mined it: the pool's tag in the coinbase (of the parent chain, for merge-mined blocks) ----------
+
+POOLS = [
+    ("ViaBTC", r"viabtc"), ("F2Pool", r"f2pool|七彩神仙鱼"), ("AntPool", r"antpool"), ("LitecoinPool.org", r"litecoinpool"),
+    ("Binance Pool", r"binance"), ("Poolin", r"poolin"), ("Trustpool", r"trustpool"), ("Mining-Dutch", r"mining-dutch"),
+    ("ZPool", r"zpool"), ("Prohashing", r"prohashing"), ("EMCDPool", r"emcd"), ("Unmineable", r"unmineable"),
+    ("Hashcity", r"hashcity"), ("K1Pool", r"k1pool"), ("NiceHash", r"nicehash"), ("DxPool", r"dxpool"),
+]
+
+
+def pool_name(block):
+    texts = []
+    for tx in (block["parent_coinbase"], block["txs"][0] if block["txs"] else None):
+        if tx and tx["vin"]:
+            texts.append(tx["vin"][0]["script"].decode("latin-1"))
+    text = " ".join(texts)
+    for name, pattern in POOLS:
+        if re.search(pattern, text, re.I):
+            return name
+    tags = re.findall(r"[/\w.\- ]{5,}", text)
+    tag = max(tags, key=len).strip("/ ") if tags else ""
+    return tag[:24] if len(tag) >= 4 else "Unknown"
+
+
+# ---------- blocks (cached) and the mempool ----------
+
+_blocks = {}
+_lock = threading.Lock()
+
+
+def block_by_hash(h):
+    with _lock:
+        if h in _blocks:
+            return _blocks[h]
+    info = rpc("getblock", h, True)
+    parsed = parse_block(rpc("getblock", h, False))
+    cb = parsed["txs"][0]
+    fees = max(0, sum(o["value"] for o in cb["vout"]) - SUBSIDY) if info["height"] >= 600_000 else 0
+    rest = max(1, info["size"] - 80 - cb["size"])
+    avg = fees / rest
+    b = {"hash": h, "height": info["height"], "time": info["time"], "size": info["size"], "nTx": len(parsed["txs"]),
+         "fees": fees, "avgFee": avg, "pool": pool_name(parsed), "txs": parsed["txs"], "prev": info.get("previousblockhash"),
+         "next": info.get("nextblockhash"), "difficulty": info.get("difficulty"), "confirmations": info.get("confirmations"),
+         "coinbaseHex": cb["vin"][0]["script"].hex()}
+    with _lock:
+        _blocks[h] = b
+        if len(_blocks) > 300:
+            for k in list(_blocks)[:100]:
+                del _blocks[k]
+    return b
+
+
+def last_blocks(n=10):
+    tip = rpc("getblockcount")
+    out = []
+    h = rpc("getblockhash", tip)
+    while h and len(out) < n:
+        b = block_by_hash(h)
+        out.append(b)
+        h = b["prev"]
+    return out
+
+
+def mempool_blocks():
+    pool = rpc("getrawmempool", True)
+    txs = sorted(((v["fee"] * COIN / max(1, v["size"]), v["size"], v["fee"] * COIN) for v in pool.values()), reverse=True)
+    blocks, cur, size = [], [], 0
+    for t in txs:
+        if size + t[1] > MAX_BLOCK and cur and len(blocks) < 7:
+            blocks.append((cur, size))
+            cur, size = [], 0
+        cur.append(t)
+        size += t[1]
+    if cur or not blocks:
+        blocks.append((cur, size))
+    out = []
+    for cur, size in blocks[:8]:
+        rates = sorted(t[0] for t in cur)
+        pick = lambda q: round(rates[min(len(rates) - 1, int(q * len(rates)))], 2) if rates else 0
+        out.append({"blockSize": size, "blockVSize": size, "nTx": len(cur), "totalFees": round(sum(t[2] for t in cur)),
+                    "medianFee": pick(0.5), "feeRange": [pick(0), pick(0.1), pick(0.25), pick(0.5), pick(0.75), pick(0.9), round(rates[-1], 2) if rates else 0]})
+    return out
+
+
+def mempool_json(b):
+    """a block in mempool.space's /api/v1/blocks format"""
+    r = round(b["avgFee"], 2)
+    return {"id": b["hash"], "height": b["height"], "timestamp": b["time"], "tx_count": b["nTx"], "size": b["size"], "weight": b["size"] * 4,
+            "previousblockhash": b["prev"], "extras": {"medianFee": r, "feeRange": [r, r], "totalFees": b["fees"], "reward": b["fees"] + SUBSIDY,
+                                                      "pool": {"name": b["pool"]}, "coinbaseRaw": b["coinbaseHex"]}}
+
+
+# ---------- WebSocket (mempool.space protocol) ----------
+
+_clients = set()
+_clients_lock = threading.Lock()
+_state = {"tip": None, "mempool": [], "mempool_json": ""}
+_send_lock = threading.Lock()
+
+
+def ws_send(sock, text):
+    data = text.encode()
+    head = bytearray([0x81])
+    if len(data) < 126:
+        head.append(len(data))
+    elif len(data) < 65536:
+        head += bytes([126]) + struct.pack(">H", len(data))
+    else:
+        head += bytes([127]) + struct.pack(">Q", len(data))
+    with _send_lock:
+        sock.sendall(bytes(head) + data)
+
+
+def broadcast(obj):
+    text = json.dumps(obj)
+    with _clients_lock:
+        dead = []
+        for c in _clients:
+            try:
+                ws_send(c, text)
+            except OSError:
+                dead.append(c)
+        for c in dead:
+            _clients.discard(c)
+
+
+def poller():
+    while True:
+        try:
+            tip = rpc("getbestblockhash")
+            if tip != _state["tip"]:
+                first = _state["tip"] is None
+                _state["tip"] = tip
+                if not first:
+                    broadcast({"block": mempool_json(block_by_hash(tip))})
+            mp = mempool_blocks()
+            text = json.dumps(mp)
+            if text != _state["mempool_json"]:
+                _state["mempool"], _state["mempool_json"] = mp, text
+                broadcast({"mempool-blocks": mp})
+        except Exception as exc:  # noqa: BLE001
+            log("poll: " + str(exc))
+        time.sleep(6)
+
+
+# ---------- HTML ----------
+
+CSS = """
+:root{color-scheme:dark;--bg:#11131f;--surface:#1d1f31;--line:#2d3348;--text:#fff;--muted:#9ea4bc;--link:#1bd8f4;--gold:#c2a633}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
+a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
+header .brand{font:700 18px/1 system-ui;color:var(--text)}header .brand span{color:var(--gold)}
+form{display:flex;gap:8px;flex:1;max-width:560px}input{flex:1;min-width:0;background:#0b0d17;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 12px;font:13px ui-monospace,Menlo,monospace}
+button{background:var(--gold);color:#1a1406;border:0;border-radius:8px;padding:0 14px;font-weight:600;cursor:pointer}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:18px}
+h1{font:600 20px/1.3 system-ui;margin:0}h2{font:600 15px/1.3 system-ui;margin:0 0 8px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:500;font-size:12.5px}
+td.r,th.r{text-align:right}.mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}.muted{color:var(--muted)}.wrap{white-space:normal;word-break:break-all}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.stat b{display:block;font:600 20px/1.2 ui-monospace,Menlo,monospace}
+.err{color:#ff6b6b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
+"""
+
+
+def page(title, body):
+    return ("<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+            "<title>" + html.escape(title) + " · Dogecoin explorer</title><style>" + CSS + "</style></head><body>"
+            "<header><a class=brand href='/'>Dogecoin <span>explorer</span></a>"
+            "<form action='/search'><input name=q placeholder='Block height, block hash or transaction id' aria-label=Search>"
+            "<button>Search</button></form></header><main>" + body + "</main>"
+            "<footer>Read from your own Dogecoin Core node · hashes.space</footer></body></html>")
+
+
+def doge(koinu):
+    return "{:,.8f}".format(koinu / COIN).rstrip("0").rstrip(".") + " DOGE"
+
+
+def ago(t):
+    s = max(0, int(time.time() - t))
+    return str(s) + "s ago" if s < 60 else str(s // 60) + "m ago" if s < 3600 else str(s // 3600) + "h ago" if s < 86400 else str(s // 86400) + "d ago"
+
+
+def home():
+    info = rpc("getblockchaininfo")
+    mp = rpc("getmempoolinfo")
+    blocks = last_blocks(15)
+    rows = "".join(
+        "<tr><td><a href='/block/" + b["hash"] + "'>" + "{:,}".format(b["height"]) + "</a></td><td class=muted>" + ago(b["time"]) + "</td><td>"
+        + html.escape(b["pool"]) + "</td><td class=r>" + str(b["nTx"]) + "</td><td class=r>" + "{:,.1f}".format(b["size"] / 1000) + " kB</td><td class=r>"
+        + doge(b["fees"]) + "</td></tr>" for b in blocks)
+    projected = _state["mempool"] or mempool_blocks()
+    prow = "".join("<tr><td>" + ("Next block" if i == 0 else "+" + str(i)) + "</td><td class=r>" + str(p["nTx"]) + "</td><td class=r>"
+                   + "{:,.1f}".format(p["blockSize"] / 1000) + " kB</td><td class=r>~" + str(p["medianFee"]) + " koinu/B</td></tr>"
+                   for i, p in enumerate(projected))
+    sync = info.get("verificationprogress", 0)
+    return page("Dogecoin", "<h1>Dogecoin</h1><div class=stats>"
+                + "".join("<div class='card stat'><span class=muted>" + k + "</span><b>" + v + "</b></div>" for k, v in [
+                    ("Block height", "{:,}".format(info["blocks"])), ("Mempool", "{:,} txs".format(mp["size"])),
+                    ("Mempool size", "{:,.1f} kB".format(mp["bytes"] / 1000)), ("Node sync", "{:.2f}%".format(sync * 100))])
+                + "</div><section class=card><h2>Latest blocks</h2><table><tr><th>Height</th><th>Mined</th><th>Pool</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Fees</th></tr>"
+                + rows + "</table></section><section class=card><h2>Mempool, in blocks of 1 MB</h2><table><tr><th>Block</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Median fee</th></tr>"
+                + prow + "</table></section>")
+
+
+def block_page(ident):
+    h = rpc("getblockhash", int(ident)) if ident.isdigit() else ident
+    b = block_by_hash(h)
+    nav = ("<a href='/block/" + b["prev"] + "'>← previous</a>" if b["prev"] else "") + ("  ·  <a href='/block/" + b["next"] + "'>next →</a>" if b["next"] else "")
+    rows = ""
+    for tx in b["txs"][:1000]:
+        outs = ", ".join(html.escape(address(o["script"]) or "?") for o in tx["vout"][:3]) + (" …" if len(tx["vout"]) > 3 else "")
+        rows += ("<tr><td class=mono><a href='/tx/" + tx["txid"] + "?b=" + h + "'>" + tx["txid"][:16] + "…</a></td><td>" + ("coinbase" if tx["coinbase"] else str(len(tx["vin"])) + " in")
+                 + "</td><td class='mono wrap'>" + outs + "</td><td class=r>" + doge(sum(o["value"] for o in tx["vout"])) + "</td></tr>")
+    more = "<p class=muted>Showing the first 1,000 of " + "{:,}".format(b["nTx"]) + " transactions.</p>" if b["nTx"] > 1000 else ""
+    return page("Block " + str(b["height"]), "<h1>Block " + "{:,}".format(b["height"]) + "</h1><p>" + nav + "</p><section class=card><dl>"
+                + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in [
+                    ("Hash", "<span class=mono>" + h + "</span>"), ("Mined", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["time"])) + " (" + ago(b["time"]) + ")"),
+                    ("Pool", html.escape(b["pool"])), ("Transactions", "{:,}".format(b["nTx"])), ("Size", "{:,} bytes".format(b["size"])),
+                    ("Fees", doge(b["fees"]) + " (~" + "{:.2f}".format(b["avgFee"]) + " koinu/B)"), ("Reward", doge(b["fees"] + SUBSIDY)),
+                    ("Difficulty", "{:,.0f}".format(b["difficulty"] or 0)), ("Confirmations", "{:,}".format(b["confirmations"] or 0))])
+                + "</dl></section><section class=card><h2>Transactions</h2><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Value</th></tr>"
+                + rows + "</table>" + more + "</section>")
+
+
+def find_tx(txid, block_hash):
+    try:
+        v = rpc("getrawtransaction", txid, 1)
+        tx = read_tx(Reader(bytes.fromhex(v["hex"])))
+        return tx, v.get("blockhash"), v.get("confirmations", 0)
+    except RpcError:
+        if not block_hash:
+            raise RpcError("Transaction not in the mempool. Open it from its block, or run Dogecoin Core with -txindex=1 to look up any transaction.")
+        b = block_by_hash(block_hash)
+        for tx in b["txs"]:
+            if tx["txid"] == txid:
+                return tx, block_hash, b["confirmations"]
+        raise RpcError("Transaction not found in that block.")
+
+
+def tx_page(txid, block_hash):
+    tx, bh, conf = find_tx(txid, block_hash)
+    ins = "".join("<tr><td class='mono wrap'>" + ("coinbase" if tx["coinbase"] else "<a href='/tx/" + i["prev"] + "'>" + i["prev"][:16] + "…</a>:" + str(i["n"])) + "</td></tr>" for i in tx["vin"])
+    outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(address(o["script"]) or o["script"].hex()[:60]) + "</td><td class=r>" + doge(o["value"]) + "</td></tr>"
+                   for n, o in enumerate(tx["vout"]))
+    return page("Transaction", "<h1>Transaction</h1><section class=card><dl>"
+                + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in [
+                    ("Txid", "<span class=mono>" + tx["txid"] + "</span>"), ("Status", ("In block <a href='/block/" + bh + "'>" + bh[:16] + "…</a> · " + "{:,}".format(conf) + " confirmations") if bh else "In the mempool, waiting for a block"),
+                    ("Size", "{:,} bytes".format(tx["size"])), ("Total out", doge(sum(o["value"] for o in tx["vout"])))])
+                + "</dl></section><section class=card><h2>Inputs</h2><table>" + ins + "</table></section><section class=card><h2>Outputs</h2><table><tr><th>#</th><th>Address</th><th class=r>Value</th></tr>"
+                + outs + "</table></section>")
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "dogecoin-explorer"
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def send(self, code, body, ctype="text/html; charset=utf-8", cache=0):
+        data = body.encode() if isinstance(body, str) else body
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "public, max-age=" + str(cache) if cache else "no-store")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def json(self, obj, cache=0):
+        self.send(200, json.dumps(obj), "application/json", cache)
+
+    def do_GET(self):  # noqa: N802
+        path, _, query = self.path.partition("?")
+        params = dict(p.split("=", 1) for p in query.split("&") if "=" in p)
+        try:
+            if path == "/api/v1/ws" and self.headers.get("Upgrade", "").lower() == "websocket":
+                return self.websocket()
+            if path == "/api/v1/blocks":
+                return self.json([mempool_json(b) for b in last_blocks(10)], 10)
+            if path == "/api/v1/fees/mempool-blocks":
+                return self.json(_state["mempool"] or mempool_blocks(), 5)
+            if path == "/api/blocks/tip/height":
+                return self.send(200, str(rpc("getblockcount")), "text/plain", 5)
+            if path == "/":
+                return self.send(200, home())
+            if path.startswith("/block/"):
+                return self.send(200, block_page(path[7:]))
+            if path.startswith("/tx/") and HEX64.fullmatch(path[4:]):
+                return self.send(200, tx_page(path[4:].lower(), params.get("b")))
+            if path == "/search":
+                q = urllib.request.unquote(params.get("q", "").replace("+", " ")).strip()
+                if q.isdigit():
+                    return self.redirect("/block/" + q)
+                if HEX64.fullmatch(q):
+                    try:
+                        rpc("getblockheader", q)
+                        return self.redirect("/block/" + q)
+                    except RpcError:
+                        return self.redirect("/tx/" + q.lower())
+                return self.send(404, page("Not found", "<h1>Nothing found</h1><p>Search for a block height, a block hash or a transaction id.</p>"))
+            return self.send(404, page("Not found", "<h1>Not found</h1>"))
+        except (RpcError, ValueError) as exc:
+            if path.startswith("/api/"):
+                return self.send(502, json.dumps({"error": str(exc)}), "application/json")
+            return self.send(502, page("Error", "<h1>Something went wrong</h1><p class=err>" + html.escape(str(exc)) + "</p>"))
+
+    def redirect(self, to):
+        self.send_response(302)
+        self.send_header("Location", to)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def websocket(self):
+        key = self.headers.get("Sec-WebSocket-Key", "")
+        accept = base64.b64encode(hashlib.sha1((key + WS_GUID).encode()).digest()).decode()
+        self.send_response(101)
+        self.send_header("Upgrade", "websocket")
+        self.send_header("Connection", "Upgrade")
+        self.send_header("Sec-WebSocket-Accept", accept)
+        self.end_headers()
+        sock = self.connection
+        sock.settimeout(120)
+        try:
+            while True:
+                head = self.rfile.read(2)
+                if len(head) < 2:
+                    break
+                op, ln = head[0] & 0x0F, head[1] & 0x7F
+                if ln == 126:
+                    ln = struct.unpack(">H", self.rfile.read(2))[0]
+                elif ln == 127:
+                    ln = struct.unpack(">Q", self.rfile.read(8))[0]
+                mask = self.rfile.read(4) if head[1] & 0x80 else b"\0\0\0\0"
+                data = bytes(c ^ mask[i % 4] for i, c in enumerate(self.rfile.read(ln)))
+                if op == 8:
+                    break
+                if op == 9:
+                    with _send_lock:
+                        sock.sendall(bytes([0x8A, len(data)]) + data)
+                    continue
+                if op != 1:
+                    continue
+                try:
+                    msg = json.loads(data)
+                except ValueError:
+                    continue
+                if msg.get("action") == "want":
+                    with _clients_lock:
+                        _clients.add(sock)
+                    ws_send(sock, json.dumps({"blocks": [mempool_json(b) for b in last_blocks(8)], "mempool-blocks": _state["mempool"] or mempool_blocks()}))
+                elif msg.get("action") == "ping":
+                    ws_send(sock, json.dumps({"pong": True}))
+        except (OSError, RpcError, ValueError):
+            pass
+        finally:
+            with _clients_lock:
+                _clients.discard(sock)
+            self.close_connection = True
+
+
+def main():
+    threading.Thread(target=poller, daemon=True).start()
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    server.daemon_threads = True
+    log("listening on port " + str(PORT))
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

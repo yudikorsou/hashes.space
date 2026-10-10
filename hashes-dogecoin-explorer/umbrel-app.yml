@@ -1,0 +1,36 @@
+manifestVersion: 1
+id: hashes-dogecoin-explorer
+category: crypto
+name: Dogecoin Explorer
+version: "1.0.0"
+tagline: A Dogecoin block explorer on your own Dogecoin node
+icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/dogecoin.png
+description: >-
+  A light Dogecoin block explorer that reads every block, transaction and the mempool straight from
+  the Dogecoin Core app on your Umbrel: no third party sees what you look up. Search by block
+  height, block hash or transaction id; merge-mined (AuxPoW) blocks show the pool that mined them.
+
+
+  It also offers mempool.space's API and WebSocket for Dogecoin (/api/v1/blocks,
+  /api/v1/fees/mempool-blocks, /api/v1/ws), so the hashes.space dashboard and its Find Mempool page
+  can stream Dogecoin blocks from your own node. Publish it on the internet (for example with the
+  Cloudflare Tunnel app) to make it the Dogecoin block explorer of your website.
+
+
+  Requires the Dogecoin Core app (doge-dogecoin-core), fully synced. Without -txindex, confirmed
+  transactions open from their block.
+developer: hashes.space
+website: https://hashes.space
+dependencies:
+  - doge-dogecoin-core
+repo: https://github.com/yudikorsou/hashes.space
+support: https://github.com/yudikorsou/hashes.space/issues
+port: 4082
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: yudikorsou
+submission: https://github.com/yudikorsou/hashes.space
+releaseNotes: >-
+  First release.

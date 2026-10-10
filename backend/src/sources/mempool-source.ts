@@ -17,8 +17,16 @@ export class MempoolSource extends ChainSource {
   private pingTimer?: NodeJS.Timeout;
   private stopped = false;
 
-  constructor(private url: string, label: string, private datumPools: string[] = [], private datumVerified: string[] = []) {
+  constructor(
+    private url: string,
+    label: string,
+    private datumPools: string[] = [],
+    private datumVerified: string[] = [],
+    /** chains with real-size blocks (Dogecoin): fees in this unit, projected blocks in bytes */
+    private feeUnit?: string,
+  ) {
     super(label);
+    if (feeUnit) this.publish({ feeUnit });
   }
 
   private mapBlock(b: any): ChainBlock {
@@ -86,7 +94,8 @@ export class MempoolSource extends ChainSource {
         (b: any, index: number) => ({
           index,
           nTx: b.nTx,
-          vsize: b.blockVSize,
+          vsize: this.feeUnit ? b.blockSize ?? b.blockVSize : b.blockVSize,
+          ...(this.feeUnit && { bytes: b.blockSize }),
           medianFee: b.medianFee,
           feeRange: b.feeRange ?? [],
           totalFees: b.totalFees,

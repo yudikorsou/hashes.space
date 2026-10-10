@@ -39,6 +39,8 @@ export interface NetworkConfig {
    * DATUM Gateway verified solominers of 100% DATUM pools. Empty for now.
    */
   datumVerified?: string[];
+  /** how fees are written when not sat/vB, e.g. "koinu/B" for Dogecoin (mempool sources) */
+  feeUnit?: string;
   /** coin logo for the PoW picker: a path under the frontend's public folder (coins/bitcoin.png) or a URL */
   logo?: string;
   /** block page link prefix, e.g. https://mempool.space/block/ */
@@ -58,6 +60,7 @@ const BUILT_IN: NetworkConfig[] = [
 
 /** labels for hash functions without a network in networks.json (a miner can still be set to them) */
 const KNOWN_ALGOS: Record<string, string> = {
+  scrypt: 'Scrypt',
   blake2b: 'BLAKE2b',
   kheavyhash: 'kHeavyHash',
   equihash: 'Equihash',
@@ -111,7 +114,24 @@ function withOwnMoneroExplorer(list: NetworkConfig[]): NetworkConfig[] {
   }
 }
 
-export const NETWORKS: NetworkConfig[] = withOwnMoneroExplorer(load());
+/**
+ * DOGECOIN_EXPLORER_URL: the hashes Dogecoin Explorer app on your Umbrel (http://umbrel.local:4082, or where you publish it):
+ * Dogecoin blocks and mempool stream from its mempool.space-style WebSocket.
+ */
+function withOwnDogecoinExplorer(list: NetworkConfig[]): NetworkConfig[] {
+  const url = (process.env.DOGECOIN_EXPLORER_URL ?? '').trim().replace(/\/+$/, '');
+  if (!url) return list;
+  try {
+    const u = new URL(url);
+    const ws = `${u.protocol === 'https:' ? 'wss' : 'ws'}://${u.host}${u.pathname.replace(/\/+$/, '')}/api/v1/ws`;
+    return list.map((n) => (n.id === 'dogecoin' ? { ...n, wsUrl: ws, explorer: `${url}/block/`, sourceLabel: u.host } : n));
+  } catch {
+    console.warn(`[networks] DOGECOIN_EXPLORER_URL is not a URL: ${url}`);
+    return list;
+  }
+}
+
+export const NETWORKS: NetworkConfig[] = withOwnDogecoinExplorer(withOwnMoneroExplorer(load()));
 
 /** the hash function of miners that don't say (DEFAULT_ALGO, else the first network's) */
 export const DEFAULT_ALGO: string = process.env.DEFAULT_ALGO || NETWORKS[0].algo;

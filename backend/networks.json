@@ -16,6 +16,20 @@
     "datumVerified": []
   },
   {
+    "id": "dogecoin",
+    "algo": "scrypt",
+    "label": "Scrypt",
+    "chain": "Dogecoin",
+    "ticker": "DOGE",
+    "source": "mempool",
+    "wsUrl": "wss://doge.hashes.space/api/v1/ws",
+    "sourceLabel": "doge.hashes.space",
+    "explorer": "https://doge.hashes.space/block/",
+    "blockSeconds": 60,
+    "feeUnit": "koinu/B",
+    "logo": "coins/dogecoin.png"
+  },
+  {
     "id": "monero",
     "algo": "randomx",
     "label": "RandomX",
