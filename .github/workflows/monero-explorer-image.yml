@@ -105,9 +105,13 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Tag both platforms as ${{ inputs.monero_tag }} and latest
+      - name: Tag both platforms as ${{ inputs.monero_tag }}, a numbered build and latest
         working-directory: /tmp/digests
         run: |
-          docker buildx imagetools create -t "$IMAGE:${{ inputs.monero_tag }}" -t "$IMAGE:latest" \
+          REV="${{ inputs.monero_tag }}-r${{ github.run_number }}"
+          docker buildx imagetools create -t "$IMAGE:${{ inputs.monero_tag }}" -t "$IMAGE:$REV" -t "$IMAGE:latest" \
             $(printf "$IMAGE@sha256:%s " *)
           docker buildx imagetools inspect "$IMAGE:${{ inputs.monero_tag }}"
+          # the digest for docker-compose.yml (Umbrel pulls a new image only when the reference changes)
+          DIGEST=$(docker buildx imagetools inspect "$IMAGE:$REV" --format '{{json .Manifest}}' | jq -r .digest)
+          echo "::notice title=Image for docker-compose.yml::$IMAGE:$REV@$DIGEST"
