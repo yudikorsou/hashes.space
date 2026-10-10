@@ -102,7 +102,7 @@
     <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
-    <h2 class="mtitle" id="pools-title">Mining pools</h2>
+    <h2 class="mtitle" id="pools-title">Hashrate mining pools</h2>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 344" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <p class="pnote" id="ms-pools-note" hidden></p>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
@@ -261,7 +261,7 @@
     $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
     $('ms-more-pools').href = MINING_MORE[netId] ?? `https://${site}/mining/pools`;
     setUnits('calc-unit'); setUnits('pcalc-unit');
-    $('pools-title').textContent = `${POOLS_TITLE[netId] ?? 'Mining pools'} (${windowLabel(m.window)})`;
+    $('pools-title').textContent = `${POOLS_TITLE[netId] ?? 'Hashrate mining pools'} (${windowLabel(m.window)})`;
     $('ms-pie').setAttribute('aria-label', `Blocks per mining pool, ${m.window === '24h' ? 'last 24 hours' : 'last week'}`);
     const note = $('ms-pools-note'); note.hidden = false; note.textContent = (POOLS_NOTE[netId] ? POOLS_NOTE[netId] + ' ' : '') + 'Each pool\'s hashrate is an estimate: its share of the blocks found in this window times the chain\'s hashrate.';
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
