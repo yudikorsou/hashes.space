@@ -14,6 +14,10 @@ services:
     user: "1000:1000"
     restart: on-failure
     stop_grace_period: 1m
+    # LMDB marks each reader process with a lock at the byte offset of its process ID in lock.mdb. In its
+    # own container xmrblocks gets a small PID that monerod (in the Monero Node's container) also has, so
+    # opening the blockchain fails with "Resource temporarily unavailable". Host PIDs never collide with those.
+    pid: host
     volumes:
       # the Monero Node app's blockchain: xmrblocks opens its LMDB database read-only
       # (mounted read-write only because LMDB readers share the database's lock file)
