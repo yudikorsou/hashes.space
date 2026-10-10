@@ -86,7 +86,7 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
             <div class="below">
               {{ b.pool ?? '' }}
               @if (b.datum === 'verified') {
-                <span class="datum-badge verified"><span aria-hidden="true">✓</span> DATUM Verified</span>
+                <span class="datum-badge verified"><span aria-hidden="true">✓</span> Decentralised</span>
               } @else if (b.datum === 'compatible') {
                 <span class="datum-badge"><span aria-hidden="true">◆</span> DATUM Compatible</span>
               } @else if (b.datum === 'centralised') {
@@ -102,7 +102,7 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
 })
 export class ChainStripComponent implements AfterViewInit, OnDestroy {
   readonly datumTitle = {
-    verified: 'DATUM Verified: mined by a DATUM Gateway verified solominer of a 100% DATUM pool',
+    verified: 'Decentralised: mined by a DATUM Gateway verified solominer of a 100% DATUM pool',
     compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway',
     centralised: 'Centralised: mined by a pool that builds the block template for its miners',
   };

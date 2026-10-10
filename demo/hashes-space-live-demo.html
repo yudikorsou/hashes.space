@@ -608,7 +608,7 @@
     .empty { grid-template-columns: 1fr; justify-items: center; text-align: center; }
   }
   /* DATUM Compatible (orange): a pool that accepts DATUM Gateway miners, OCEAN or CONVOY.
-     DATUM Verified (green): a DATUM Gateway verified solominer of a 100% DATUM pool. */
+     Decentralised (green, the 'verified' label in the code): a DATUM Gateway verified solominer of a 100% DATUM pool. */
   .block-wrap.datum .cube { --glow: 247,147,26; animation: datum-glow 4s ease-in-out infinite; }
   .block-wrap.datum-verified .cube { --glow: 60,226,107; animation: datum-glow 4s ease-in-out infinite; }
   /* Centralised (red): any other pool */
@@ -1734,8 +1734,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   //  Verified (green): a DATUM Gateway verified solominer of a 100% DATUM pool (none listed yet)
   const DATUM_POOLS = { sha256: ['OCEAN'], blake2b: ['CONVOY'] };
   const DATUM_VERIFIED = { sha256: [], blake2b: [] };
-  const DATUM_TITLE = { verified: 'DATUM Verified: mined by a DATUM Gateway verified solominer of a 100% DATUM pool', compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway', centralised: 'Centralised: mined by a pool that builds the block template for its miners' };
-  const DATUM_BADGE = { verified: '<span class="datum-badge verified">✓ DATUM Verified</span>', compatible: '<span class="datum-badge">◆ DATUM Compatible</span>', centralised: '<span class="datum-badge central">Centralised</span>' };
+  const DATUM_TITLE = { verified: 'Decentralised: mined by a DATUM Gateway verified solominer of a 100% DATUM pool', compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway', centralised: 'Centralised: mined by a pool that builds the block template for its miners' };
+  const DATUM_BADGE = { verified: '<span class="datum-badge verified">✓ Decentralised</span>', compatible: '<span class="datum-badge">◆ DATUM Compatible</span>', centralised: '<span class="datum-badge central">Centralised</span>' };
   const datumLabel = (b) => {
     const p = (b.pool ?? '').trim().toLowerCase(), has = (l) => (l?.[netId] ?? []).some((d) => d.toLowerCase() === p);
     // every other pool on a Bitcoin chain is Centralised (red); solo miners and blocks mempool can't name are no pool

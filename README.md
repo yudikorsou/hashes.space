@@ -382,12 +382,12 @@ HashesThemes.register({
 
 The visitor's choice is remembered in their browser, and visitors who ask their device to reduce motion get a still frame.
 
-## DATUM Compatible and DATUM Verified blocks
+## DATUM Compatible and Decentralised blocks
 
 Mined blocks of pools that work with [DATUM Gateway](https://github.com/OCEAN-xyz/datum_gateway) glow:
 
 - **DATUM Compatible** (orange glow): a pool that accepts miners with their own node and DATUM Gateway. For now **OCEAN** on Bitcoin SHA-256 and **CONVOY** on Bitcoin BLAKE2b, set per network in `networks.json` with `"datumPools"`.
-- **DATUM Verified** (green glow): only DATUM Gateway verified solominers of 100% DATUM pools, listed per network in `networks.json` with `"datumVerified"` (pool or miner names as mempool shows them). None are listed yet.
+- **Decentralised** (green glow, called `verified` in the code): only DATUM Gateway verified solominers of 100% DATUM pools, listed per network in `networks.json` with `"datumVerified"` (pool or miner names as mempool shows them). None are listed yet.
 
 - **Centralised** (red glow): every other pool on the Bitcoin chains, where the pool builds the block template for its miners. Solo miners and blocks mempool can't name get no tag.
 
