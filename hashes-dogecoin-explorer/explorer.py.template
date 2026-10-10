@@ -10,6 +10,8 @@ transactions and the mempool. Serves:
   /api/v1/blocks         the last blocks, in mempool.space's format (for hashes.space)
   /api/v1/fees/mempool-blocks   the mempool cut into blocks of 1 MB, best fee first
   /api/blocks/tip/height
+  /api/v1/mining/hashrate/1y    global hashrate (one point a day) and difficulty, from your node
+  /api/v1/mining/pools/1w       blocks per mining pool over the last week (10,080 blocks)
   /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
 
 Fees are in koinu per byte (1 DOGE = 100,000,000 koinu).
@@ -63,6 +65,24 @@ def rpc(method, *params):
     if payload.get("error"):
         raise RpcError(payload["error"].get("message", "RPC error"))
     return payload["result"]
+
+
+def rpc_batch(calls):
+    """several RPC calls in one request: [(method, params), ...] -> results (None where a call failed)"""
+    body = json.dumps([{"jsonrpc": "1.0", "id": i, "method": m, "params": list(p)} for i, (m, p) in enumerate(calls)]).encode()
+    req = urllib.request.Request(RPC_URL, data=body, headers={"Authorization": AUTH, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=120) as resp:
+            out = json.loads(resp.read())
+    except urllib.error.HTTPError as exc:
+        out = json.loads(exc.read())
+    except OSError as exc:
+        raise RpcError("Dogecoin Core is not reachable: " + str(exc))
+    res = [None] * len(calls)
+    for item in out:
+        if not item.get("error"):
+            res[item["id"]] = item["result"]
+    return res
 
 
 # ---------- raw block and transaction parsing (Dogecoin: no SegWit, AuxPoW merge-mined headers) ----------
@@ -259,6 +279,83 @@ def mempool_json(b):
                                                       "pool": {"name": b["pool"]}, "coinbaseRaw": b["coinbaseHex"]}}
 
 
+# ---------- mining statistics from your own node (mempool.space's /api/v1/mining format) ----------
+
+DAY, WEEK, YEAR_DAYS = 1440, 10080, 365  # Dogecoin: a block a minute
+_pool_by_height = {}
+_mining = {"hashrate": None, "pools": None, "at": 0}
+
+
+def pool_from_header(header_hex):
+    """the pool tag, from a block header: merge-mined headers carry the parent chain's coinbase (AuxPoW)"""
+    r = Reader(bytes.fromhex(header_hex))
+    version = r.i32()
+    r.take(76)
+    if version & 0x100 and r.i < len(r.d):
+        return pool_name({"parent_coinbase": read_tx(r), "txs": []})
+    return None
+
+
+def pools_last_week(tip):
+    first = max(0, tip - WEEK + 1)
+    todo = [h for h in range(first, tip + 1) if h not in _pool_by_height]
+    for i in range(0, len(todo), 250):
+        chunk = todo[i:i + 250]
+        pairs = [(h, bh) for h, bh in zip(chunk, rpc_batch([("getblockhash", [h]) for h in chunk])) if bh]
+        headers = rpc_batch([("getblockheader", [bh, False]) for _, bh in pairs])
+        for (h, bh), hx in zip(pairs, headers):
+            name = None
+            try:
+                name = pool_from_header(hx) if hx else None
+                if name is None:  # not merge-mined: the pool tag is in the block's own coinbase
+                    name = pool_name(parse_block(rpc("getblock", bh, False)))
+            except (ValueError, RpcError, KeyError, IndexError):
+                name = "Unknown"
+            _pool_by_height[h] = name
+    for h in [h for h in _pool_by_height if h < first]:
+        del _pool_by_height[h]
+    counts = {}
+    for h in range(first, tip + 1):
+        if h in _pool_by_height:
+            counts[_pool_by_height[h]] = counts.get(_pool_by_height[h], 0) + 1
+    ranked = sorted(counts.items(), key=lambda kv: -kv[1])
+    total = sum(counts.values())
+    return {"pools": [{"poolId": i + 1, "name": n, "slug": re.sub(r"[^a-z0-9]", "", n.lower()), "rank": i + 1, "blockCount": c, "emptyBlocks": 0}
+                      for i, (n, c) in enumerate(ranked)],
+            "blockCount": total, "lastEstimatedHashrate": rpc("getnetworkhashps", DAY)}
+
+
+def hashrate_year(tip):
+    heights = [tip - d * DAY for d in range(YEAR_DAYS) if tip - d * DAY > DAY][::-1]
+    hashes = rpc_batch([("getblockhash", [h]) for h in heights])
+    headers = rpc_batch([("getblockheader", [bh]) for bh in hashes if bh])
+    rates = rpc_batch([("getnetworkhashps", [DAY, h]) for h in heights])
+    by_height = {hd["height"]: hd for hd in headers if hd}
+    points, diffs, prev = [], [], None
+    for h, rate in zip(heights, rates):
+        hd = by_height.get(h)
+        if not hd or rate is None:
+            continue
+        points.append({"timestamp": hd["time"], "avgHashrate": rate})
+        d = hd["difficulty"]
+        diffs.append({"time": hd["time"], "height": h, "difficulty": d, "adjustment": (d / prev) if prev else 1})
+        prev = d
+    return {"hashrates": points, "difficulty": diffs, "currentHashrate": rpc("getnetworkhashps", WEEK), "currentDifficulty": rpc("getdifficulty")}
+
+
+def mining_stats():
+    """recomputed every 10 minutes in the background (the first run reads a week of block headers)"""
+    while True:
+        try:
+            tip = rpc("getblockcount")
+            _mining["pools"] = pools_last_week(tip)
+            _mining["hashrate"] = hashrate_year(tip)
+            _mining["at"] = time.time()
+        except Exception as exc:  # noqa: BLE001
+            log("mining stats: " + str(exc))
+        time.sleep(600)
+
+
 # ---------- WebSocket (mempool.space protocol) ----------
 
 _clients = set()
@@ -451,6 +548,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json([mempool_json(b) for b in last_blocks(10)], 10)
             if path == "/api/v1/fees/mempool-blocks":
                 return self.json(_state["mempool"] or mempool_blocks(), 5)
+            if path in ("/api/v1/mining/hashrate/1y", "/api/v1/mining/pools/1w"):
+                data = _mining["hashrate" if "hashrate" in path else "pools"]
+                if data is None:
+                    return self.send(503, json.dumps({"error": "Mining statistics are being computed from your node, try again in a minute"}), "application/json")
+                return self.json(data, 300)
             if path == "/api/blocks/tip/height":
                 return self.send(200, str(rpc("getblockcount")), "text/plain", 5)
             if path == "/":
@@ -532,6 +634,7 @@ class Handler(BaseHTTPRequestHandler):
 
 def main():
     threading.Thread(target=poller, daemon=True).start()
+    threading.Thread(target=mining_stats, daemon=True).start()
     server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
     server.daemon_threads = True
     log("listening on port " + str(PORT))
