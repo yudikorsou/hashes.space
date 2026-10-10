@@ -70,7 +70,7 @@
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
     <h2 class="mtitle" id="pools-title">Mining pools</h2>
-    <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
+    <div class="plot"><svg id="ms-pie" viewBox="0 0 600 344" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <p class="pnote" id="ms-pools-note" hidden></p>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
   </article>
@@ -325,12 +325,15 @@
     return `M${p(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${p(r1, a1)}L${p(r0, a1)}A${r0} ${r0} 0 ${large} 0 ${p(r0, a0)}Z`;
   }
   function tip(e, html) { let t = $('mtip'); if (!t) { t = document.createElement('div'); t.id = 'mtip'; t.className = 'mtip'; document.body.appendChild(t); } if (!html) { t.hidden = true; return; } t.hidden = false; t.innerHTML = html; t.style.left = Math.min(innerWidth - 250, e.clientX + 12) + 'px'; t.style.top = e.clientY + 12 + 'px'; }
+  // the pools as a half ring: it opens at the left, runs over the top and closes at the right,
+  // so the chain's week reads as one sweep from the pool that found the most blocks to the one that found the fewest
   function drawPie(m) {
     const svg = $('ms-pie'); svg.replaceChildren();
-    const cx = 300, cy = 170, R = 150, R0 = 48, total = m.pools.reduce((a, p) => a + p.blocks, 0) || 1;
-    let a = -Math.PI / 2; const labels = [];
+    const cx = 300, cy = 306, R = 150, R0 = 72, total = m.pools.reduce((a, p) => a + p.blocks, 0) || 1;
+    let a = -Math.PI; const labels = [];
+    svg.appendChild(svgEl('line', { x1: cx - R - 6, x2: cx + R + 6, y1: cy, y2: cy, stroke: 'var(--line)', 'stroke-width': 1 }));
     m.pools.forEach((p, i) => {
-      const share = p.blocks / total, a0 = a, a1 = a + share * Math.PI * 2; a = a1;
+      const share = p.blocks / total, a0 = a, a1 = a + share * Math.PI; a = a1;
       const g = svgEl('g', { class: 'slice', tabindex: '0', role: 'img', 'aria-label': `${p.name}: ${p.blocks} blocks, ${(share * 100).toFixed(1)}%` });
       const hue = poolHue(i), top = p.miners.slice(0, 8), rest = p.blocks - top.reduce((s, x) => s + x[1], 0);
       // a pool's miners as rings, the biggest miner innermost (as on mempool.guide)
@@ -347,11 +350,14 @@
       svg.appendChild(g);
       if (share >= 0.004 && labels.length < 18) { const mid = (a0 + a1) / 2; labels.push({ name: p.name, mid, hue, right: Math.cos(mid) > 0, y: cy + (R + 14) * Math.sin(mid) }); }
     });
+    // the week's total in the opening under the half ring
+    svg.appendChild(svgEl('text', { x: cx, y: cy - 28, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 22, 'font-weight': 700 }, fmt(total)));
+    svg.appendChild(svgEl('text', { x: cx, y: cy - 10, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11.5 }, 'blocks'));
     // labels left and right of the ring, spread out so they don't overlap
     for (const right of [true, false]) {
       const side = labels.filter((l) => l.right === right).sort((p, q) => p.y - q.y);
       side.forEach((l, k) => { if (k && l.y < side[k - 1].y + 16) l.y = side[k - 1].y + 16; });
-      const over = side.length ? side[side.length - 1].y - 332 : 0; if (over > 0) side.forEach((l) => (l.y -= over));
+      const over = side.length ? side[side.length - 1].y - (cy - 8) : 0; if (over > 0) side.forEach((l) => (l.y -= over));
       side.forEach((l, k) => { if (k && l.y < side[k - 1].y + 16) l.y = side[k - 1].y + 16; if (l.y < 10) l.y = 10 + k * 16; });
       side.forEach((l) => {
         const x0 = cx + R * Math.cos(l.mid), y0 = cy + R * Math.sin(l.mid), x1 = cx + (R + 14) * Math.cos(l.mid), xe = right ? cx + R + 34 : cx - R - 34;
