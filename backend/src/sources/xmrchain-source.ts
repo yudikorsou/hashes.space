@@ -16,15 +16,25 @@ export class XmrchainSource extends ChainSource {
   private timer?: NodeJS.Timeout;
   private busy = false;
   private medianBytes = 300_000;
+  /** explorer APIs in order: your own first; a fallback (xmrchain.net) only while yours can't be reached */
+  private bases: string[];
+  private active = 0;
+  private ticks = 0;
   private baseFeePerByte = 20_000; // piconero per byte, from networkinfo.fee_per_kb
 
   constructor(
-    private apiUrl: string,
+    apiUrl: string,
     label: string,
     private pollMs = 15_000,
+    fallbackApiUrl?: string,
   ) {
     super(label, 'mainnet');
-    this.apiUrl = apiUrl.replace(/\/+$/, '');
+    this.bases = [apiUrl, fallbackApiUrl].filter((u): u is string => !!u).map((u) => u.replace(/\/+$/, ''));
+  }
+
+  /** "xmr.hashes.space" for the API in use */
+  private get apiUrl(): string {
+    return this.bases[this.active];
   }
 
   start(): void {
@@ -48,7 +58,27 @@ export class XmrchainSource extends ChainSource {
     if (this.busy) return;
     this.busy = true;
     try {
-      const info = await this.get<NetworkInfo>('/networkinfo');
+      // back to your own explorer as soon as it answers again (checked every 4th poll while on the fallback)
+      if (this.active > 0 && this.ticks++ % 4 === 0) {
+        const own = this.active;
+        this.active = 0;
+        try {
+          await this.get<NetworkInfo>('/networkinfo');
+          this.publish({ source: new URL(this.apiUrl).host, blocks: [] });
+        } catch {
+          this.active = own;
+        }
+      }
+      let info: NetworkInfo;
+      try {
+        info = await this.get<NetworkInfo>('/networkinfo');
+      } catch (e) {
+        if (this.active + 1 >= this.bases.length) throw e;
+        console.warn(`[xmrchain] ${this.apiUrl}: ${(e as Error).message}; using ${this.bases[this.active + 1]} until it answers`);
+        this.active++;
+        this.publish({ source: new URL(this.apiUrl).host, blocks: [] });
+        info = await this.get<NetworkInfo>('/networkinfo');
+      }
       if (info.block_size_median) this.medianBytes = Number(info.block_size_median);
       if (info.fee_per_kb) this.baseFeePerByte = Number(info.fee_per_kb);
       const tip = Number(info.height) - 1; // networkinfo.height is the next block's height

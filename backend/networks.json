@@ -36,10 +36,11 @@
     "chain": "Monero",
     "ticker": "XMR",
     "source": "xmrchain",
-    "apiUrl": "https://xmrchain.net/api",
-    "sourceLabel": "xmrchain.net",
-    "explorer": "https://xmrchain.net/block/",
+    "apiUrl": "https://xmr.hashes.space/api",
+    "sourceLabel": "xmr.hashes.space",
+    "explorer": "https://xmr.hashes.space/block/",
     "blockSeconds": 120,
-    "logo": "coins/monero.png"
+    "logo": "coins/monero.png",
+    "fallbackApiUrl": "https://xmrchain.net/api"
   }
 ]

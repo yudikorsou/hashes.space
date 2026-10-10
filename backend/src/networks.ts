@@ -25,8 +25,10 @@ export interface NetworkConfig {
   source: 'mempool' | 'node' | 'xmrchain' | 'simulated';
   /** mempool: the WebSocket, e.g. wss://mempool.space/api/v1/ws */
   wsUrl?: string;
-  /** xmrchain: an onion-monero-blockchain-explorer API, e.g. https://xmrchain.net/api */
+  /** xmrchain: an onion-monero-blockchain-explorer API, e.g. https://xmr.hashes.space/api (your own) */
   apiUrl?: string;
+  /** xmrchain: used only while apiUrl can't be reached, e.g. https://xmrchain.net/api */
+  fallbackApiUrl?: string;
   /** shown as the data source, e.g. "mempool.space" */
   sourceLabel?: string;
   /**

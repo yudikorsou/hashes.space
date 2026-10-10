@@ -572,7 +572,7 @@
   .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hr pools' 'calc pcalc' 'src src'; align-items: stretch; gap: 20px; }
   .mcard.m-hr { grid-area: hr; } .mcard.m-calc { grid-area: calc; } .mcard.m-pools { grid-area: pools; } .mcard.m-pcalc { grid-area: pcalc; } .msource { grid-area: src; }
   @media (max-width: 900px) { .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hr' 'calc' 'pools' 'pcalc' 'src'; } }
-  .mstats[hidden] { display: none !important; }
+  .mstats[hidden], .mcard[hidden] { display: none !important; }
   /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
   .mcard { position: relative; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(70, 78, 140, 0.16), rgba(70, 78, 140, 0) 72%); border: 0; border-radius: 40px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .mcard.m-pools::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
@@ -810,7 +810,7 @@
   <div class="howto">
     <button type="button" class="howto-btn" id="howto-btn" aria-describedby="howto-pop">How to read it</button>
     <div class="howto-pop" id="howto-pop" role="tooltip">
-      <p>Pick a proof-of-work blockchain on the left: <b>Bitcoin</b> (SHA-256, from mempool.space), <b>Bitcoin BLAKE2b</b> (BLAKE2b, from mempool.guide), <b>Dogecoin</b> (Scrypt, from our own Dogecoin node) or <b>Monero</b> (RandomX, from our own Monero node, or xmrchain.net).</p>
+      <p>Pick a proof-of-work blockchain on the left: <b>Bitcoin</b> (SHA-256, from mempool.space), <b>Bitcoin BLAKE2b</b> (BLAKE2b, from mempool.guide), <b>Dogecoin</b> (Scrypt, from our own Dogecoin node) or <b>Monero</b> (RandomX, from our own Monero node).</p>
       <p>On the left are the blocks waiting in the mempool, the next one first: transactions sorted by the fee they pay, filled up to a full block. On the right are the blocks that were just mined. When a miner finds a block, the first waiting block moves across the line and becomes the newest block in the chain.</p>
       <p>The colour of a block shows its fees: the warmer, the more the transactions in it pay. An orange glow and <b>DATUM Compatible</b> mark blocks of a pool that accepts miners with their own node and DATUM Gateway: OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b. A green glow and <b>DATUM Verified</b> are only for DATUM Gateway verified solominers of 100% DATUM pools. A red glow and <b>Centralised</b> mark blocks of every other pool, which builds the block template for its miners.</p>
     </div>
@@ -1786,7 +1786,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     { id: 'sha256', algo: 'sha256', label: 'SHA-256', chain: 'Bitcoin', ticker: 'BTC', source: 'mempool.space' },
     { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool.guide' },
     { id: 'dogecoin', algo: 'scrypt', label: 'Scrypt', chain: 'Dogecoin', ticker: 'DOGE', source: 'doge.hashes.space' },
-    { id: 'monero', algo: 'randomx', label: 'RandomX', chain: 'Monero', ticker: 'XMR', source: 'xmrchain.net' },
+    { id: 'monero', algo: 'randomx', label: 'RandomX', chain: 'Monero', ticker: 'XMR', source: 'xmr.hashes.space' },
   ];
   const B2_POOLS = ['AlphaPool', 'Lazarus', 'B2Pool', 'Solominers', 'Solo miner', 'DATUM miner', 'CONVOY'];
   const BTC_POOLS = ['Foundry USA', 'AntPool', 'ViaBTC', 'F2Pool', 'OCEAN'];
@@ -1919,7 +1919,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // preview the connection is blocked and the chain stays simulated.
   const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: 'wss://mempool.space/api/v1/ws', scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: 'wss://mempool.guide/api/v1/ws' };
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
-  const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://mempool.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmrchain.net/block/' };
+  const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://mempool.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmr.hashes.space/block/' };
   const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,
     medianFee: b.extras?.medianFee ?? 0, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0], totalFees: b.extras?.totalFees ?? 0, pool: b.extras?.pool?.name ?? '',
     coinbase: typeof b.extras?.coinbaseRaw === 'string' ? (b.extras.coinbaseRaw.match(/../g) ?? []).map((h) => String.fromCharCode(parseInt(h, 16))).join('') : '' });
@@ -1968,6 +1968,16 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       }
       setTimeout(poll, 15_000);
     };
+    // on the fallback (xmrchain.net)? check your own explorer every minute and switch back as soon as it answers
+    setInterval(async () => {
+      if (XMR_BASE === XMR_EXPLORERS[0]) return;
+      const base = await pickXmrExplorer();
+      if (base && base !== XMR_BASE) {
+        XMR_BASE = base; EXPLORER.monero = base + '/block/';
+        const n = NETWORKS.find((x) => x.id === id); if (n) n.source = new URL(base).host;
+        if (id === netId) { renderNetworks(); renderMined(false); }
+      }
+    }, 60_000);
     poll();
   }
   function connectLive(id) {
@@ -2997,7 +3007,10 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
 
   // ---------- Find Mempool: mining pools + hashrate & difficulty (as on <site>/mining) for the Bitcoin networks ----------
   // per network: the mempool site it comes from; Monero (xmrchain.net) has no pool statistics
-  var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide' };
+  // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, computing the same statistics from your Dogecoin Core node
+  var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space' };
+  // sites without mempool.space's mining pages: "View more" opens the explorer itself
+  var MINING_MORE = { dogecoin: 'https://doge.hashes.space/' };
   // snapshots for when the API can't be reached from this page
   var MINING_SNAPSHOTS = {};
   MINING_SNAPSHOTS.blake2b = {
@@ -3038,6 +3051,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     } catch {
       if (miningBy[net]?.live) return; // keep the last live numbers
       const s = MINING_SNAPSHOTS[net];
+      if (!s) { delete miningBy[net]; if (net === netId) renderMiningStats(); return; } // no snapshot: hidden until your node answers
       miningBy[net] = { live: false, at: s.at, blockCount: s.pools.blockCount, pools: s.pools.pools.map(([name, blocks, miners]) => ({ name, blocks, miners: miners || [] })),
         hashrates: s.hashrate.hashrates, difficulty: s.hashrate.difficulty, hash: s.hashrate.currentHashrate, diff: s.hashrate.currentDifficulty };
     }
@@ -3050,8 +3064,10 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     if (sec.hidden) return;
     const m = mining;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
-    $('ms-more-hr').href = `https://${site}/graphs/mining/hashrate-difficulty`;
-    $('ms-more-pools').href = `https://${site}/mining/pools`;
+    $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
+    $('ms-more-pools').href = MINING_MORE[netId] ?? `https://${site}/mining/pools`;
+    // the DATUM pool calculator only where DATUM pools exist (Bitcoin, Bitcoin BLAKE2b)
+    document.querySelector('.m-pcalc').hidden = !DATUM_TIDES_POOLS[netId];
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
     $('ms-source').textContent = m.live
       ? `Live from ${site}/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
@@ -3060,7 +3076,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
   // A block needs on average difficulty × 2^32 hashes on Bitcoin; mempool.guide gives the BLAKE2b difficulty in hashes per block.
-  var HASHES_PER_DIFFICULTY = { sha256: 2 ** 32, blake2b: 1 };
+  var HASHES_PER_DIFFICULTY = { sha256: 2 ** 32, blake2b: 1, dogecoin: 2 ** 32 };
   var CALC_PERIODS = [['calc-d', 86400], ['calc-w', 7 * 86400], ['calc-m', 30 * 86400]];
   function pct(p) {
     if (p >= 0.9995) return '> 99.9%';

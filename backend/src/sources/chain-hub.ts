@@ -39,7 +39,7 @@ export class ChainHub extends EventEmitter {
         kind === 'node'
           ? new NodeSource({ ...config.node, ...(n.rpcUrl && { rpcUrl: n.rpcUrl, rpcUser: n.rpcUser, rpcPassword: n.rpcPassword, cookieFile: n.cookieFile }) }, n.sourceLabel ?? `${n.chain} node`)
           : kind === 'xmrchain'
-            ? new XmrchainSource(n.apiUrl!, n.sourceLabel ?? new URL(n.apiUrl!).host)
+            ? new XmrchainSource(n.apiUrl!, n.sourceLabel ?? new URL(n.apiUrl!).host, 15_000, n.fallbackApiUrl)
           : kind === 'simulated'
             ? new SimulatedSource(`Simulated ${n.chain} chain`, undefined, Math.max(20_000, (n.blockSeconds ?? 600) * 125))
             : new MempoolSource(n.wsUrl!, n.sourceLabel ?? new URL(n.wsUrl!).host, n.datumPools, n.datumVerified, n.feeUnit);

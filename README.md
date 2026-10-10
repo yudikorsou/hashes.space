@@ -401,7 +401,7 @@ Monero blocks come from an [Onion Monero Blockchain Explorer](https://github.com
 2. **Install it on Umbrel.** Make sure the Monero Node app is installed and fully synced. In the Umbrel App Store → ⋯ → *Community App Stores*, add `https://github.com/yudikorsou/hashes.space`, open the *hashes.space* store and install **Monero Explorer**. It opens at `http://umbrel.local:4081`, without an Umbrel login (it is a read-only, public explorer). It reads the blockchain from the Monero Node app's database (read-only) and the mempool from its RPC.
 3. **Publish it** so website visitors can reach it, e.g. with the **Cloudflare Tunnel** app on Umbrel: add a public hostname such as `xmr.hashes.space` → `http://<your Umbrel's IP>:4081`. The explorer's JSON API already allows other websites to read it (CORS).
 4. **Point hashes.space at it.**
-   - Backend: `MONERO_EXPLORER_URL=https://xmr.hashes.space` (or `http://umbrel.local:4081` on your own network). Monero blocks, mempool and block links then come from your explorer instead of xmrchain.net.
+   - Backend: `networks.json` reads Monero from `https://xmr.hashes.space/api` and uses xmrchain.net (`fallbackApiUrl`) only while yours can't be reached, switching back as soon as it answers. Or set `MONERO_EXPLORER_URL=https://xmr.hashes.space` (or `http://umbrel.local:4081` on your own network). Monero blocks, mempool and block links then come from your explorer instead of xmrchain.net.
    - Find Mempool page and demos: `XMR_EXPLORERS` in `demo/demo.template.html` lists the explorers tried in order, `https://xmr.hashes.space` first and xmrchain.net as the fallback. Change the first address if you publish it elsewhere.
 
 ## Your own Dogecoin block explorer on Umbrel
@@ -411,5 +411,6 @@ Monero blocks come from an [Onion Monero Blockchain Explorer](https://github.com
 - reads blocks (parsed from the raw block, merge-mined AuxPoW headers included), transactions and the mempool from Dogecoin Core's RPC; the pool comes from the coinbase tag;
 - block pages, transaction pages and search by height, block hash or txid (confirmed transactions open from their block; with `-txindex=1` any txid works);
 - mempool.space's API and WebSocket for Dogecoin (`/api/v1/blocks`, `/api/v1/fees/mempool-blocks`, `/api/v1/ws`), with fees in koinu per byte (1 DOGE = 10⁸ koinu).
+- mining statistics from your node in mempool.space's format: `/api/v1/mining/hashrate/1y` (global hashrate, one point a day, from `getnetworkhashps`, and difficulty) and `/api/v1/mining/pools/1w` (the last 10,080 blocks per pool, read from the merge-mining data in each block header). The Find Mempool page shows them as the Global hashrate and Mining pools charts for Dogecoin, with the solomining calculator.
 
 Install it from this community app store (it opens at `http://umbrel.local:4082`, no Umbrel login), publish it with the Cloudflare Tunnel app as `doge.hashes.space` → `http://<your Umbrel's IP>:4082`, and set `DOGECOIN_EXPLORER_URL` for the backend. The Find Mempool page and demos use `wss://doge.hashes.space/api/v1/ws` (`LIVE_WS.dogecoin` in `demo/demo.template.html`).
