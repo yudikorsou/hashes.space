@@ -1,6 +1,6 @@
 # Builds the Onion Monero Blockchain Explorer (xmrblocks) for the hashes Monero Explorer Umbrel app
 # (hashes-monero-explorer/) and pushes it to ghcr.io/<owner>/hashes-monero-explorer, for amd64 and arm64
-# (Umbrel Home, Raspberry Pi). Run it from the Actions tab; compiling Monero takes about an hour per platform.
+# (Umbrel Home, Raspberry Pi), from docker/monero-explorer/Dockerfile. Run it from the Actions tab.
 name: Monero explorer image
 
 on:
@@ -33,46 +33,25 @@ jobs:
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 300
     steps:
-      - name: Check out the explorer
-        uses: actions/checkout@v4
-        with:
-          repository: moneroexamples/onion-monero-blockchain-explorer
-          ref: ${{ inputs.explorer_ref }}
+      - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # Ubuntu 24.04 LTS: ubuntu:latest moves on to newer compilers and Boost the explorer may not build with yet
-      - name: Use Ubuntu 24.04 in the Dockerfile
-        run: sed -i 's/ubuntu:latest/ubuntu:24.04/g' Dockerfile
-      # Monero builds for the build server's own CPU by default (-march=native): such a binary stops with
-      # "Illegal instruction" on other machines, like an Umbrel Home. Build for every CPU of the platform instead.
-      - name: Build Monero for any ${{ matrix.platform }} CPU
-        env:
-          MONERO_ARCH: ${{ matrix.platform == 'linux/arm64' && 'armv8-a' || 'x86-64' }}
-        run: |
-          python3 - <<'PY'
-          import os, re
-          d = open('Dockerfile').read()
-          old = '&& make -j"$(cat /nproc)"\n'
-          i = d.index('nproc > /nproc')
-          j = d.index(old, i)
-          new = ('&& mkdir -p build/release && cd build/release'
-                 ' && cmake -D ARCH=' + os.environ['MONERO_ARCH'] + ' -D BUILD_TESTS=OFF -D CMAKE_BUILD_TYPE=Release ../..'
-                 ' && make -j"$(cat /nproc)"\n')
-          open('Dockerfile', 'w').write(d[:j] + new + d[j + len(old):])
-          PY
-          grep -n "ARCH=" Dockerfile
+      # docker/monero-explorer/Dockerfile: Alpine (musl), like Umbrel's monerod, so both can share the
+      # blockchain's LMDB locks; built for every CPU of the platform, never the build server's own
       - name: Build and push by digest
         id: build
         run: |
           set -o pipefail
           docker buildx build --platform ${{ matrix.platform }} --progress=plain \
-            --build-arg MONERO_BRANCH=${{ inputs.monero_tag }} \
+            --build-arg MONERO_TAG=${{ inputs.monero_tag }} \
+            --build-arg EXPLORER_REF=${{ inputs.explorer_ref }} \
+            --build-arg ARCH=${{ matrix.platform == 'linux/arm64' && 'armv8-a' || 'x86-64' }} \
             --output type=image,name=$IMAGE,push-by-digest=true,name-canonical=true,push=true \
-            --metadata-file /tmp/meta.json . 2>&1 | tee /tmp/build.log
+            --metadata-file /tmp/meta.json docker/monero-explorer 2>&1 | tee /tmp/build.log
           echo "digest=$(jq -r '."containerimage.digest"' /tmp/meta.json)" >> "$GITHUB_OUTPUT"
       # the job log is not readable everywhere: put the compiler errors in the run's annotations
       - name: Show the build errors
