@@ -339,7 +339,7 @@
   .ghost:hover { border-color: var(--line-strong); }
   /* hash function picker */
   /* the bar: the label on the left, the search in the middle of the page, the actions on the right */
-  .netbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 560px) minmax(0, 1fr); align-items: center; gap: 10px 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--bg); }
+  .netbar { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 660px) minmax(0, 1fr); align-items: center; gap: 10px 14px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--bg); }
   .nb-side { display: flex; align-items: center; gap: 12px; min-width: 0; }
   .nb-side.right { justify-content: flex-end; }
   .netbar .nlabel { font: 600 12px/1 var(--sans); letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
@@ -359,7 +359,7 @@
   .ns-pick .chev { flex: none; width: 12px; height: 12px; color: var(--muted); transition: transform .15s; }
   .dd-menu li[data-height] .algo { color: var(--text); background: #2a3150; }   /* searching: the field is yours, the coin keeps its logo */
   .ns-input { flex: 1; min-width: 72px; padding: 5px 0; color: var(--text); background: none; border: 0; font: 500 13.5px/1.2 var(--sans); }
-  .ns-input::placeholder { color: var(--muted-2); }
+  .ns-input::placeholder { color: var(--muted-2); font-size: 12.5px; }
   .ns-input:focus { outline: none; }
   .ns-icon { flex: none; width: 15px; height: 15px; color: var(--muted); }
   .netsearch:focus-within .ns-icon { color: var(--orange); }
@@ -696,6 +696,28 @@
   .slice:hover, .slice:focus { filter: brightness(1.15); outline: none; }
   .mtip { position: fixed; z-index: 30; pointer-events: none; background: #0b0d17; border: 1px solid var(--line-strong); border-radius: 6px; padding: 7px 9px; font: 400 12.5px/1.4 var(--sans); color: var(--text); max-width: 240px; }
   .mtip b { font-weight: 600; }
+  /* a mining pool's own page: every block it mined */
+  .poolpage { max-width: 1100px; margin: 0 auto; padding: 28px 20px 56px; display: grid; gap: 20px; justify-items: center; }
+  .poolpage[hidden] { display: none !important; }
+  .poolhead { text-align: center; display: grid; gap: 8px; justify-items: center; max-width: 62ch; }
+  .poolhead .pool-eyebrow { margin: 0; color: var(--muted); font: 500 12px/1.2 var(--sans); text-transform: uppercase; letter-spacing: .09em; }
+  .poolhead h1 { margin: 0; font: 600 28px/1.2 var(--display); letter-spacing: .01em; color: var(--text); overflow-wrap: anywhere; }
+  .poolhead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
+  .pool-miners { width: 100%; display: grid; gap: 10px; justify-items: center; }
+  .pool-miners h2 { margin: 0; font: 600 15px/1.2 var(--display); color: var(--text); }
+  .pool-miners ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0; padding: 0; list-style: none; }
+  .pool-miners li { display: inline-flex; align-items: baseline; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: rgba(10, 12, 24, .45); font: 400 12.5px/1 var(--sans); color: var(--muted); }
+  .pool-miners li b { color: var(--text); font-weight: 500; }
+  .pool-miners li span { font: 500 12px/1 var(--mono); color: var(--link); font-variant-numeric: tabular-nums; }
+  .pool-blocks { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .pb { display: grid; gap: 4px; justify-items: start; padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; background: rgba(10, 12, 24, .45); color: inherit; text-decoration: none; transition: border-color .15s, background .15s; }
+  a.pb:hover { border-color: var(--line-strong); background: rgba(16, 19, 36, .7); }
+  .pb b { font: 600 17px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+  .pb .pb-age { color: var(--link); font: 500 12px/1.3 var(--sans); }
+  .pb .pb-meta { color: var(--muted); font: 400 12px/1.4 var(--sans); }
+  .pb .datum-badge { margin-top: 4px; }
+  .pool-empty { grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
+  @media (max-width: 520px) { .poolhead h1 { font-size: 23px; } .pool-blocks { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
   @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mcard .kpis dd { font-size: 17px; } .mcard .mtitle, .mcard .kpis dt { font-size: 15.5px; } }
 
   /* Learn: one topic at a time, picked from a row of tabs, on the same soft glow as the charts above */
@@ -896,7 +918,7 @@
       <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
     <span class="ns-sep" aria-hidden="true"></span>
-    <input type="text" class="ns-input" id="net-search" role="combobox" aria-expanded="false" aria-controls="net-menu" aria-autocomplete="list" aria-label="Search the mempool by block height" placeholder="Search Mempool" inputmode="numeric" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
+    <input type="text" class="ns-input" id="net-search" role="combobox" aria-expanded="false" aria-controls="net-menu" aria-autocomplete="list" aria-label="Search the mempool by block height or mining pool" placeholder="Search Mempool for blockheight or mining pool" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
     <svg class="ns-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
     <ul class="dd-menu" id="net-menu" role="listbox" aria-labelledby="net-label" hidden></ul>
   </div>
@@ -946,6 +968,19 @@
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
   </article>
   <p class="msource" id="ms-source"></p>
+</section>
+
+<!-- a mining pool's page, reached by searching its name in the bar above -->
+<section class="poolpage" id="pool-page" aria-labelledby="poolpage-title" hidden>
+  <header class="poolhead">
+    <p class="pool-eyebrow" id="pool-eyebrow"></p>
+    <h1 id="poolpage-title">Mining pool</h1>
+    <p id="pool-context"></p>
+  </header>
+  <div class="pool-miners" id="pool-miners" hidden></div>
+  <div class="pool-blocks" id="pool-blocks"></div>
+  <p class="msource" id="pool-source"></p>
+  <a class="more" href="#dashboard">« Back to the mempool</a>
 </section>
 
 <!-- Calculate hashrate: its own page, reached from the tab next to Find Mempool -->
@@ -2102,6 +2137,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     $('tip').textContent = 'tip ' + fmt(c.tipHeight);
     $('src-label').textContent = netId === 'own' ? `${network().chain} · ${network().source}` : live ? `${network().chain} · live from ${network().source}` : c.connecting ? `Connecting to ${network().source}…` : `${network().chain} · simulated (${network().source} not reachable from this page)`;
     $('live-dot').className = live ? 'dot live' : 'dot';
+    if (typeof renderPoolPage === 'function') renderPoolPage();   // a pool's page lists the blocks as they arrive
   }
 
   // ---------- live stream: the same mempool WebSocket the backend's MempoolSource uses ----------
@@ -2234,7 +2270,21 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const describe = (n) => n.id === 'own' ? `${n.label} · ${n.source}` : `Validated with ${n.label} · live from ${n.source}`;
   const heightTyped = (q) => { const n = q.replace(/[^0-9]/g, ''); return n && n.length < 10 ? Number(n) : null; };
   const blockOnPage = (h) => [...$('mined').children].find((w) => w.querySelector('.height')?.textContent === fmt(h));
-  let activeOpt = 0, mode = 'nets';   // which list the menu is showing: the networks, or the block typed
+  let activeOpt = 0, mode = 'nets';   // which list the menu is showing: the networks, or what was typed in the field
+  let blockOpts = [];                 // what the field offers right now: a block height, or mining pools
+  // the mining pools of this chain, from the mining section when it is on the page, and from the blocks on it
+  // only the pages that carry a pool page offer pools in the field
+  const poolSearch = () => !!$('pool-page');
+  function poolsKnown(q) {
+    const s = q.trim().toLowerCase(); if (!s || !poolSearch()) return [];
+    const out = new Map();
+    if (typeof mining !== 'undefined' && mining) for (const p of mining.pools) out.set(p.name.toLowerCase(), { name: p.name, blocks: p.blocks, window: mining.window });
+    for (const b of chain().blocks ?? []) { const n = (b.pool ?? '').trim(); if (n && !out.has(n.toLowerCase())) out.set(n.toLowerCase(), { name: n, blocks: 0, window: null }); }
+    for (const n of chain().pools ?? []) { if (n && !out.has(String(n).toLowerCase())) out.set(String(n).toLowerCase(), { name: n, blocks: 0, window: null }); }
+    const all = [...out.values()].filter((p) => p.name.toLowerCase().includes(s));
+    all.sort((a, b) => (a.name.toLowerCase().startsWith(s) ? 0 : 1) - (b.name.toLowerCase().startsWith(s) ? 0 : 1) || b.blocks - a.blocks);
+    return all.slice(0, 6);
+  }
   function renderNetworks() {
     const n = network(), input = $('net-search'), open = menuOpen();
     const chipKey = n.id + '|' + n.label + '|' + n.chain;
@@ -2244,24 +2294,34 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     }
     $('net-pick').setAttribute('aria-expanded', String(open && mode === 'nets'));
     input.setAttribute('aria-expanded', String(open && mode === 'block'));
-    input.placeholder = `Search Mempool`;
+    input.placeholder = poolSearch() ? 'Search Mempool for blockheight or mining pool' : 'Search Mempool';
     if (open && mode === 'nets') {
       if (activeOpt >= NETWORKS.length) activeOpt = NETWORKS.length - 1;
       $('net-menu').innerHTML = NETWORKS.map((o, i) => `<li role="option" id="net-opt-${i}" data-net="${o.id}" aria-selected="${o.id === netId}" class="${i === activeOpt ? 'active' : ''}">
         <span class="net-id">${coinImg(o.id)}<span class="algo ${o.algo}">${o.label}</span></span><span class="dd-text"><b>${o.id === 'own' ? 'Your node' : o.chain} <em>${o.ticker}</em></b><small>${esc(describe(o))}</small></span>${o.id === netId ? TICK : '<span></span>'}</li>`).join('');
       $('net-menu').setAttribute('aria-activedescendant', 'net-opt-' + activeOpt);
     } else if (open) {
-      const h = heightTyped(input.value);
-      activeOpt = 0;
-      $('net-menu').innerHTML = h === null
-        ? `<li class="none">Type a block height to find it on ${esc(network().chain)}.</li>`
-        : (() => {
-            const here = !!blockOnPage(h), link = chain().live && EXPLORER[netId];
-            const what = here ? 'On this page: scroll to it' : link ? `Open it on ${network().source}` : 'Not among the blocks on this page';
-            return `<li role="option" id="net-opt-0" data-height="${h}" class="active"><span class="net-id"><span class="algo ${network().algo}">Block</span></span>
-              <span class="dd-text"><b>${fmt(h)} <em>${esc(network().ticker)}</em></b><small>${esc(what)}</small></span><span></span></li>`;
-          })();
-      $('net-menu').setAttribute('aria-activedescendant', h === null ? '' : 'net-opt-0');
+      const q = input.value, h = heightTyped(q);
+      blockOpts = h !== null ? [{ kind: 'height', h }] : poolsKnown(q).map((p) => ({ kind: 'pool', p }));
+      if (activeOpt >= blockOpts.length) activeOpt = 0;
+      const row = (o, i) => {
+        if (o.kind === 'height') {
+          const here = !!blockOnPage(o.h), link = chain().live && EXPLORER[netId];
+          const what = here ? 'On this page: scroll to it' : link ? `Open it on ${network().source}` : 'Not among the blocks on this page';
+          return `<li role="option" id="net-opt-${i}" data-height="${o.h}" class="${i === activeOpt ? 'active' : ''}"><span class="net-id"><span class="algo ${network().algo}">Block</span></span>
+            <span class="dd-text"><b>${fmt(o.h)} <em>${esc(network().ticker)}</em></b><small>${esc(what)}</small></span><span></span></li>`;
+        }
+        const p = o.p, when = p.window === '24h' ? 'in the last 24 hours' : 'last week';
+        const what = p.blocks ? `${fmt(p.blocks)} block${p.blocks === 1 ? '' : 's'} ${when} · see every block it mined` : 'See the blocks it mined';
+        return `<li role="option" id="net-opt-${i}" data-pool="${esc(p.name)}" class="${i === activeOpt ? 'active' : ''}"><span class="net-id"><span class="algo ${network().algo}">Pool</span></span>
+          <span class="dd-text"><b>${esc(p.name)}</b><small>${esc(what)}</small></span><span></span></li>`;
+      };
+      $('net-menu').innerHTML = blockOpts.length
+        ? blockOpts.map(row).join('')
+        : `<li class="none">${!poolSearch() ? `Type a block height to find it on ${esc(network().chain)}.`
+            : q.trim() ? `No mining pool on ${esc(network().chain)} goes by “${esc(q.trim())}”. A block height is a number.`
+              : `Type a block height, or the name of a mining pool, to find it on ${esc(network().chain)}.`}</li>`;
+      $('net-menu').setAttribute('aria-activedescendant', blockOpts.length ? 'net-opt-' + activeOpt : '');
     }
     $('own-btn').textContent = NETWORKS.some((o) => o.id === 'own') ? 'Your node and Electrum server' : 'Connect node';
   }
@@ -2280,10 +2340,11 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   $('net-pick').addEventListener('click', () => (menuOpen() && mode === 'nets' ? closeMenu(true) : openNets()));
   $('net-search').addEventListener('focus', openBlock);
   $('net-search').addEventListener('click', openBlock);
-  // a block height is a number: keep the field to digits, grouped as the blocks above are
+  // digits are a block height and are grouped as the blocks above are; anything else is a pool's name
   $('net-search').addEventListener('input', () => {
-    const el = $('net-search'), h = heightTyped(el.value);
-    el.value = h === null ? '' : fmt(h);
+    const el = $('net-search');
+    if (!poolSearch() || /^[\d,.\s]*$/.test(el.value)) { const h = heightTyped(el.value); el.value = h === null ? '' : fmt(h); }
+    activeOpt = 0;
     openBlock();
   });
   function goToBlock(h) {
@@ -2301,15 +2362,20 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   }
   function pickAt(i) {
     if (mode === 'nets') { const o = NETWORKS[i]; if (o) { setNetwork(o.id); closeMenu(true); } return; }
-    const h = heightTyped($('net-search').value);
-    if (h !== null) goToBlock(h);
+    const o = blockOpts[i]; if (!o) return;
+    if (o.kind === 'height') goToBlock(o.h); else goToPool(o.p.name);
   }
-  $('net-menu').addEventListener('click', (e) => { const li = e.target.closest('[data-net], [data-height]'); if (li) pickAt(+li.id.split('-').pop()); });
-  $('net-menu').addEventListener('mousemove', (e) => { const li = e.target.closest('[data-net]'); if (li) { const i = +li.id.split('-').pop(); if (i !== activeOpt) { activeOpt = i; renderNetworks(); } } });
+  // every block a pool mined, on a page of its own (only where that page exists)
+  function goToPool(name) {
+    if (typeof showPool === 'function' && $('pool-page')) { $('net-search').value = ''; closeMenu(false); showPool(name); return; }
+    closeMenu(true);
+  }
+  $('net-menu').addEventListener('click', (e) => { const li = e.target.closest('[data-net], [data-height], [data-pool]'); if (li) pickAt(+li.id.split('-').pop()); });
+  $('net-menu').addEventListener('mousemove', (e) => { const li = e.target.closest('[data-net], [data-height], [data-pool]'); if (li) { const i = +li.id.split('-').pop(); if (i !== activeOpt) { activeOpt = i; renderNetworks(); } } });
   $('net-dd').addEventListener('keydown', (e) => {
     const onInput = e.target === $('net-search');
     if (!menuOpen()) { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); onInput ? openBlock() : openNets(); } return; }
-    const last = (mode === 'nets' ? NETWORKS.length : 1) - 1;
+    const last = (mode === 'nets' ? NETWORKS.length : Math.max(1, blockOpts.length)) - 1;
     if (e.key === 'ArrowDown') activeOpt = Math.min(last, activeOpt + 1);
     else if (e.key === 'ArrowUp') activeOpt = Math.max(0, activeOpt - 1);
     else if (e.key === 'Home') activeOpt = 0;
@@ -3002,13 +3068,15 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const TIMEZONES = (() => { try { const z = Intl.supportedValuesOf('timeZone'); return ['UTC', ...z.filter((x) => x !== 'UTC')]; } catch { return ['UTC', 'Europe/Amsterdam', 'Europe/London', 'America/New_York', 'Asia/Shanghai', 'Asia/Tokyo']; } })();
 
   function showView(v) {
-    view = ['calc', 'learn'].includes(v) ? v : 'dashboard';
+    view = ['calc', 'learn', 'pool'].includes(v) ? v : 'dashboard';
     ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
     $('chain-area').hidden = view === 'learn';            // the proof-of-work bar stands on the mempool and calculator pages
     document.querySelector('.strip').hidden = view !== 'dashboard';
     document.querySelector('.learn').hidden = view !== 'learn';
     for (const [t, v] of [['tab-dashboard', 'dashboard'], ['tab-calc', 'calc'], ['tab-learn', 'learn']]) $(t).classList.toggle('on', view === v);
+    $('tab-dashboard').classList.toggle('on', view === 'dashboard' || view === 'pool');
     if (typeof renderMiningStats === 'function') renderMiningStats();
+    if (typeof renderPoolPage === 'function') renderPoolPage();
     if (view === 'asic' || view === 'cpu') { if (!scan) runScan(); else renderAsic(); renderFleet(); }
     else if (view === 'fleet') { renderProjected(); renderMined(false); renderFleetDash(true); }
     else if (view === 'settings') { $('no-miner').hidden = !!current; $('settings-body').hidden = !current; if (current) loadForm(); }
@@ -3312,7 +3380,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       const win = POOLS_WINDOW[net] ?? '1w';
       const [p, h] = await Promise.all([getJson(site, '/pools/' + win), getJson(site, '/hashrate/1y')]);
       miningBy[net] = { live: true, at: Date.now() / 1000, blockCount: p.blockCount, window: win,
-        pools: p.pools.map((x) => ({ name: x.name, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
+        pools: p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
         hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: h.difficulty.map((x) => [x.time, x.difficulty]),
         hash: h.currentHashrate, diff: h.currentDifficulty };
     } catch {
@@ -3599,6 +3667,66 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     hit.addEventListener('mousemove', at);
     hit.addEventListener('mouseleave', (e) => { cross.setAttribute('visibility', 'hidden'); tip(e, null); });
     svg.appendChild(hit);
+  }
+  // ---------- a mining pool's own page: every block it mined ----------
+  var poolView = null;          // the pool the page is showing
+  var poolBlocks = {};          // per network and pool: the block list its mining page gave us
+  function showPool(name) {
+    poolView = name;
+    if (typeof view !== 'undefined' && view !== 'pool') location.hash = '#pool'; else renderPoolPage();
+  }
+  const sinceText = (sec) => {
+    if (sec < 90) return 'just now';
+    const m = Math.round(sec / 60); if (m < 60) return `${m} min ago`;
+    const h = Math.round(sec / 3600); if (h < 48) return `${h} hour${h === 1 ? '' : 's'} ago`;
+    return `${fmt(Math.round(sec / 86400))} days ago`;
+  };
+  const poolStat = (name) => (mining ? mining.pools.find((p) => p.name.toLowerCase() === name.toLowerCase()) : null);
+  function renderPoolPage() {
+    const page = $('pool-page'); if (!page) return;
+    const on = typeof view !== 'undefined' && view === 'pool' && !!poolView;
+    page.hidden = !on; if (!on) return;
+    const name = poolView, m = mining, stat = poolStat(name);
+    $('poolpage-title').textContent = name;
+    $('pool-eyebrow').textContent = `Mining pool on ${network().chain}`;
+    const win = m && m.window === '24h' ? 'the last 24 hours' : 'the last week';
+    $('pool-context').textContent = stat && m.blockCount
+      ? `${fmt(stat.blocks)} of the ${fmt(m.blockCount)} blocks mined in ${win} (${(100 * stat.blocks / m.blockCount).toFixed(1)}%)`
+        + (m.hash ? `, about ${si((stat.blocks / m.blockCount) * m.hash, 1)}H/s of the ${si(m.hash, 1)}H/s on the chain.` : '.')
+      : `The blocks this page has seen ${name} mine on ${network().chain}.`;
+    const mins = stat?.miners ?? [], mel = $('pool-miners');
+    mel.hidden = !mins.length;
+    if (mins.length) mel.innerHTML = `<h2>Miners named in its blocks</h2><ul>${mins.slice(0, 24).map(([n, b]) => `<li><b>${esc(n)}</b><span>${fmt(b)}</span></li>`).join('')}</ul>`;
+    renderPoolBlocks(name);
+  }
+  const poolBlocksOnPage = (name) => (chain().blocks ?? []).filter((b) => (b.pool ?? '').trim().toLowerCase() === name.toLowerCase());
+  function renderPoolBlocks(name) {
+    const key = netId + '|' + name.toLowerCase(), got = poolBlocks[key], stat = poolStat(name);
+    const list = got?.length ? got : poolBlocksOnPage(name), t = Date.now() / 1000;
+    // a simulated block has a made-up hash, so it links nowhere, just as in the strip
+    const link = (chain().live || got?.length) && EXPLORER[netId] ? EXPLORER[netId] : null;
+    $('pool-blocks').innerHTML = list.length
+      ? list.slice(0, 60).map((b) => {
+        const d = datumLabel({ pool: name }), tag = link ? 'a' : 'div';
+        return `<${tag} class="pb"${link ? ` href="${link}${b.hash ?? b.height}" target="_blank" rel="noopener"` : ''}>
+          <b>${fmt(b.height)}</b><span class="pb-age">${sinceText(Math.max(0, t - (b.timestamp ?? t)))}</span>
+          <span class="pb-meta">${fmt(b.txCount ?? 0)} transactions · ${((b.size ?? 0) / 1e6).toFixed(2)} MB</span>${d ? DATUM_BADGE[d] : ''}</${tag}>`;
+      }).join('')
+      : `<p class="pool-empty">No block of ${esc(name)} among the ones this page has seen yet. The page keeps watching: the next one it finds appears here.</p>`;
+    $('pool-source').textContent = got?.length
+      ? `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`
+      : list.length ? `The blocks of ${name} among the ones on this page.` : '';
+    // the mining page keeps the pool's own block list; ask for it once
+    if (got === undefined && mining?.live && stat?.slug) fetchPoolBlocks(name, stat.slug);
+  }
+  async function fetchPoolBlocks(name, slug) {
+    const net = netId, key = net + '|' + name.toLowerCase();
+    poolBlocks[key] = [];       // asked: do not ask again for this pool
+    try {
+      const r = await getJson(MINING_SITES[net], `/pool/${encodeURIComponent(slug)}/blocks`);
+      poolBlocks[key] = (Array.isArray(r) ? r : []).map((b) => ({ height: b.height, timestamp: b.timestamp, txCount: b.tx_count, size: b.size }));
+    } catch { /* no list from there: the blocks on this page stand */ }
+    if (netId === net && poolView && poolView.toLowerCase() === name.toLowerCase()) renderPoolBlocks(name);
   }
   setInterval(loadMining, 5 * 60_000);
 
