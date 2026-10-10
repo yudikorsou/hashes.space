@@ -3269,6 +3269,11 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // what the source line names: Monero's statistics come from the node itself, not from a mining page
   var MINING_FROM = { monero: 'your Monero node', dogecoin: 'your Dogecoin node' };
   var POOLS_TITLE = { monero: 'How blocks are paid out' };
+  // the stretch of chain the pool section covers: a day where the mining pages serve it,
+  // a week on the explorers running on your own Umbrel, which compute the split themselves
+  var POOLS_WINDOW = { sha256: '24h', blake2b: '24h', dogecoin: '1w', monero: '1w' };
+  const windowLabel = (w) => (w === '24h' ? '24h' : '1w');
+  const windowBlocks = (w) => (w === '24h' ? "the last day's blocks" : "last week's blocks");
   var POOLS_NOTE = { monero: 'A Monero block never names its pool: the reward goes to a one-time address. P2Pool pays every one of its miners in the block itself, so its blocks carry many payouts; a custodial pool or a solo miner leaves one.' };
   // snapshots for when the API can't be reached from this page
   var MINING_SNAPSHOTS = {};
@@ -3302,8 +3307,9 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   async function loadMiningFor(net) {
     const site = MINING_SITES[net];
     try {
-      const [p, h] = await Promise.all([getJson(site, '/pools/1w'), getJson(site, '/hashrate/1y')]);
-      miningBy[net] = { live: true, at: Date.now() / 1000, blockCount: p.blockCount,
+      const win = POOLS_WINDOW[net] ?? '1w';
+      const [p, h] = await Promise.all([getJson(site, '/pools/' + win), getJson(site, '/hashrate/1y')]);
+      miningBy[net] = { live: true, at: Date.now() / 1000, blockCount: p.blockCount, window: win,
         pools: p.pools.map((x) => ({ name: x.name, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
         hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: h.difficulty.map((x) => [x.time, x.difficulty]),
         hash: h.currentHashrate, diff: h.currentDifficulty };
@@ -3311,7 +3317,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       if (miningBy[net]?.live) return; // keep the last live numbers
       const s = MINING_SNAPSHOTS[net];
       if (!s) { delete miningBy[net]; if (net === netId) renderMiningStats(); return; } // no snapshot: hidden until your node answers
-      miningBy[net] = { live: false, at: s.at, blockCount: s.pools.blockCount, pools: s.pools.pools.map(([name, blocks, miners]) => ({ name, blocks, miners: miners || [] })),
+      miningBy[net] = { live: false, at: s.at, blockCount: s.pools.blockCount, window: '1w', pools: s.pools.pools.map(([name, blocks, miners]) => ({ name, blocks, miners: miners || [] })),
         hashrates: s.hashrate.hashrates, difficulty: s.hashrate.difficulty, hash: s.hashrate.currentHashrate, diff: s.hashrate.currentDifficulty };
     }
     if (net === netId) renderMiningStats();
@@ -3340,7 +3346,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
     $('ms-more-pools').href = MINING_MORE[netId] ?? `https://${site}/mining/pools`;
     setUnits('calc-unit'); setUnits('pcalc-unit');
-    $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Mining pools';
+    $('pools-title').textContent = `${POOLS_TITLE[netId] ?? 'Mining pools'} (${windowLabel(m.window)})`;
+    $('ms-pie').setAttribute('aria-label', `Blocks per mining pool, ${m.window === '24h' ? 'last 24 hours' : 'last week'}`);
     const note = $('ms-pools-note'); note.hidden = !POOLS_NOTE[netId]; note.textContent = POOLS_NOTE[netId] ?? '';
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
     $('ms-hash-sub').textContent = hashrateThen(m);
@@ -3438,7 +3445,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       return;
     }
     const perBlock = m.diff * (HASHES_PER_DIFFICULTY[netId] ?? 2 ** 32);
-    const poolHash = stat ? (stat.blocks / m.blockCount) * m.hash : 0; // estimated from its blocks last week
+    const poolHash = stat ? (stat.blocks / m.blockCount) * m.hash : 0; // estimated from the blocks it found in the pool window
     const total = poolHash + h, rate = perBlock > 0 ? total / perBlock : 0; // the pool's blocks per second, you included
     const yours = total ? h / total : 0; // your part of every block's reward in the TIDES window
     const reward = cfg.subsidy + avgFeesSats() / 1e8; // subsidy + average fees per block
@@ -3448,7 +3455,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     const windowSec = total ? (cfg.window * perBlock) / total : 0; // how long a share stays in the TIDES window
     const perDay = rate * 86400 * perBlockForYou;
     $('pcalc-note').textContent = `The ${cfg.ticker} you receive on average when you point this hashrate through your DATUM Gateway to ${cfg.name}, paid with TIDES after its fee (${cfg.feeNote}). `
-      + `${cfg.name} ≈ ${poolHash ? `${si(poolHash, 1)}H/s (${(100 * stat.blocks / m.blockCount).toFixed(1)}% of last week's blocks)` : 'unknown hashrate'}; a block pays about ${fmt(reward, 3)} ${cfg.ticker} (${fmt(cfg.subsidy, 3)} subsidy + fees). `
+      + `${cfg.name} ≈ ${poolHash ? `${si(poolHash, 1)}H/s (${(100 * stat.blocks / m.blockCount).toFixed(1)}% of ${windowBlocks(m.window)})` : 'unknown hashrate'}; a block pays about ${fmt(reward, 3)} ${cfg.ticker} (${fmt(cfg.subsidy, 3)} subsidy + fees). `
       + (h ? `You get about ${smallPct(yours)} of every block it finds; each share stays in the TIDES window (${cfg.window} × difficulty) for about ${ageText(windowSec)}, so it is paid about ${cfg.window} times. `
         + `On-chain payout at ${fmt(cfg.threshold, 8)} ${cfg.ticker}: about every ${perDay > 0 ? ageText((cfg.threshold / perDay) * 86400) : '–'}.` : 'Enter your hashrate to see your share.');
   }
@@ -3487,7 +3494,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       svg.appendChild(g);
       if (share >= 0.004 && labels.length < 18) { const mid = (a0 + a1) / 2; labels.push({ name: p.name, mid, hue, right: Math.cos(mid) > 0, y: cy + (R + 14) * Math.sin(mid) }); }
     });
-    // the week's total in the opening under the half ring
+    // the window's block total in the opening under the half ring
     svg.appendChild(svgEl('text', { x: cx, y: cy - 28, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 22, 'font-weight': 700 }, fmt(total)));
     svg.appendChild(svgEl('text', { x: cx, y: cy - 10, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11.5 }, 'blocks'));
     // labels left and right of the ring, spread out so they don't overlap
