@@ -1935,9 +1935,13 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   function scheduleClip() {
     if (clipQueued) return;
     clipQueued = true;
-    requestAnimationFrame(() => { clipQueued = false; pinProjected(); clipPartialBlocks(); });
+    const run = () => { clipQueued = false; pinProjected(); clipPartialBlocks(); };
+    // a page in a background tab gets no animation frames, and would then show sliced blocks
+    // the moment someone looks at it, so measure on a timer while it is hidden
+    if (document.hidden) setTimeout(run, 0); else requestAnimationFrame(run);
   }
   addEventListener('resize', scheduleClip);
+  document.addEventListener('visibilitychange', scheduleClip);
   for (const id of ['projected', 'mined']) $(id).addEventListener('scroll', scheduleClip, { passive: true });
   function renderProjected() {
     const el = $('projected');
