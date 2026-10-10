@@ -18,6 +18,7 @@
   }
   * { box-sizing: border-box; }
   html, body { background: var(--bg); color: var(--text); font: 400 14px/1.45 var(--sans); margin: 0; }
+  [hidden] { display: none !important; }
   button { font: inherit; }
 
   /* top bar */
@@ -1330,6 +1331,7 @@
     openBlock();
   });
   function goToBlock(h) {
+    if (typeof view !== 'undefined' && view !== 'dashboard' && $('tab-dashboard')) { location.hash = '#dashboard'; }
     const wrap = blockOnPage(h);
     if (wrap) {
       closeMenu(false);

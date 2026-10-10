@@ -22,6 +22,7 @@
   }
   * { box-sizing: border-box; }
   html, body { background: var(--bg); color: var(--text); font: 400 14px/1.45 var(--sans); margin: 0; }
+  [hidden] { display: none !important; }
   button { font: inherit; }
 
   /* top bar */
@@ -637,14 +638,24 @@
   #miner-slot, .fleet-shares { display: none !important; }
 
   /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
-  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hr pools' 'calc pcalc' 'src src'; align-items: stretch; gap: 20px; }
-  .mcard.m-hr { grid-area: hr; } .mcard.m-calc { grid-area: calc; } .mcard.m-pools { grid-area: pools; } .mcard.m-pcalc { grid-area: pcalc; } .msource { grid-area: src; }
-  @media (max-width: 900px) { .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hr' 'calc' 'pools' 'pcalc' 'src'; } }
+  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hr pools' 'src src'; align-items: stretch; gap: 20px; }
+  .mcard.m-hr { grid-area: hr; } .mcard.m-pools { grid-area: pools; } .msource { grid-area: src; }
+  /* the calculators have a page to themselves */
+  .mstats.calcpage { grid-template-areas: 'head head' 'calc pcalc' 'src src'; padding-top: 28px; }
+  .calcpage .calchead { grid-area: head; text-align: center; max-width: 60ch; margin: 0 auto; display: grid; gap: 8px; }
+  .calcpage .calchead h1 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
+  .calcpage .calchead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
+  .mcard.m-calc { grid-area: calc; } .mcard.m-pcalc { grid-area: pcalc; }
+  @media (max-width: 900px) {
+    .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hr' 'pools' 'src'; }
+    .mstats.calcpage { grid-template-areas: 'head' 'calc' 'pcalc' 'src'; }
+  }
   .mstats[hidden], .mcard[hidden] { display: none !important; }
   /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
   .mcard { position: relative; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(70, 78, 140, 0.16), rgba(70, 78, 140, 0) 72%); border: 0; border-radius: 40px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .mcard.m-pools::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
-  .mcard.m-pcalc::before { content: ''; position: absolute; left: 15%; right: 15%; top: -10px; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); }
+  .mcard.m-pcalc::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
+  @media (max-width: 900px) { .mcard.m-pcalc::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
   .mcard.m-calc::before { content: ''; position: absolute; left: 15%; right: 15%; top: -10px; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); }
   @media (max-width: 900px) { .mcard.m-pools::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
   .mcard .mtitle { margin: 0; text-align: center; font: 600 14px/1.2 var(--sans); color: var(--link); }
@@ -789,6 +800,7 @@
     <a href="#cpu" id="tab-cpu" hidden>Find CPUs</a>
     <a href="#asic" id="tab-asic" hidden>Find ASIC</a>
     <a href="#dashboard" id="tab-dashboard">Find Mempool</a>
+    <a href="#calc" id="tab-calc">Calculate hashrate</a>
     <a href="#fleet" id="tab-fleet" hidden>Fleet</a>
     <a href="#settings" id="tab-settings" hidden>Miner settings</a>
   </nav>
@@ -921,6 +933,21 @@
     <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i>Hashrate (7-day average)</li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
     <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
+  <article class="mcard m-pools" aria-labelledby="pools-title">
+    <h2 class="mtitle" id="pools-title">Mining pools</h2>
+    <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
+    <p class="pnote" id="ms-pools-note" hidden></p>
+    <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
+  </article>
+  <p class="msource" id="ms-source"></p>
+</section>
+
+<!-- Calculate hashrate: its own page, reached from the tab next to Find Mempool -->
+<section class="mstats calcpage" id="calc-page" aria-labelledby="calcpage-title" hidden>
+  <header class="calchead">
+    <h1 id="calcpage-title">Calculate hashrate</h1>
+    <p id="calc-context">What your hashrate is worth on the proof-of-work network picked above: on your own, and through a DATUM pool.</p>
+  </header>
   <article class="mcard m-calc" aria-labelledby="calc-title">
     <h2 class="mtitle" id="calc-title">Solomining calculator</h2>
     <form class="calc" id="calc-form" novalidate>
@@ -935,12 +962,6 @@
       </dl>
       <p class="calc-note" id="calc-note"></p>
     </form>
-  </article>
-  <article class="mcard m-pools" aria-labelledby="pools-title">
-    <h2 class="mtitle" id="pools-title">Mining pools</h2>
-    <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
-    <p class="pnote" id="ms-pools-note" hidden></p>
-    <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard m-pcalc" aria-labelledby="pcalc-title">
     <h2 class="mtitle" id="pcalc-title">DATUM pool calculator</h2>
@@ -962,7 +983,7 @@
       <p class="calc-note" id="pcalc-note"></p>
     </form>
   </article>
-  <p class="msource" id="ms-source"></p>
+  <p class="msource" id="calc-source"></p>
 </section>
 
 
@@ -2260,6 +2281,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     openBlock();
   });
   function goToBlock(h) {
+    if (typeof view !== 'undefined' && view !== 'dashboard' && $('tab-dashboard')) { location.hash = '#dashboard'; }
     const wrap = blockOnPage(h);
     if (wrap) {
       closeMenu(false);
@@ -2974,9 +2996,14 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const TIMEZONES = (() => { try { const z = Intl.supportedValuesOf('timeZone'); return ['UTC', ...z.filter((x) => x !== 'UTC')]; } catch { return ['UTC', 'Europe/Amsterdam', 'Europe/London', 'America/New_York', 'Asia/Shanghai', 'Asia/Tokyo']; } })();
 
   function showView(v) {
-    view = 'dashboard'; // Find Mempool: only the blockchain
+    view = v === 'calc' ? 'calc' : 'dashboard';
     ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
-    $('chain-area').hidden = !(view === 'dashboard' || view === 'fleet');
+    $('chain-area').hidden = false;                       // the proof-of-work bar stands on both pages
+    document.querySelector('.strip').hidden = view !== 'dashboard';
+    document.querySelector('.learn').hidden = view !== 'dashboard';
+    $('tab-calc').classList.toggle('on', view === 'calc');
+    $('tab-dashboard').classList.toggle('on', view === 'dashboard');
+    if (typeof renderMiningStats === 'function') renderMiningStats();
     if (view === 'asic' || view === 'cpu') { if (!scan) runScan(); else renderAsic(); renderFleet(); }
     else if (view === 'fleet') { renderProjected(); renderMined(false); renderFleetDash(true); }
     else if (view === 'settings') { $('no-miner').hidden = !!current; $('settings-body').hidden = !current; if (current) loadForm(); }
@@ -3286,25 +3313,38 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     }
     if (net === netId) renderMiningStats();
   }
+  const onCalcPage = () => typeof view !== 'undefined' && view === 'calc';
   function renderMiningStats() {
     const sec = $('mining-stats'); if (!sec) return;
     mining = miningBy[netId] ?? null; const site = MINING_SITES[netId];
-    sec.hidden = !site || !mining;
-    if (sec.hidden) return;
-    const m = mining;
+    const calc = onCalcPage(), m = mining;
+    sec.hidden = calc || !site || !m;
+    const page = $('calc-page');
+    page.hidden = !calc;
+    if (calc) {
+      // the calculators work from the network's difficulty, so they wait for it like the charts do
+      page.querySelector('.m-calc').hidden = !m;
+      page.querySelector('.m-pcalc').hidden = !m || !DATUM_TIDES_POOLS[netId];
+      $('calc-context').textContent = m
+        ? `What your hashrate is worth on ${network().chain}, at a difficulty of ${si(m.diff, 2).replace(' ', '')} and a global hashrate of ${si(m.hash, 1)}H/s: on your own, and through a DATUM pool.`
+        : `Waiting for the difficulty of ${network().chain} from ${site ?? network().source}. Pick another proof-of-work network above, or try again in a moment.`;
+      $('calc-source').textContent = m && m.live
+        ? `Difficulty live from ${MINING_FROM[netId] ?? site + '/mining'} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        : m ? `Difficulty from a snapshot of ${site}/mining (${site} is not reachable from this page)` : '';
+    }
+    if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
     $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
     $('ms-more-pools').href = MINING_MORE[netId] ?? `https://${site}/mining/pools`;
     setUnits('calc-unit'); setUnits('pcalc-unit');
     $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Mining pools';
     const note = $('ms-pools-note'); note.hidden = !POOLS_NOTE[netId]; note.textContent = POOLS_NOTE[netId] ?? '';
-    // the DATUM pool calculator only where DATUM pools exist (Bitcoin, Bitcoin BLAKE2b)
-    document.querySelector('.m-pcalc').hidden = !DATUM_TIDES_POOLS[netId];
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
     $('ms-source').textContent = m.live
       ? `Live from ${MINING_FROM[netId] ?? site + '/mining'} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
-    drawPie(m); drawChart(m); renderCalc(); fillPools(); renderPoolCalc();
+    if (!sec.hidden) { drawPie(m); drawChart(m); }
+    renderCalc(); fillPools(); renderPoolCalc();
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
   // A block needs on average difficulty × 2^32 hashes on Bitcoin; mempool.guide gives the BLAKE2b difficulty in hashes per block.
