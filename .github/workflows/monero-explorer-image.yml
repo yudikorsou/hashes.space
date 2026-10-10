@@ -23,6 +23,7 @@ env:
 jobs:
   build:
     strategy:
+      fail-fast: false
       matrix:
         include:
           - platform: linux/amd64
@@ -43,15 +44,24 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      # Ubuntu 24.04 LTS: ubuntu:latest moves on to newer compilers and Boost the explorer may not build with yet
+      - name: Use Ubuntu 24.04 in the Dockerfile
+        run: sed -i 's/ubuntu:latest/ubuntu:24.04/g' Dockerfile
       - name: Build and push by digest
         id: build
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          platforms: ${{ matrix.platform }}
-          build-args: |
-            MONERO_BRANCH=${{ inputs.monero_tag }}
-          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+        run: |
+          set -o pipefail
+          docker buildx build --platform ${{ matrix.platform }} --progress=plain \
+            --build-arg MONERO_BRANCH=${{ inputs.monero_tag }} \
+            --output type=image,name=$IMAGE,push-by-digest=true,name-canonical=true,push=true \
+            --metadata-file /tmp/meta.json . 2>&1 | tee /tmp/build.log
+          echo "digest=$(jq -r '."containerimage.digest"' /tmp/meta.json)" >> "$GITHUB_OUTPUT"
+      # the job log is not readable everywhere: put the compiler errors in the run's annotations
+      - name: Show the build errors
+        if: failure()
+        run: |
+          msg=$(grep -nE "error|Error|undefined reference|No such file|not found" /tmp/build.log | grep -v "^.*-Werror" | tail -40 | cut -c1-300 | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g')
+          echo "::error title=Build errors (${{ matrix.platform }})::$msg"
       - name: Save the digest
         run: |
           mkdir -p /tmp/digests
