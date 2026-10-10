@@ -186,13 +186,14 @@
   // hashrate units offered by the calculators: Monero is mined on CPUs, so it gets the small ones
   var CALC_UNITS = { monero: [['1e3', 'kH/s'], ['1e6', 'MH/s'], ['1e9', 'GH/s']] };
   var CALC_UNITS_DEFAULT = [['1e9', 'GH/s'], ['1e12', 'TH/s'], ['1e15', 'PH/s']];
+  var CALC_UNIT_START = { monero: 0 };   // a CPU mines Monero at a few kH/s
   function setUnits(id) {
     const sel = $(id); if (!sel) return;
     const units = CALC_UNITS[netId] ?? CALC_UNITS_DEFAULT, key = units.map((u) => u[1]).join('|');
     if (sel.dataset.key === key) return;
     const keep = sel.dataset.key ? null : sel.value;
     sel.replaceChildren(...units.map(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; return o; }));
-    sel.value = keep && units.some((u) => u[0] === keep) ? keep : units[1][0];
+    sel.value = keep && units.some((u) => u[0] === keep) ? keep : units[CALC_UNIT_START[netId] ?? 1][0];
     sel.dataset.key = key;
   }
   var HASHES_PER_DIFFICULTY = { sha256: 2 ** 32, blake2b: 1, dogecoin: 2 ** 32, monero: 1 };
