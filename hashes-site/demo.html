@@ -6,7 +6,7 @@
 <title>hashes.space</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
   /* Single dark theme using the mempool colour palette (as on mempool.guide) */
   :root {
@@ -28,12 +28,13 @@
   /* top bar */
   .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 28px; padding: 12px 20px; border-bottom: 1px solid var(--line); }
   .brand { display: flex; align-items: center; gap: 12px; }
-  .brand .fan { width: 34px; }
-  /* wordmark: "hashes" solid, the dot is a mined block (mempool purple→blue), "space" in the same gradient light */
-  .wordmark { display: inline-flex; align-items: baseline; font: 700 22px/1 var(--display); letter-spacing: -0.01em; white-space: nowrap; }
+  /* wordmark, on its own (no icon): "hashes" in a heavy geometric grotesk, the dot is a mined block (mempool purple→blue),
+     "space" lighter in the same gradient. One variable swaps the face: --wordmark-font */
+  .wordmark { --wordmark-font: 'Space Grotesk', 'Chakra Petch', 'Segoe UI', system-ui, sans-serif; display: inline-flex; align-items: baseline; font: 700 29px/1 var(--wordmark-font); letter-spacing: -0.035em; white-space: nowrap; }
   .wm-hashes { color: var(--text); }
-  .wm-dot { display: inline-block; width: 7px; height: 7px; margin: 0 3px 0 2px; border-radius: 1.5px; background: linear-gradient(135deg, #9339f4, #105fb0); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08); transform: translateY(-1px); }
-  .wm-space { font-weight: 500; background: linear-gradient(90deg, #b58cff, #1bd8f4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .wm-dot { display: inline-block; width: 9px; height: 9px; margin: 0 4px 0 3px; border-radius: 2px; background: linear-gradient(135deg, #9339f4, #105fb0); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 0 14px rgba(147, 57, 244, .45); transform: translateY(-1px); }
+  .wm-space { font-weight: 400; letter-spacing: -0.02em; background: linear-gradient(90deg, #b58cff, #1bd8f4); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  @media (max-width: 520px) { .wordmark { font-size: 26px; } }
   .source { margin-left: auto; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font: 500 12.5px/1 var(--sans); color: var(--muted); }
   .source .mono { font-family: var(--mono); }
   .sep { opacity: .5; }
@@ -125,8 +126,6 @@
   .fan .rotor path { stroke-width: 2.8; }
   .fan .hub { fill: var(--fan-color); }
   .fan .hub-cut { fill: var(--surface); }
-  .brand .fan .hub-cut { fill: var(--bg); }
-  .brand .fan .rotor { animation: none; }
   .fan .rotor { transform-box: view-box; transform-origin: 50px 50px; animation: spin .55s linear infinite; }
   .fan.hashing { filter: drop-shadow(0 0 6px rgba(255,255,255,.45)); }
   /* the fan only spins while the miner is correctly hashing and submitting shares (the scan indicator spins too) */
@@ -653,7 +652,6 @@
 
 <header class="topbar">
   <div class="brand">
-    <span class="fan" data-fan-static></span>
     <span class="wordmark" aria-hidden="true"><span class="wm-hashes">hashes</span><span class="wm-dot"></span><span class="wm-space">space</span></span>
     <span class="sr-only">hashes.space</span>
   </div>
