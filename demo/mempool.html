@@ -1904,11 +1904,29 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,
     medianFee: b.extras?.medianFee ?? 0, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0], totalFees: b.extras?.totalFees ?? 0, pool: b.extras?.pool?.name ?? '',
     coinbase: typeof b.extras?.coinbaseRaw === 'string' ? (b.extras.coinbaseRaw.match(/../g) ?? []).map((h) => String.fromCharCode(parseInt(h, 16))).join('') : '' });
-  // Monero: xmrchain.net's JSON API (backend XmrchainSource), polled; a browser may block it (CORS), then the chain stays simulated
-  const XMR_API = 'https://xmrchain.net/api';
+  // Monero: an Onion Monero Blockchain Explorer's JSON API (backend XmrchainSource), polled. Tried in order: your own explorer
+  // (the hashes Monero Explorer app on your Umbrel, published on the internet) first, then xmrchain.net. Change the first address
+  // to where you publish yours. If none answers (or a browser blocks it), the chain stays simulated.
+  const XMR_EXPLORERS = ['https://xmr.hashes.space', 'https://xmrchain.net'];
+  let XMR_BASE = XMR_EXPLORERS[XMR_EXPLORERS.length - 1];
+  async function pickXmrExplorer() {
+    for (const base of XMR_EXPLORERS) {
+      try {
+        const r = await fetch(base + '/api/networkinfo', { signal: AbortSignal.timeout(5000) });
+        if (r.ok && (await r.json())?.status === 'success') return base;
+      } catch { /* not reachable: try the next one */ }
+    }
+    return null;
+  }
   async function connectXmr(id) {
     const c = chains[id]; c.connecting = true;
-    const get = async (p) => { const r = await fetch(XMR_API + p, { signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error(r.status); const j = await r.json(); return j.data ?? j; };
+    const base = await pickXmrExplorer();
+    if (base) {
+      XMR_BASE = base; EXPLORER.monero = base + '/block/';
+      const n = NETWORKS.find((x) => x.id === id); if (n) n.source = new URL(base).host;
+      if (id === netId) renderNetworks();
+    }
+    const get = async (p) => { const r = await fetch(XMR_BASE + '/api' + p, { signal: AbortSignal.timeout(8000) }); if (!r.ok) throw new Error(r.status); const j = await r.json(); return j.data ?? j; };
     const rate = (t) => (t.tx_size ? t.tx_fee / t.tx_size / 1000 : 0);
     const pct = (v) => { const s = [...v].sort((a, b) => a - b); return s.length ? [s[0], s[s.length >> 1], s[s.length - 1]] : [0, 0]; };
     const poll = async () => {

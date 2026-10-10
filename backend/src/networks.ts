@@ -95,7 +95,23 @@ function load(): NetworkConfig[] {
   return ok.length ? ok.map((n) => ({ ...n, label: n.label || KNOWN_ALGOS[n.algo] || n.algo, chain: n.chain || n.id, ticker: n.ticker || n.id.toUpperCase() })) : BUILT_IN;
 }
 
-export const NETWORKS: NetworkConfig[] = load();
+/**
+ * MONERO_EXPLORER_URL: read Monero from your own Onion Monero Blockchain Explorer instead of xmrchain.net,
+ * e.g. the hashes Monero Explorer app on your Umbrel (http://umbrel.local:4081, or where you publish it).
+ */
+function withOwnMoneroExplorer(list: NetworkConfig[]): NetworkConfig[] {
+  const url = (process.env.MONERO_EXPLORER_URL ?? '').trim().replace(/\/+$/, '');
+  if (!url) return list;
+  try {
+    const host = new URL(url).host;
+    return list.map((n) => (n.source === 'xmrchain' ? { ...n, apiUrl: `${url}/api`, explorer: `${url}/block/`, sourceLabel: host } : n));
+  } catch {
+    console.warn(`[networks] MONERO_EXPLORER_URL is not a URL: ${url}`);
+    return list;
+  }
+}
+
+export const NETWORKS: NetworkConfig[] = withOwnMoneroExplorer(load());
 
 /** the hash function of miners that don't say (DEFAULT_ALGO, else the first network's) */
 export const DEFAULT_ALGO: string = process.env.DEFAULT_ALGO || NETWORKS[0].algo;

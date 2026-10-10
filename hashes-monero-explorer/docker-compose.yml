@@ -1,0 +1,29 @@
+version: "3.7"
+
+services:
+  app_proxy:
+    environment:
+      APP_HOST: hashes-monero-explorer_explorer_1
+      APP_PORT: 8081
+      # a public block explorer: no Umbrel login in front of it (it is read-only)
+      PROXY_AUTH_ADD: "false"
+
+  explorer:
+    # Onion Monero Blockchain Explorer (xmrblocks), built by .github/workflows/monero-explorer-image.yml
+    image: ghcr.io/yudikorsou/hashes-monero-explorer:v0.18.5.1
+    user: "1000:1000"
+    restart: on-failure
+    stop_grace_period: 1m
+    volumes:
+      # the Monero Node app's blockchain: xmrblocks opens its LMDB database read-only
+      # (mounted read-write only because LMDB readers share the database's lock file)
+      - ${APP_MONERO_DATA_DIR}:/home/monero/.bitmonero
+    command:
+      - >-
+        ./xmrblocks
+        --daemon-url=${APP_MONERO_NODE_IP}:${APP_MONERO_RPC_PORT}
+        --daemon-login=${APP_MONERO_RPC_AUTH}
+        --enable-json-api
+        --enable-autorefresh-option
+        --mempool-refresh-time=10
+        --no-blocks-on-index=25

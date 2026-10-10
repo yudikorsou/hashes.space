@@ -392,3 +392,14 @@ Mined blocks of pools that work with [DATUM Gateway](https://github.com/OCEAN-xy
 - **Centralised** (red glow): every other pool on the Bitcoin chains, where the pool builds the block template for its miners. Solo miners and blocks mempool can't name get no tag.
 
 Monero blocks get none of these.
+
+## Your own Monero block explorer on Umbrel
+
+Monero blocks come from an [Onion Monero Blockchain Explorer](https://github.com/moneroexamples/onion-monero-blockchain-explorer) (the software behind xmrchain.net). You can run your own on your Umbrel, on top of the **Monero Node** app, and use it as the Monero block explorer of hashes.space. This repository is an Umbrel community app store with that app: **Monero Explorer** ([`hashes-monero-explorer/`](hashes-monero-explorer)).
+
+1. **Build the image once.** In GitHub → Actions → *Monero explorer image* → *Run workflow*. It compiles the explorer against Monero v0.18.5.1 (the Monero Node app's version) for amd64 and arm64 and pushes `ghcr.io/<owner>/hashes-monero-explorer:v0.18.5.1` (about an hour). Then make the package public: GitHub → your profile → Packages → hashes-monero-explorer → Package settings → Change visibility → Public.
+2. **Install it on Umbrel.** Make sure the Monero Node app is installed and fully synced. In the Umbrel App Store → ⋯ → *Community App Stores*, add `https://github.com/yudikorsou/hashes.space`, open the *hashes.space* store and install **Monero Explorer**. It opens at `http://umbrel.local:4081`, without an Umbrel login (it is a read-only, public explorer). It reads the blockchain from the Monero Node app's database (read-only) and the mempool from its RPC.
+3. **Publish it** so website visitors can reach it, e.g. with the **Cloudflare Tunnel** app on Umbrel: add a public hostname such as `xmr.hashes.space` → `http://<your Umbrel's IP>:4081`. The explorer's JSON API already allows other websites to read it (CORS).
+4. **Point hashes.space at it.**
+   - Backend: `MONERO_EXPLORER_URL=https://xmr.hashes.space` (or `http://umbrel.local:4081` on your own network). Monero blocks, mempool and block links then come from your explorer instead of xmrchain.net.
+   - Find Mempool page and demos: `XMR_EXPLORERS` in `demo/demo.template.html` lists the explorers tried in order, `https://xmr.hashes.space` first and xmrchain.net as the fallback. Change the first address if you publish it elsewhere.

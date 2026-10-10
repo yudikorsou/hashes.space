@@ -1,0 +1,35 @@
+manifestVersion: 1
+id: hashes-monero-explorer
+category: crypto
+name: Monero Explorer
+version: "0.18.5.1"
+tagline: A Monero block explorer on your own Monero node
+description: >-
+  An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
+  Monero Node app on your Umbrel: no third party sees what you look up.
+
+
+  It also serves the explorer's JSON API (/api/networkinfo, /api/transactions, /api/mempool …),
+  the same API xmrchain.net offers, so the hashes.space dashboard and its Find Mempool page can
+  stream Monero blocks from your own node. Publish it on the internet (for example with the
+  Cloudflare Tunnel app) to make it the Monero block explorer of your website.
+
+
+  Requires the Monero Node app, fully synced, on mainnet.
+developer: moneroexamples (explorer), hashes.space (Umbrel app)
+website: https://github.com/moneroexamples/onion-monero-blockchain-explorer
+dependencies:
+  - monero
+icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/monero.png
+repo: https://github.com/yudikorsou/hashes.space
+support: https://github.com/yudikorsou/hashes.space/issues
+port: 4081
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: yudikorsou
+submission: https://github.com/yudikorsou/hashes.space
+releaseNotes: >-
+  First release: Onion Monero Blockchain Explorer built against Monero v0.18.5.1, the version the
+  Monero Node app runs.
