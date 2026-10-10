@@ -2,8 +2,10 @@
   /* Learn: one topic at a time, picked from a row of tabs, on the same soft glow as the charts above */
   .learn { max-width: 1280px; margin: 0 auto; padding: 44px 20px 64px; display: grid; gap: 18px; justify-items: center; }
   .learn-head { text-align: center; display: grid; gap: 6px; justify-items: center; }
-  .learn-head h2 { margin: 0; font: 600 14px/1.2 var(--sans); color: var(--link); }
-  .learn-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 60ch; }
+  /* its own page now: the same headline as Calculate hashrate */
+  .learn-head h2 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
+  .learn-head p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); max-width: 60ch; }
+  @media (max-width: 520px) { .learn-head h2 { font-size: 20px; } }
   .learn-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 1200px; }
   .learn-tabs button { display: inline-flex; align-items: center; gap: 8px; background: rgba(10, 12, 24, 0.45); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px 7px 7px; color: var(--muted); font: 500 13px/1 var(--sans); cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
   .learn-tabs button .n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 600 11px/1 var(--mono); color: var(--link); background: rgba(27, 216, 244, 0.1); }

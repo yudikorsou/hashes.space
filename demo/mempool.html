@@ -701,8 +701,10 @@
   /* Learn: one topic at a time, picked from a row of tabs, on the same soft glow as the charts above */
   .learn { max-width: 1280px; margin: 0 auto; padding: 44px 20px 64px; display: grid; gap: 18px; justify-items: center; }
   .learn-head { text-align: center; display: grid; gap: 6px; justify-items: center; }
-  .learn-head h2 { margin: 0; font: 600 14px/1.2 var(--sans); color: var(--link); }
-  .learn-head p { margin: 0; color: var(--muted); font-size: 13.5px; max-width: 60ch; }
+  /* its own page now: the same headline as Calculate hashrate */
+  .learn-head h2 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
+  .learn-head p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); max-width: 60ch; }
+  @media (max-width: 520px) { .learn-head h2 { font-size: 20px; } }
   .learn-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; max-width: 1200px; }
   .learn-tabs button { display: inline-flex; align-items: center; gap: 8px; background: rgba(10, 12, 24, 0.45); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px 7px 7px; color: var(--muted); font: 500 13px/1 var(--sans); cursor: pointer; transition: color .15s, border-color .15s, background .15s; }
   .learn-tabs button .n { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; font: 600 11px/1 var(--mono); color: var(--link); background: rgba(27, 216, 244, 0.1); }
@@ -803,6 +805,7 @@
     <a href="#asic" id="tab-asic" hidden>Find ASIC</a>
     <a href="#dashboard" id="tab-dashboard">Find Mempool</a>
     <a href="#calc" id="tab-calc">Calculate hashrate</a>
+    <a href="#learn" id="tab-learn">Learn</a>
     <a href="#fleet" id="tab-fleet" hidden>Fleet</a>
     <a href="#settings" id="tab-settings" hidden>Miner settings</a>
   </nav>
@@ -2999,13 +3002,12 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const TIMEZONES = (() => { try { const z = Intl.supportedValuesOf('timeZone'); return ['UTC', ...z.filter((x) => x !== 'UTC')]; } catch { return ['UTC', 'Europe/Amsterdam', 'Europe/London', 'America/New_York', 'Asia/Shanghai', 'Asia/Tokyo']; } })();
 
   function showView(v) {
-    view = v === 'calc' ? 'calc' : 'dashboard';
+    view = ['calc', 'learn'].includes(v) ? v : 'dashboard';
     ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
-    $('chain-area').hidden = false;                       // the proof-of-work bar stands on both pages
+    $('chain-area').hidden = view === 'learn';            // the proof-of-work bar stands on the mempool and calculator pages
     document.querySelector('.strip').hidden = view !== 'dashboard';
-    document.querySelector('.learn').hidden = view !== 'dashboard';
-    $('tab-calc').classList.toggle('on', view === 'calc');
-    $('tab-dashboard').classList.toggle('on', view === 'dashboard');
+    document.querySelector('.learn').hidden = view !== 'learn';
+    for (const [t, v] of [['tab-dashboard', 'dashboard'], ['tab-calc', 'calc'], ['tab-learn', 'learn']]) $(t).classList.toggle('on', view === v);
     if (typeof renderMiningStats === 'function') renderMiningStats();
     if (view === 'asic' || view === 'cpu') { if (!scan) runScan(); else renderAsic(); renderFleet(); }
     else if (view === 'fleet') { renderProjected(); renderMined(false); renderFleetDash(true); }
@@ -3323,11 +3325,13 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     if (net === netId) renderMiningStats();
   }
   const onCalcPage = () => typeof view !== 'undefined' && view === 'calc';
+  // the charts belong to the mempool page; the Learn page carries no chain of its own
+  const onMempoolPage = () => typeof view === 'undefined' || view === 'dashboard';
   function renderMiningStats() {
     const sec = $('mining-stats'); if (!sec) return;
     mining = miningBy[netId] ?? null; const site = MINING_SITES[netId];
     const calc = onCalcPage(), m = mining;
-    sec.hidden = calc || !site || !m;
+    sec.hidden = !onMempoolPage() || !site || !m;
     const page = $('calc-page');
     page.hidden = !calc;
     if (calc) {

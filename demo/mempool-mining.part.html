@@ -190,11 +190,13 @@
     if (net === netId) renderMiningStats();
   }
   const onCalcPage = () => typeof view !== 'undefined' && view === 'calc';
+  // the charts belong to the mempool page; the Learn page carries no chain of its own
+  const onMempoolPage = () => typeof view === 'undefined' || view === 'dashboard';
   function renderMiningStats() {
     const sec = $('mining-stats'); if (!sec) return;
     mining = miningBy[netId] ?? null; const site = MINING_SITES[netId];
     const calc = onCalcPage(), m = mining;
-    sec.hidden = calc || !site || !m;
+    sec.hidden = !onMempoolPage() || !site || !m;
     const page = $('calc-page');
     page.hidden = !calc;
     if (calc) {
