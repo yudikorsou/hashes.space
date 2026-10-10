@@ -38,9 +38,21 @@
 
   /* blockchain strip */
   .strip { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 26px 0 18px; background: var(--bg); border-bottom: 1px solid var(--line); overflow: hidden; }
-  .half { display: flex; gap: 40px; min-width: 0; overflow: hidden; padding: 0 40px 0 20px; }
-  .projected { justify-content: flex-end; }
-  .mined { justify-content: flex-start; padding: 0 20px 0 48px; }
+  /* each side scrolls on its own; a block that would only half fit is kept out of sight until it does */
+  .half { display: flex; gap: 40px; min-width: 0; padding: 6px 40px 6px 20px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: rgba(160,170,230,.35) transparent; }
+  .half { scroll-snap-type: x mandatory; scroll-padding: 0 40px 0 20px; }   /* blocks come to rest beside the divider, never half past it */
+  .mined { scroll-padding-left: 48px; }
+  .mined > .block-wrap { scroll-snap-align: start; }
+  .projected > .block-wrap { scroll-snap-align: end; }
+  .half::-webkit-scrollbar { height: 8px; }
+  .half::-webkit-scrollbar-track { background: transparent; }
+  .half::-webkit-scrollbar-thumb { background: rgba(160,170,230,.3); border-radius: 999px; }
+  .half:hover::-webkit-scrollbar-thumb { background: rgba(160,170,230,.5); }
+  .projected > :first-child { margin-left: auto; }   /* sits against the divider, and still scrolls when it overflows */
+  .mined { justify-content: flex-start; padding: 6px 20px 6px 48px; }
+  .block-wrap.clipped { visibility: hidden; }        /* half a block is no block: scroll and it appears */
+  .block-wrap.found .cube { animation: found 1.1s ease-out 2; }
+  @keyframes found { 0%, 100% { box-shadow: 0 0 0 0 rgba(27,216,244,0); } 40% { box-shadow: 0 0 0 7px rgba(27,216,244,.55); } }
   .divider { align-self: stretch; width: 0; border-left: 2px dashed rgba(255,255,255,.35); }
   .block-wrap { flex: 0 0 auto; display: grid; gap: 8px; justify-items: center; color: inherit; text-decoration: none; }
   .above, .below { font: 500 12px/1 var(--sans); color: var(--muted); min-height: 12px; white-space: nowrap; }
@@ -275,7 +287,7 @@
     .topbar { padding-inline: 16px; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .fan .rotor, .enter, .cube.hit { animation: none; }
+    .fan .rotor, .enter, .cube.hit, .block-wrap.found .cube { animation: none; }
   }
 
   dl { margin: 0; display: grid; }
@@ -298,7 +310,8 @@
   .ns-chip { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .ns-chip .coin { width: 24px; height: 24px; }
   .ns-name { font: 600 13px/1 var(--display); letter-spacing: .02em; color: var(--text); white-space: nowrap; }
-  .netsearch:focus-within .ns-name { display: none; }   /* searching: the field is yours, the coin keeps its logo */
+  .netsearch:focus-within .ns-name { display: none; }
+  .dd-menu li[data-height] .algo { color: var(--text); background: #2a3150; }   /* searching: the field is yours, the coin keeps its logo */
   .ns-input { flex: 1; min-width: 72px; padding: 5px 0; color: var(--text); background: none; border: 0; font: 500 13.5px/1.2 var(--sans); }
   .ns-input::placeholder { color: var(--muted-2); }
   .ns-input:focus { outline: none; }
@@ -1600,10 +1613,36 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
         <span class="time">${mined ? formatAgo(b.timestamp * 1000) : ((m) => `in ~${m} minute${m === 1 ? '' : 's'}`)(Math.round((b.index + 1) * (chain().minutes ?? 10)))}</span></div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
+  // Only blocks that fit whole are shown. The others keep their place in the row, so scrolling the
+  // strip brings them into view rather than revealing a sliced block at the edge.
+  function clipPartialBlocks() {
+    for (const half of document.querySelectorAll('.half')) {
+      const box = half.getBoundingClientRect();
+      for (const wrap of half.children) {
+        const r = wrap.getBoundingClientRect();
+        wrap.classList.toggle('clipped', r.left < box.left - 0.5 || r.right > box.right + 0.5);
+      }
+    }
+  }
+  // the block being mined sits against the divider; it stays in view until the visitor scrolls the row
+  let projPinned = true;
+  for (const ev of ['wheel', 'touchstart', 'pointerdown', 'keydown']) $('projected').addEventListener(ev, () => { projPinned = false; }, { passive: true });
+  const pinProjected = () => { const el = $('projected'); if (projPinned && el.scrollWidth > el.clientWidth) el.scrollLeft = el.scrollWidth; };
+  let clipQueued = false;
+  function scheduleClip() {
+    if (clipQueued) return;
+    clipQueued = true;
+    requestAnimationFrame(() => { clipQueued = false; pinProjected(); clipPartialBlocks(); });
+  }
+  addEventListener('resize', scheduleClip);
+  for (const id of ['projected', 'mined']) $(id).addEventListener('scroll', scheduleClip, { passive: true });
   function renderProjected() {
-    $('projected').innerHTML = chain().projected.slice().reverse().map((b) => `<div class="block-wrap ${b.index === 0 ? 'mining' : ''}">
+    const el = $('projected');
+    el.innerHTML = chain().projected.slice().reverse().map((b) => `<div class="block-wrap ${b.index === 0 ? 'mining' : ''}">
       <div class="above">${b.index === 0 ? 'Mining now' : ''}</div>${cube(b, false)}
       <div class="below">${b.index === 0 ? `<span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span>` : ''}</div></div>`).join('');
+    pinProjected();
+    scheduleClip();
   }
   // DATUM labels (backend datumLabel), by the pool mempool names:
   //  Compatible (orange): a pool that accepts miners with their own node and DATUM Gateway, for now OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b
@@ -1620,12 +1659,15 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   function renderMined(animateFirst) {
     const c = chain(), live = !!c.live, url = EXPLORER[netId];
     // live blocks link to their explorer page; simulated ones have made-up hashes, so no link
-    $('mined').innerHTML = c.blocks.map((b, i) => {
+    const mineEl = $('mined'), keep = mineEl.scrollLeft;
+    mineEl.innerHTML = c.blocks.map((b, i) => {
       const tag = live && url ? `a href="${url}${b.hash}" target="_blank" rel="noopener"` : 'div';
       const datum = datumLabel(b);
       return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? ' ' + ({ verified: 'datum-verified', compatible: 'datum', centralised: 'datum-central' })[datum] : ''}"${datum ? ` title="${DATUM_TITLE[datum]}"` : ''}>
       <div class="above height">${fmt(b.height)}</div>${cube(b, true)}<div class="below">${esc(b.pool ?? '')}${datum ? DATUM_BADGE[datum] : ''}</div></${tag.split(' ')[0]}>`;
     }).join('');
+    mineEl.scrollLeft = keep;
+    scheduleClip();
     $('tip').textContent = 'tip ' + fmt(c.tipHeight);
     $('src-label').textContent = netId === 'own' ? `${network().chain} · ${network().source}` : live ? `${network().chain} · live from ${network().source}` : c.connecting ? `Connecting to ${network().source}…` : `${network().chain} · simulated (${network().source} not reachable from this page)`;
     $('live-dot').className = live ? 'dot live' : 'dot';
@@ -1761,6 +1803,9 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const TICK = '<svg class="tick" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6.2 5 8.5l4.5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const describe = (n) => n.id === 'own' ? `${n.label} · ${n.source}` : `Validated with ${n.label} · live from ${n.source}`;
   let activeOpt = 0, matches = [];
+  // a number typed in the bar is a block height: jump to it on the page, or open it on the explorer
+  const heightTyped = (q) => { const n = q.replace(/[\s,.']/g, ''); return /^[0-9]{1,9}$/.test(n) ? Number(n) : null; };
+  const blockOnPage = (h) => [...$('mined').children].find((w) => w.querySelector('.height')?.textContent === fmt(h));
   // every word typed has to appear somewhere in the row: "bitcoin bl", "randomx", "doge", "xmr" all work
   function matching(query) {
     const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
@@ -1774,12 +1819,24 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   function renderNetworks() {
     const n = network(), input = $('net-search');
     $('net-chip').innerHTML = `${coinImg(n.id)}<span class="algo ${n.algo}">${n.label}</span><span class="ns-name">${esc(n.id === 'own' ? 'Your node' : n.chain)}</span>`;
-    matches = matching(input.value);
+    const height = heightTyped(input.value);
+    matches = matching(input.value).map((o) => ({ net: o }));
+    if (height !== null) matches.unshift({ height });
     if (activeOpt >= matches.length) activeOpt = Math.max(0, matches.length - 1);
     $('net-menu').innerHTML = matches.length
-      ? matches.map((o, i) => `<li role="option" id="net-opt-${i}" data-net="${o.id}" aria-selected="${o.id === netId}" class="${i === activeOpt ? 'active' : ''}">
-        <span class="net-id">${coinImg(o.id)}<span class="algo ${o.algo}">${o.label}</span></span><span class="dd-text"><b>${o.id === 'own' ? 'Your node' : o.chain} <em>${o.ticker}</em></b><small>${esc(describe(o))}</small></span>${o.id === netId ? TICK : '<span></span>'}</li>`).join('')
-      : '<li class="none">No proof-of-work network by that name. Try a coin, a ticker or a hash function.</li>';
+      ? matches.map((m, i) => {
+          const active = i === activeOpt ? 'active' : '';
+          if (m.height !== undefined) {
+            const here = !!blockOnPage(m.height), link = chain().live && EXPLORER[netId];
+            const what = here ? 'On this page: scroll to it' : link ? `Open it on ${network().source}` : 'Not among the blocks on this page';
+            return `<li role="option" id="net-opt-${i}" data-height="${m.height}" class="${active}"><span class="net-id"><span class="algo ${network().algo}">Block</span></span>
+              <span class="dd-text"><b>${fmt(m.height)} <em>${esc(network().ticker)}</em></b><small>${esc(what)}</small></span><span></span></li>`;
+          }
+          const o = m.net;
+          return `<li role="option" id="net-opt-${i}" data-net="${o.id}" aria-selected="${o.id === netId}" class="${active}">
+            <span class="net-id">${coinImg(o.id)}<span class="algo ${o.algo}">${o.label}</span></span><span class="dd-text"><b>${o.id === 'own' ? 'Your node' : o.chain} <em>${o.ticker}</em></b><small>${esc(describe(o))}</small></span>${o.id === netId ? TICK : '<span></span>'}</li>`;
+        }).join('')
+      : '<li class="none">Nothing by that name. Try a coin, a ticker, a hash function, or a block number.</li>';
     $('net-menu').setAttribute('aria-activedescendant', matches.length ? 'net-opt-' + activeOpt : '');
     input.setAttribute('aria-expanded', String(menuOpen()));
     $('own-btn').textContent = NETWORKS.some((o) => o.id === 'own') ? 'Your node and Electrum server' : 'Connect node';
@@ -1797,8 +1854,23 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   $('net-search').addEventListener('focus', openMenu);
   $('net-search').addEventListener('click', openMenu);
   $('net-search').addEventListener('input', () => { activeOpt = 0; $('net-menu').hidden = false; renderNetworks(); });
-  $('net-menu').addEventListener('click', (e) => { const li = e.target.closest('[data-net]'); if (li) { setNetwork(li.dataset.net); closeMenu(true); } });
-  $('net-menu').addEventListener('mousemove', (e) => { const li = e.target.closest('[data-net]'); if (li) { const i = +li.id.split('-').pop(); if (i !== activeOpt) { activeOpt = i; renderNetworks(); } } });
+  function pick(m) {
+    if (!m) return;
+    if (m.net) { setNetwork(m.net.id); closeMenu(true); return; }
+    const wrap = blockOnPage(m.height);
+    if (wrap) {
+      closeMenu(false);
+      wrap.scrollIntoView({ inline: 'center', block: 'nearest', behavior: 'smooth' });
+      wrap.classList.remove('found'); void wrap.offsetWidth; wrap.classList.add('found');
+      setTimeout(() => wrap.classList.remove('found'), 2600);
+      return;
+    }
+    if (chain().live && EXPLORER[netId]) window.open(EXPLORER[netId] + m.height, '_blank', 'noopener');
+    closeMenu(true);
+  }
+  const itemAt = (el) => { const li = el?.closest('[data-net], [data-height]'); return li ? matches[+li.id.split('-').pop()] : null; };
+  $('net-menu').addEventListener('click', (e) => { const m = itemAt(e.target); if (m) pick(m); });
+  $('net-menu').addEventListener('mousemove', (e) => { const li = e.target.closest('[data-net], [data-height]'); if (li) { const i = +li.id.split('-').pop(); if (i !== activeOpt) { activeOpt = i; renderNetworks(); } } });
   $('net-dd').addEventListener('keydown', (e) => {
     if (!menuOpen()) { if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); openMenu(); } return; }
     const last = matches.length - 1;
@@ -1806,7 +1878,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     else if (e.key === 'ArrowUp') activeOpt = Math.max(0, activeOpt - 1);
     else if (e.key === 'Home') activeOpt = 0;
     else if (e.key === 'End') activeOpt = last;
-    else if (e.key === 'Enter') { if (matches[activeOpt]) { setNetwork(matches[activeOpt].id); closeMenu(true); } e.preventDefault(); return; }
+    else if (e.key === 'Enter') { pick(matches[activeOpt]); e.preventDefault(); return; }
     else if (e.key === 'Escape') { closeMenu(true); e.preventDefault(); return; }
     else if (e.key === 'Tab') { closeMenu(); return; }
     else return;
@@ -1817,7 +1889,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   document.addEventListener('click', (e) => { if (menuOpen() && !e.composedPath().includes($('net-dd'))) closeMenu(); });
   function setNetwork(id) {
     if (!chains[id]) return;
-    netId = id; sharesThisBlock = 0;
+    netId = id; sharesThisBlock = 0; projPinned = true; $('mined').scrollLeft = 0;
     renderNetworks(); renderProjected(); renderMined(false);
     // the connected miner is now on this blockchain network: re-check its mode straight away (backend setNetwork)
     if (typeof tickStatus === 'function' && current) { current.network = network(); tickStatus(); renderHashrate(false); }
