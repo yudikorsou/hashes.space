@@ -3755,7 +3755,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
 <canvas id="theme-bg" aria-hidden="true"></canvas>
 <script>
 /*
- * Themes for hashes.space. Space is the default. Add your own with:
+ * Themes for hashes.space. Plain is the default. Add your own with:
  *
  *   HashesThemes.register({
  *     id: 'aurora', label: 'Aurora',     swatch: '#0b2a2a',                 // the colour dot in the menu (any CSS background)
@@ -3772,7 +3772,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const root = document.documentElement, cv = document.getElementById('theme-bg'), ctx = cv.getContext('2d');
   const btn = document.getElementById('themes-btn'), menu = document.getElementById('themes-menu');
   const still = matchMedia('(prefers-reduced-motion: reduce)');
-  const DEFAULT = 'space', themes = [];
+  const DEFAULT = 'plain', themes = [];
   let current = null, scene = null, raf = 0, last = 0, w = 0, h = 0, saved = null;
   try { saved = localStorage.getItem('hs-theme'); } catch {}
   const wanted = () => saved || DEFAULT;
@@ -3833,7 +3833,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   };
 
   // ---- built-in themes ----
-  // Space (default): a soothing starfield drifting slowly to the lower left, with faint nebula clouds
+  // Space: a soothing starfield drifting slowly to the lower left, with faint nebula clouds
   HashesThemes.register({
     id: 'space', label: 'Space', background: '#070913',
     swatch: 'radial-gradient(circle at 35% 35%, #cfd8ff 0 14%, #2b2f6a 15% 100%)',
@@ -3860,7 +3860,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       };
     },
   });
-  // Plain: the page's own dark background, no animation
+  // Plain (default): the page's own dark background, no animation
   HashesThemes.register({ id: 'plain', label: 'Plain', swatch: '#11131f' });
 })();
 </script>
