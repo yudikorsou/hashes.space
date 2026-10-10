@@ -26,8 +26,8 @@
   .brand { display: flex; align-items: center; gap: 12px; }
   /* the logo: "hashes" spelled in bits, every lit pixel of a small 5x7 letter is a 0 or a 1 (no icon, no ".space") */
   .wordmark { --wordmark-font: 'Space Grotesk', 'Chakra Petch', 'Segoe UI', system-ui, sans-serif; display: inline-flex; align-items: baseline; font: 500 16px/1 var(--wordmark-font); letter-spacing: -0.02em; white-space: nowrap; }
-  .wm-bits { height: 30px; width: auto; aspect-ratio: 9.00 / 7.70; align-self: flex-end; margin-bottom: 1px; overflow: visible; flex: none; }
-  .wm-bits text { font: 700 1.5px 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace; text-anchor: middle; dominant-baseline: central; }
+  .wm-bits { height: 46px; width: auto; aspect-ratio: 9.00 / 7.70; align-self: flex-end; margin-bottom: 1px; overflow: visible; flex: none; }
+  .wm-bits text { text-rendering: geometricPrecision; shape-rendering: geometricPrecision; font: 700 1.5px 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace; text-anchor: middle; dominant-baseline: central; }
   .wm-bits .b1 { fill: #f4f6ff; }
   .wm-bits .b0 { fill: #c7acff; }
   .wm-bits .bg { fill: #c7acff; opacity: .15; }   /* the quiet 0s and 1s around the h */
