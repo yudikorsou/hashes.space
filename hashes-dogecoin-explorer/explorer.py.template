@@ -206,8 +206,11 @@ def pool_name(block):
     for name, pattern in POOLS:
         if re.search(pattern, text, re.I):
             return name
-    tags = re.findall(r"[/\w.\- ]{5,}", text)
-    tag = max(tags, key=len).strip("/ ") if tags else ""
+    # drop the merged-mining commitment (fabe6d6d "mm" + 32-byte hash + size + nonce), then keep plain ASCII text only
+    text = re.sub("\xfa\xbemm.{40}", " ", text, flags=re.S)
+    tags = [t.strip("/ .-") for t in re.findall(r"[/A-Za-z0-9.\- ]{5,}", text)]
+    tags = [t for t in tags if len(re.findall(r"[A-Za-z]", t)) >= 3]
+    tag = max(tags, key=len) if tags else ""
     return tag[:24] if len(tag) >= 4 else "Unknown"
 
 
