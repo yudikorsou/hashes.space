@@ -10,7 +10,7 @@ services:
 
   explorer:
     # Onion Monero Blockchain Explorer (xmrblocks), built by .github/workflows/monero-explorer-image.yml
-    image: ghcr.io/yudikorsou/hashes-monero-explorer:v0.18.5.1
+    image: ghcr.io/yudikorsou/hashes-monero-explorer:v0.18.5.1-r5@sha256:6ca4b8e26251032ca3c86fe3eff55a970add215bec5c6307dab4a2bae69b0703
     user: "1000:1000"
     restart: on-failure
     stop_grace_period: 1m
