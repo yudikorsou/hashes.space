@@ -684,6 +684,13 @@
   .mcard .plot { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
   .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
   .mcard .kpis dt { font-size: 17px; }
+  /* the way to the calculators: a pill in the chart's top-left corner (above the title on a phone) */
+  .mcard .calc-link { position: absolute; top: 16px; left: 18px; z-index: 2; display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 500 12.5px/1 var(--sans); text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s; }
+  .mcard .calc-link svg { width: 11px; height: 11px; flex: none; color: var(--muted); transition: transform .15s, color .15s; }
+  .mcard .calc-link:hover { border-color: var(--muted); background: rgba(22, 26, 48, .8); }
+  .mcard .calc-link:hover svg { color: var(--text); transform: translateX(2px); }
+  .mcard .calc-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  @media (max-width: 1239px) { .mcard .calc-link { position: static; align-self: flex-start; } }   /* the corner is only free of the title when the card is wide */
   .mcard .hrsub { margin: 4px 0 0; text-align: center; color: var(--muted); font: 400 12px/1.35 var(--sans); }
   .mcard .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
   .mcard svg { width: 100%; height: auto; display: block; overflow: visible; }
@@ -827,7 +834,7 @@
     <a href="#cpu" id="tab-cpu" hidden>Find CPUs</a>
     <a href="#asic" id="tab-asic" hidden>Find ASIC</a>
     <a href="#dashboard" id="tab-dashboard">Find Mempool</a>
-    <a href="#calc" id="tab-calc">Calculate hashrate</a>
+    <a href="#calc" id="tab-calc" hidden>Calculate hashrate</a>   <!-- reached from the button on the hashrate chart, not from the menu -->
     <a href="#learn" id="tab-learn">Learn</a>
     <a href="#fleet" id="tab-fleet" hidden>Fleet</a>
     <a href="#settings" id="tab-settings" hidden>Miner settings</a>
@@ -953,6 +960,7 @@
 
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <article class="mcard m-hr" aria-labelledby="hr-title">
+    <a class="calc-link" id="calc-link" href="#calc">Calculate hashrate<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
     <dl class="kpis">
       <div><dt>Global hashrate (1w)</dt><dd id="ms-hash">–</dd></div>
