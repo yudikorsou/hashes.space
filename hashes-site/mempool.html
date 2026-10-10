@@ -407,6 +407,7 @@
   @media (max-width: 720px) {
     .netbar { grid-template-columns: minmax(0, 1fr); padding-inline: 16px; gap: 10px; }
     .nb-side, .nb-side.right { justify-content: center; }
+    .netbar > .nb-side:first-child { display: none; }   /* empty on a phone: only the hidden label is in it */
     .own-btn { width: 100%; }
     .netsearch { width: 100%; min-width: 0; }
     .ns-name { display: none; }                      /* the logo and the hash function are enough on a phone */
@@ -910,7 +911,7 @@
 <div id="chain-area" hidden>
 <section class="netbar" aria-labelledby="net-label">
   <div class="nb-side">
-    <span class="nlabel" id="net-label" title="The proof-of-work hash function and blockchain your miner works on">Proof-of-work</span>
+    <span class="sr-only" id="net-label">Proof-of-work</span>   <!-- not shown: the bar speaks for itself; kept for screen readers -->
   </div>
   <div class="netsearch" id="net-dd">
     <button type="button" class="ns-pick" id="net-pick" aria-haspopup="listbox" aria-expanded="false" aria-controls="net-menu" aria-labelledby="net-label net-chip">
