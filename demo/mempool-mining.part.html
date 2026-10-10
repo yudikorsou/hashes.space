@@ -263,7 +263,7 @@
     setUnits('calc-unit'); setUnits('pcalc-unit');
     $('pools-title').textContent = `${POOLS_TITLE[netId] ?? 'Mining pools'} (${windowLabel(m.window)})`;
     $('ms-pie').setAttribute('aria-label', `Blocks per mining pool, ${m.window === '24h' ? 'last 24 hours' : 'last week'}`);
-    const note = $('ms-pools-note'); note.hidden = !POOLS_NOTE[netId]; note.textContent = POOLS_NOTE[netId] ?? '';
+    const note = $('ms-pools-note'); note.hidden = false; note.textContent = (POOLS_NOTE[netId] ? POOLS_NOTE[netId] + ' ' : '') + 'Each pool\'s hashrate is an estimate: its share of the blocks found in this window times the chain\'s hashrate.';
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
     $('ms-hash-sub').textContent = hashrateThen(m);
     $('ms-source').textContent = m.live
@@ -385,15 +385,18 @@
   }
   function tip(e, html) { let t = $('mtip'); if (!t) { t = document.createElement('div'); t.id = 'mtip'; t.className = 'mtip'; document.body.appendChild(t); } if (!html) { t.hidden = true; return; } t.hidden = false; t.innerHTML = html; t.style.left = Math.min(innerWidth - 250, e.clientX + 12) + 'px'; t.style.top = e.clientY + 12 + 'px'; }
   // the pools as a half ring: it opens at the left, runs over the top and closes at the right,
-  // so the chain's week reads as one sweep from the pool that found the most blocks to the one that found the fewest
+  // so the chain's week reads as one sweep from the pool with the most hashrate to the one with the least
   function drawPie(m) {
     const svg = $('ms-pie'); svg.replaceChildren();
     const cx = 300, cy = 306, R = 150, R0 = 72, total = m.pools.reduce((a, p) => a + p.blocks, 0) || 1;
     let a = -Math.PI; const labels = [];
+    // a pool's hashrate is not on the chain: it is its share of the blocks found in the window times the chain's hashrate
+    // (the same estimate mempool sites use), so the ring sizes already are hashrate shares
+    const hr = (n) => (m.hash ? `${si((n / total) * m.hash, 1)}H/s` : null);
     svg.appendChild(svgEl('line', { x1: cx - R - 6, x2: cx + R + 6, y1: cy, y2: cy, stroke: 'var(--line)', 'stroke-width': 1 }));
     m.pools.forEach((p, i) => {
       const share = p.blocks / total, a0 = a, a1 = a + share * Math.PI; a = a1;
-      const g = svgEl('g', { class: 'slice', tabindex: '0', role: 'img', 'aria-label': `${p.name}: ${p.blocks} blocks, ${(share * 100).toFixed(1)}%` });
+      const g = svgEl('g', { class: 'slice', tabindex: '0', role: 'img', 'aria-label': `${p.name}: ${hr(p.blocks) ? 'about ' + hr(p.blocks) + ', ' : ''}${(share * 100).toFixed(1)}% of the hashrate, ${p.blocks} blocks` });
       const hue = poolHue(i), top = p.miners.slice(0, 8), rest = p.blocks - top.reduce((s, x) => s + x[1], 0);
       // a pool's miners as rings, the biggest miner innermost (as on mempool.guide)
       const rings = top.length ? [...top, ...(rest > 0 ? [['other miners', rest]] : [])] : [[p.name, p.blocks]];
@@ -404,14 +407,14 @@
         g.appendChild(svgEl('path', { d: arcPath(cx, cy, r, r1, a0, a1), fill: `hsl(${hue} 62% ${light}%)`, stroke: 'var(--surface)', 'stroke-width': share > 0.02 ? 1 : 0.4 }));
         r = r1;
       });
-      g.addEventListener('mousemove', (e) => tip(e, `<b>${esc(p.name)}</b><br>${fmt(p.blocks)} blocks · ${(share * 100).toFixed(1)}%${top.length ? '<br>' + top.slice(0, 5).map(([n, b]) => `${esc(n)} ${b}`).join('<br>') : ''}`));
+      g.addEventListener('mousemove', (e) => tip(e, `<b>${esc(p.name)}</b><br>${hr(p.blocks) ? '≈ ' + hr(p.blocks) + ' · ' : ''}${(share * 100).toFixed(1)}% of the hashrate<br>${fmt(p.blocks)} blocks${top.length ? '<br>' + top.slice(0, 5).map(([n, b]) => `${esc(n)} ${hr(b) ?? b + ' blocks'}`).join('<br>') : ''}`));
       g.addEventListener('mouseleave', (e) => tip(e, null));
       svg.appendChild(g);
       if (share >= 0.004 && labels.length < 18) { const mid = (a0 + a1) / 2; labels.push({ name: p.name, mid, hue, right: Math.cos(mid) > 0, y: cy + (R + 14) * Math.sin(mid) }); }
     });
-    // the window's block total in the opening under the half ring
-    svg.appendChild(svgEl('text', { x: cx, y: cy - 28, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 22, 'font-weight': 700 }, fmt(total)));
-    svg.appendChild(svgEl('text', { x: cx, y: cy - 10, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11.5 }, 'blocks'));
+    // the chain's hashrate (all pools together) in the opening under the half ring; the block count when no hashrate is known
+    svg.appendChild(svgEl('text', { x: cx, y: cy - 28, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': m.hash ? 20 : 22, 'font-weight': 700 }, m.hash ? si(m.hash, 1) + 'H/s' : fmt(total)));
+    svg.appendChild(svgEl('text', { x: cx, y: cy - 10, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 11.5 }, m.hash ? `${fmt(total)} blocks` : 'blocks'));
     // labels left and right of the ring, spread out so they don't overlap
     for (const right of [true, false]) {
       const side = labels.filter((l) => l.right === right).sort((p, q) => p.y - q.y);
