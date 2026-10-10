@@ -10,8 +10,8 @@ on:
         description: Monero release the explorer is built against (match the Monero Node app)
         default: v0.18.5.1
       explorer_ref:
-        description: onion-monero-blockchain-explorer commit or branch
-        default: master
+        description: onion-monero-blockchain-explorer commit (5d9e37c builds against Monero v0.18.5.1; newer commits need Monero master)
+        default: 5d9e37cb3ad5c5335c1cb1bc2e5a56981ef1b872
 
 permissions:
   contents: read
@@ -47,6 +47,24 @@ jobs:
       # Ubuntu 24.04 LTS: ubuntu:latest moves on to newer compilers and Boost the explorer may not build with yet
       - name: Use Ubuntu 24.04 in the Dockerfile
         run: sed -i 's/ubuntu:latest/ubuntu:24.04/g' Dockerfile
+      # Monero builds for the build server's own CPU by default (-march=native): such a binary stops with
+      # "Illegal instruction" on other machines, like an Umbrel Home. Build for every CPU of the platform instead.
+      - name: Build Monero for any ${{ matrix.platform }} CPU
+        env:
+          MONERO_ARCH: ${{ matrix.platform == 'linux/arm64' && 'armv8-a' || 'x86-64' }}
+        run: |
+          python3 - <<'PY'
+          import os, re
+          d = open('Dockerfile').read()
+          old = '&& make -j"$(cat /nproc)"\n'
+          i = d.index('nproc > /nproc')
+          j = d.index(old, i)
+          new = ('&& mkdir -p build/release && cd build/release'
+                 ' && cmake -D ARCH=' + os.environ['MONERO_ARCH'] + ' -D BUILD_TESTS=OFF -D CMAKE_BUILD_TYPE=Release ../..'
+                 ' && make -j"$(cat /nproc)"\n')
+          open('Dockerfile', 'w').write(d[:j] + new + d[j + len(old):])
+          PY
+          grep -n "ARCH=" Dockerfile
       - name: Build and push by digest
         id: build
         run: |
