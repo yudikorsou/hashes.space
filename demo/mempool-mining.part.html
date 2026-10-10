@@ -127,7 +127,7 @@
 <section class="mstats calcpage" id="calc-page" aria-labelledby="calcpage-title" hidden>
   <header class="calchead">
     <h1 id="calcpage-title">Calculate hashrate</h1>
-    <p id="calc-context">What your hashrate is worth on the proof-of-work network picked above: on your own, and through a DATUM pool.</p>
+    <p id="calc-context">Calculate how much hashrate you need to mine a block or the amount of coins you can mine in a DATUM mining pool with Tides payouts.</p>
   </header>
   <article class="mcard m-calc" aria-labelledby="calc-title">
     <h2 class="mtitle" id="calc-title">Solomining calculator</h2>
@@ -246,8 +246,11 @@
       // the calculators work from the network's difficulty, so they wait for it like the charts do
       page.querySelector('.m-calc').hidden = !m;
       page.querySelector('.m-pcalc').hidden = !m || !DATUM_TIDES_POOLS[netId];
+      // the pool half of the sentence only where a DATUM pool with TIDES payouts is on offer for the chain
       $('calc-context').textContent = m
-        ? `What your hashrate is worth on ${network().chain}, at a difficulty of ${si(m.diff, 2).replace(' ', '')} and a global hashrate of ${si(m.hash, 1)}H/s: on your own, and through a DATUM pool.`
+        ? (DATUM_TIDES_POOLS[netId]
+          ? 'Calculate how much hashrate you need to mine a block or the amount of coins you can mine in a DATUM mining pool with Tides payouts.'
+          : `Calculate how much hashrate you need to mine a block on ${network().chain}.`)
         : `Waiting for the difficulty of ${network().chain} from ${site ?? network().source}. Pick another proof-of-work network above, or try again in a moment.`;
       $('calc-source').textContent = m && m.live
         ? `Difficulty live from ${MINING_FROM[netId] ?? site + '/mining'} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
