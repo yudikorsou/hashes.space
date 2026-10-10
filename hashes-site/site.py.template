@@ -33,7 +33,16 @@ import urllib.error
 import urllib.request
 
 PORT = int(os.environ.get("PORT", "3000"))
-SITE = os.environ.get("SITE_DIR", "/site")
+BUNDLED = os.environ.get("SITE_DIR", "/site")        # the copy that came with the app
+SITE = os.environ.get("PAGES_DIR", "/tmp/pages")     # what is served: the newest copy of each page
+
+# Umbrel only refreshes an app's templates when it updates, never its other files, so the pages
+# are fetched from the repository at startup and once a day. The bundled copy is the fallback,
+# and stays in use whenever the repository cannot be reached.
+PAGES = {
+    "index.html": "https://raw.githubusercontent.com/yudikorsou/hashes.space/main/demo/mempool.html",
+    "demo.html": "https://raw.githubusercontent.com/yudikorsou/hashes.space/main/demo/hashes-space-live-demo.html",
+}
 
 NODE = os.environ.get("MONERO_HOST", "")
 NODE_PORT = os.environ.get("MONERO_RPC_PORT", "18081")
@@ -48,6 +57,34 @@ BLOCKS_PER_DAY = DAY // BLOCK_SECONDS
 
 def log(*a):
     print("[site]", *a, flush=True)
+
+
+def refresh_pages():
+    """Keep the served pages up to date with the repository; never replace a good page with junk."""
+    os.makedirs(SITE, exist_ok=True)
+    for name, url in PAGES.items():
+        target = os.path.join(SITE, name)
+        bundled = os.path.join(BUNDLED, name)
+        if not os.path.exists(target) and os.path.exists(bundled):
+            with open(bundled, "rb") as src, open(target, "wb") as dst:
+                dst.write(src.read())
+        try:
+            with urllib.request.urlopen(url, timeout=30) as r:
+                page = r.read()
+            if len(page) < 50000 or b"<title" not in page[:4000]:
+                raise RuntimeError("that does not look like the page")
+            with open(target + ".new", "wb") as f:
+                f.write(page)
+            os.replace(target + ".new", target)
+            log("fetched " + name + " (" + str(len(page)) + " bytes)")
+        except Exception as exc:
+            log("keeping the bundled " + name + ": " + str(exc))
+
+
+def pages_worker():
+    while True:
+        refresh_pages()
+        time.sleep(DAY)
 
 
 # ---------- the Monero node ----------
@@ -299,6 +336,8 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
 
 
 if __name__ == "__main__":
+    refresh_pages()
+    threading.Thread(target=pages_worker, daemon=True).start()
     if NODE:
         threading.Thread(target=worker, daemon=True).start()
     else:
