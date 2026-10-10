@@ -37,7 +37,7 @@
   .demo-tag { font: 600 10.5px/1 var(--sans); text-transform: uppercase; letter-spacing: .08em; color: var(--warn); border: 1px solid rgba(242,181,60,.4); padding: 4px 7px; border-radius: 3px; }
 
   /* blockchain strip */
-  .strip { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 26px 0 18px; background: var(--bg); border-bottom: 1px solid var(--line); overflow: hidden; }
+  .strip { --s: 125px; --d: 16px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 26px 0 18px; background: var(--bg); border-bottom: 1px solid var(--line); overflow: hidden; }
   /* each side scrolls on its own; a block that would only half fit is kept out of sight until it does */
   .half { display: flex; gap: 40px; min-width: 0; padding: 6px 40px 6px 20px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scrollbar-width: thin; scrollbar-color: rgba(160,170,230,.35) transparent; }
   .half { scroll-snap-type: x mandatory; scroll-padding: 0 40px 0 20px; }   /* blocks come to rest beside the divider, never half past it */
@@ -54,12 +54,12 @@
   .block-wrap.found .cube { animation: found 1.1s ease-out 2; }
   @keyframes found { 0%, 100% { box-shadow: 0 0 0 0 rgba(27,216,244,0); } 40% { box-shadow: 0 0 0 7px rgba(27,216,244,.55); } }
   .divider { align-self: stretch; width: 0; border-left: 2px dashed rgba(255,255,255,.35); }
-  .block-wrap { flex: 0 0 auto; display: grid; gap: 8px; justify-items: center; color: inherit; text-decoration: none; }
-  .above, .below { font: 500 12px/1 var(--sans); color: var(--muted); min-height: 12px; white-space: nowrap; }
+  .block-wrap { flex: 0 0 auto; width: calc(var(--s) + var(--d)); display: grid; gap: 8px; justify-items: center; color: inherit; text-decoration: none; }
+  .above, .below { max-width: 100%; font: 500 12px/1.3 var(--sans); color: var(--muted); min-height: 12px; text-align: center; overflow-wrap: anywhere; }
   .height { font-size: 15px; font-weight: 600; color: var(--link); }
   .mining .above { color: var(--text); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
   /* 3D block: front face + mempool-style dark top and left faces */
-  .cube { --s: 125px; --d: 16px; position: relative; width: var(--s); height: var(--s); margin: var(--d) 0 0 var(--d); }
+  .cube { position: relative; width: var(--s); height: var(--s); margin: var(--d) 0 0 var(--d); }
   .face { position: absolute; }
   /* the coin of the chain shown, small in the top left corner of every block */
   .front:has(.cube-coin) .txt { padding-top: 22px; }
@@ -277,7 +277,8 @@
   }
 
   @media (max-width: 720px) {
-    .cube { --s: 92px; }
+    .strip { --s: 92px; }
+    .datum-badge { font-size: 9px; padding: 3px 6px; letter-spacing: .02em; }
     .txt { padding: 8px 4px; }
     .txt .range, .txt .txs { display: none; }
     .txt .size { font-size: 15px; }
@@ -568,7 +569,7 @@
   .block-wrap.datum-central .cube { --glow: 255,77,77; animation: datum-glow 4s ease-in-out infinite; }
   .datum-badge.central { color: #ff6b6b; border-color: rgba(255,77,77,.55); background: rgba(255,77,77,.1); }
   #mined .below { display: grid; justify-items: center; gap: 6px; }
-  .datum-badge { display: inline-flex; align-items: center; gap: 4px; font: 600 10.5px/1 var(--sans); letter-spacing: .04em; text-transform: uppercase; color: #f7931a; border: 1px solid rgba(247,147,26,.55); background: rgba(247,147,26,.1); border-radius: 999px; padding: 4px 8px; }
+  .datum-badge { display: inline-block; max-width: 100%; text-align: center; font: 600 10.5px/1.25 var(--sans); letter-spacing: .04em; text-transform: uppercase; color: #f7931a; border: 1px solid rgba(247,147,26,.55); background: rgba(247,147,26,.1); border-radius: 999px; padding: 4px 8px; }
   .datum-badge.verified { color: #3ce26b; border-color: rgba(60,226,107,.55); background: rgba(60,226,107,.1); }
   @keyframes datum-glow { 0%, 100% { filter: drop-shadow(0 0 5px rgba(var(--glow),.65)) drop-shadow(0 0 14px rgba(var(--glow),.3)); } 50% { filter: drop-shadow(0 0 8px rgba(var(--glow),.85)) drop-shadow(0 0 22px rgba(var(--glow),.4)); } }
   @media (prefers-reduced-motion: reduce) { .block-wrap.datum .cube, .block-wrap.datum-verified .cube, .block-wrap.datum-central .cube { animation: none; filter: drop-shadow(0 0 6px rgba(var(--glow),.75)) drop-shadow(0 0 16px rgba(var(--glow),.35)); } }
@@ -1027,7 +1028,7 @@
   const DATUM_POOLS = { sha256: ['OCEAN'], blake2b: ['CONVOY'] };
   const DATUM_VERIFIED = { sha256: [], blake2b: [] };
   const DATUM_TITLE = { verified: 'DATUM Verified: mined by a DATUM Gateway verified solominer of a 100% DATUM pool', compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway', centralised: 'Centralised: mined by a pool that builds the block template for its miners' };
-  const DATUM_BADGE = { verified: '<span class="datum-badge verified"><span aria-hidden="true">✓</span> DATUM Verified</span>', compatible: '<span class="datum-badge"><span aria-hidden="true">◆</span> DATUM Compatible</span>', centralised: '<span class="datum-badge central">Centralised</span>' };
+  const DATUM_BADGE = { verified: '<span class="datum-badge verified">✓ DATUM Verified</span>', compatible: '<span class="datum-badge">◆ DATUM Compatible</span>', centralised: '<span class="datum-badge central">Centralised</span>' };
   const datumLabel = (b) => {
     const p = (b.pool ?? '').trim().toLowerCase(), has = (l) => (l?.[netId] ?? []).some((d) => d.toLowerCase() === p);
     // every other pool on a Bitcoin chain is Centralised (red); solo miners and blocks mempool can't name are no pool
