@@ -150,8 +150,9 @@
   .tabs { display: flex; gap: 4px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .tabs a { white-space: nowrap; font: 500 13.5px/1 var(--sans); color: var(--muted); text-decoration: none; padding: 8px 12px; border-radius: 6px; }
   .tabs a:hover { color: var(--text); background: var(--surface); }
-  .tabs a.on { color: var(--text); background: var(--surface); box-shadow: inset 0 -2px 0 var(--link); }
-  .tabs a:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .tabs a.on { color: var(--text); background: var(--surface); }   /* the open tab is marked by its fill alone, no blue line */
+  .tabs a:focus:not(:focus-visible) { outline: none; }
+  .tabs a:focus-visible { outline: 1px solid var(--line-strong); outline-offset: 1px; }   /* keyboard focus: a quiet grey ring */
 
   /* miner settings: general interface for any ASIC (same classes as the Angular app) */
   .s-card { scroll-margin-top: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 20px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
