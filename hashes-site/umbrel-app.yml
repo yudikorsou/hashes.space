@@ -1,0 +1,34 @@
+manifestVersion: 1
+id: hashes-site
+category: crypto
+name: hashes.space Pages
+version: "1.0.0"
+tagline: The hashes.space Find Mempool page, served from your own Umbrel
+icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
+description: >-
+  Serves the hashes.space pages straight from your Umbrel: the Find Mempool page, where you watch
+  blocks and the mempool of Bitcoin SHA-256, Bitcoin BLAKE2b, Monero and Dogecoin side by side, and
+  the fleet dashboard demo.
+
+
+  Published on the internet (for example with the Cloudflare Tunnel app), the page streams blocks
+  live. Monero and Dogecoin come from your own full nodes through the Monero Explorer and Dogecoin
+  Explorer apps, so no third party sees what your visitors look at. The two Bitcoin chains stream
+  from mempool.space and mempool.guide.
+
+
+  A browser can only reach these explorers from a real web page, which is why the page shows
+  simulated blocks in a preview or sandbox and live blocks once you serve it from here.
+developer: hashes.space
+website: https://hashes.space
+dependencies: []
+repo: https://github.com/yudikorsou/hashes.space
+support: https://github.com/yudikorsou/hashes.space/issues
+port: 4083
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: yudikorsou
+submission: https://github.com/yudikorsou/hashes.space
+releaseNotes: First release.
