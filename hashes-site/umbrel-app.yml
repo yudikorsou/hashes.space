@@ -1,10 +1,10 @@
 manifestVersion: 1
 id: hashes-site
 category: crypto
-name: hashes.space Pages
-version: "1.0.0"
+name: hashes.space
+version: "1.0.1"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
-icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
+icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
   Serves the hashes.space pages straight from your Umbrel: the Find Mempool page, where you watch
   blocks and the mempool of Bitcoin SHA-256, Bitcoin BLAKE2b, Monero and Dogecoin side by side, and
@@ -31,4 +31,4 @@ defaultUsername: ""
 defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
-releaseNotes: First release.
+releaseNotes: The app is now named hashes.space and carries the site's own fan logo.
