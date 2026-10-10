@@ -610,6 +610,7 @@
   .mcard .more:hover { text-decoration: underline; }
   .mcard .key { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 16px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--muted); }
   .mcard .key i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
+  .pnote { margin: 2px 0 0; color: var(--muted); font-size: 12px; line-height: 1.5; text-align: center; }
   .msource { grid-column: 1 / -1; margin: 0; color: var(--muted); font-size: 12px; text-align: center; }
   .slice:hover, .slice:focus { filter: brightness(1.15); outline: none; }
   .mtip { position: fixed; z-index: 30; pointer-events: none; background: #0b0d17; border: 1px solid var(--line-strong); border-radius: 6px; padding: 7px 9px; font: 400 12.5px/1.4 var(--sans); color: var(--text); max-width: 240px; }
@@ -853,6 +854,7 @@
   <article class="mcard m-pools" aria-labelledby="pools-title">
     <h2 class="mtitle" id="pools-title">Mining pools</h2>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 340" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
+    <p class="pnote" id="ms-pools-note" hidden></p>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard m-pcalc" aria-labelledby="pcalc-title">
@@ -3008,9 +3010,16 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // ---------- Find Mempool: mining pools + hashrate & difficulty (as on <site>/mining) for the Bitcoin networks ----------
   // per network: the mempool site it comes from; Monero (xmrchain.net) has no pool statistics
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, computing the same statistics from your Dogecoin Core node
-  var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space' };
+  // Monero: the hashes.space app on your Umbrel, computing the same statistics from your Monero node
+  var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space', monero: 'mempool.hashes.space' };
   // sites without mempool.space's mining pages: "View more" opens the explorer itself
-  var MINING_MORE = { dogecoin: 'https://doge.hashes.space/' };
+  var MINING_MORE = { dogecoin: 'https://doge.hashes.space/', monero: 'https://xmr.hashes.space/' };
+  // a Monero block never says which pool mined it: the reward goes to a one-time address that names nobody.
+  // What the chain does show is how the reward was split, so that is what the section shows there.
+  // what the source line names: Monero's statistics come from the node itself, not from a mining page
+  var MINING_FROM = { monero: 'your Monero node', dogecoin: 'your Dogecoin node' };
+  var POOLS_TITLE = { monero: 'How blocks are paid out' };
+  var POOLS_NOTE = { monero: 'A Monero block never names its pool: the reward goes to a one-time address. P2Pool pays every one of its miners in the block itself, so its blocks carry many payouts; a custodial pool or a solo miner leaves one.' };
   // snapshots for when the API can't be reached from this page
   var MINING_SNAPSHOTS = {};
   MINING_SNAPSHOTS.blake2b = {
@@ -3066,17 +3075,19 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
     $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
     $('ms-more-pools').href = MINING_MORE[netId] ?? `https://${site}/mining/pools`;
+    $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Mining pools';
+    const note = $('ms-pools-note'); note.hidden = !POOLS_NOTE[netId]; note.textContent = POOLS_NOTE[netId] ?? '';
     // the DATUM pool calculator only where DATUM pools exist (Bitcoin, Bitcoin BLAKE2b)
     document.querySelector('.m-pcalc').hidden = !DATUM_TIDES_POOLS[netId];
     $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
     $('ms-source').textContent = m.live
-      ? `Live from ${site}/mining · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      ? `Live from ${MINING_FROM[netId] ?? site + '/mining'} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
     drawPie(m); drawChart(m); renderCalc(); fillPools(); renderPoolCalc();
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
   // A block needs on average difficulty × 2^32 hashes on Bitcoin; mempool.guide gives the BLAKE2b difficulty in hashes per block.
-  var HASHES_PER_DIFFICULTY = { sha256: 2 ** 32, blake2b: 1, dogecoin: 2 ** 32 };
+  var HASHES_PER_DIFFICULTY = { sha256: 2 ** 32, blake2b: 1, dogecoin: 2 ** 32, monero: 1 };
   var CALC_PERIODS = [['calc-d', 86400], ['calc-w', 7 * 86400], ['calc-m', 30 * 86400]];
   function pct(p) {
     if (p >= 0.9995) return '> 99.9%';

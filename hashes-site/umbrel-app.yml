@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.0.1"
+version: "1.1.0"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -21,7 +21,8 @@ description: >-
   simulated blocks in a preview or sandbox and live blocks once you serve it from here.
 developer: hashes.space
 website: https://hashes.space
-dependencies: []
+dependencies:
+  - monero
 repo: https://github.com/yudikorsou/hashes.space
 support: https://github.com/yudikorsou/hashes.space/issues
 port: 4083
@@ -31,4 +32,6 @@ defaultUsername: ""
 defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
-releaseNotes: The app is now named hashes.space and carries the site's own fan logo.
+releaseNotes: >-
+  Monero now has a Global hashrate chart and a payout-split section on the Find Mempool page,
+  both computed from the Monero Node app on this Umbrel.
