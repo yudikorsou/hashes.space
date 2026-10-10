@@ -20,6 +20,7 @@ Monero's hashrate stays in many hands.
 """
 
 import hashlib
+import http.client
 import http.server
 import json
 import os
@@ -51,66 +52,78 @@ def log(*a):
 
 # ---------- the Monero node ----------
 
-class Digest:
-    """monerod speaks HTTP digest auth. Python's own handler does not get on with its challenge,
-    so this does the handshake itself: one unauthenticated request, then the signed one, reusing
-    the nonce until the node asks again."""
+class Node:
+    """Talks to monerod over HTTP digest auth.
 
-    def __init__(self, url, login):
-        self.url = url
+    monerod ties its digest nonce to the TCP connection, so a fresh connection per request is
+    answered with 401 forever. This keeps one connection open, does the challenge once on it and
+    reuses it; if the node closes it, the next call reconnects and challenges again."""
+
+    def __init__(self, host, port, login):
+        self.host, self.port = host, int(port)
         self.user, _, self.password = login.partition(":")
-        self.chal, self.nc, self.lock = None, 0, threading.Lock()
+        self.conn, self.chal, self.nc = None, None, 0
+        self.lock = threading.Lock()
 
     @staticmethod
     def _parse(header):
-        out = {}
-        for part in re.findall(r'(\w+)=("[^"]*"|[^,]*)', header.split(" ", 1)[1] if " " in header else ""):
-            out[part[0].lower()] = part[1].strip('"')
-        return out
+        # monerod offers MD5 and MD5-sess in one header; the first (MD5) is the one we answer
+        first = header.split(", Digest")[0]
+        return dict((m[0].lower(), m[1].strip('"')) for m in re.findall(r'(\w+)=("[^"]*"|[^,]*)', first))
 
-    def _header(self, method, path):
+    def _authorization(self, path):
         c = self.chal
-        algo = (c.get("algorithm") or "MD5").upper()
-        digest = (lambda text: hashlib.sha256(text.encode()).hexdigest()) if algo.startswith("SHA-256") \
-            else (lambda text: hashlib.md5(text.encode()).hexdigest())
-        ha1 = digest(self.user + ":" + c.get("realm", "") + ":" + self.password)
-        ha2 = digest(method + ":" + path)
-        with self.lock:
-            self.nc += 1
-            nc = "{:08x}".format(self.nc)
-        cnonce = secrets.token_hex(8)
-        bits = ['username="' + self.user + '"', 'realm="' + c.get("realm", "") + '"',
-                'nonce="' + c.get("nonce", "") + '"', 'uri="' + path + '"', "algorithm=" + algo]
-        if c.get("qop"):
-            resp = digest(ha1 + ":" + c["nonce"] + ":" + nc + ":" + cnonce + ":auth:" + ha2)
-            bits += ["qop=auth", "nc=" + nc, 'cnonce="' + cnonce + '"']
-        else:
-            resp = digest(ha1 + ":" + c.get("nonce", "") + ":" + ha2)
-        bits.append('response="' + resp + '"')
-        if c.get("opaque"):
-            bits.append('opaque="' + c["opaque"] + '"')
-        return "Digest " + ", ".join(bits)
+        self.nc += 1
+        nc, cnonce = "{:08x}".format(self.nc), secrets.token_hex(8)
+        md5 = lambda text: hashlib.md5(text.encode()).hexdigest()
+        ha1 = md5(self.user + ":" + c.get("realm", "") + ":" + self.password)
+        ha2 = md5("POST:" + path)
+        resp = md5(ha1 + ":" + c.get("nonce", "") + ":" + nc + ":" + cnonce + ":auth:" + ha2)
+        return ('Digest username="' + self.user + '", realm="' + c.get("realm", "") + '", nonce="'
+                + c.get("nonce", "") + '", uri="' + path + '", algorithm=MD5, qop=auth, nc=' + nc
+                + ', cnonce="' + cnonce + '", response="' + resp + '"')
+
+    def _send(self, path, body, timeout):
+        headers = {"Content-Type": "application/json", "Connection": "keep-alive"}
+        if self.chal and self.password:
+            headers["Authorization"] = self._authorization(path)
+        self.conn.timeout = timeout
+        self.conn.request("POST", path, body=body, headers=headers)
+        r = self.conn.getresponse()
+        data = r.read()
+        return r.status, r.getheader("WWW-Authenticate") or r.getheader("WWW-authenticate") or "", data
 
     def post(self, path, body, timeout):
-        for attempt in (1, 2):
-            headers = {"Content-Type": "application/json"}
-            if self.chal:
-                headers["Authorization"] = self._header("POST", path)
-            req = urllib.request.Request(self.url + path, data=body, headers=headers)
-            try:
-                with urllib.request.urlopen(req, timeout=timeout) as r:
-                    return json.load(r)
-            except urllib.error.HTTPError as err:
-                if err.code != 401 or attempt == 2 or not self.password:
-                    raise
-                challenge = err.headers.get("WWW-Authenticate") or err.headers.get("WWW-authenticate") or ""
-                if not challenge.lower().startswith("digest"):
-                    raise
-                self.chal, self.nc = self._parse(challenge), 0
-        raise RuntimeError("unreachable")
+        with self.lock:
+            for attempt in (1, 2, 3):
+                try:
+                    if self.conn is None:
+                        self.conn = http.client.HTTPConnection(self.host, self.port, timeout=timeout)
+                        self.chal, self.nc = None, 0
+                    status, challenge, data = self._send(path, body, timeout)
+                except (http.client.HTTPException, OSError):
+                    self._drop()
+                    if attempt == 3:
+                        raise
+                    continue
+                if status == 401 and challenge.lower().startswith("digest") and self.password:
+                    self.chal, self.nc = self._parse(challenge), 0
+                    continue
+                if status != 200:
+                    raise RuntimeError("the Monero node answered HTTP " + str(status))
+                return json.loads(data)
+        raise RuntimeError("the Monero node would not authenticate")
+
+    def _drop(self):
+        try:
+            if self.conn:
+                self.conn.close()
+        except Exception:
+            pass
+        self.conn, self.chal, self.nc = None, None, 0
 
 
-NODE_RPC = Digest("http://" + NODE + ":" + NODE_PORT, LOGIN)
+NODE_RPC = Node(NODE, NODE_PORT, LOGIN)
 
 
 def rpc(method, params=None, timeout=20):

@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.1.1"
+version: "1.1.2"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
