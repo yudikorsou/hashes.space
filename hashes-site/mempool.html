@@ -2280,7 +2280,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   function renderProjected() {
     const el = $('projected');
     el.innerHTML = chain().projected.slice().reverse().map((b) => `<div class="block-wrap ${b.index === 0 ? 'mining' : ''}">
-      <div class="above">${b.index === 0 ? 'Mining now' : ''}</div>${cube(b, false)}
+      <div class="above">${b.index === 0 ? 'Hashing now' : ''}</div>${cube(b, false)}
       <div class="below">${b.index === 0 ? `<span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span>` : ''}</div></div>`).join('');
     pinProjected();
     scheduleClip();
