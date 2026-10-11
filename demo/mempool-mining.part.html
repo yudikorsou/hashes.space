@@ -445,7 +445,7 @@
     if (netId === 'sha256' && window.globeSet) window.globeSet((miningBy.sha256 || {}).hash || 0);
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
-    { const g = netId === 'sha256'; $('ms-more-hr').href = g ? '#pools' : (MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`); if (g) $('ms-more-hr').removeAttribute('target'); else $('ms-more-hr').target = '_blank'; }   // Bitcoin: the pools page; the other chains keep their own pools section
+    { const g = netId === 'sha256'; $('ms-more-hr').href = g ? '#pools' : (MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`); if (g) $('ms-more-hr').removeAttribute('target'); else $('ms-more-hr').target = '_blank'; $('ms-more-hr').textContent = g ? 'View hashrate mining pools' : 'View more »'; }   // Bitcoin: the pools page; the other chains keep their own pools section
     setUnits('calc-unit'); setUnits('pcalc-unit');
     // the two charts follow the period chosen above; the calculators and pool pages keep working from the base data
     const rv = rangeView(netId, range, m), info = RANGE_INFO[range];
