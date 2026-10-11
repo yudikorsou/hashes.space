@@ -3484,13 +3484,25 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     const hrPath = '/hashrate/' + (own ? rng : MEMPOOL_HASH[rng]), plPath = '/pools/' + (own ? rng : MEMPOOL_POOLS[rng]);
     // the pools and the hashrate are asked for separately, each from the hosts in turn: one that fails leaves the other standing
     const ask = async (path) => { for (const host of hosts) { try { return await getJson(host, path); } catch { /* the next host */ } } return null; };
-    const [p, h] = await Promise.all([ask(plPath), ask(hrPath)]), sec = RANGE_INFO[rng].sec;
+    // mempool sites have no 14-day pool shares; their daily per-pool hashrate does cover it, so those are summed over the last 14 days
+    const daily = !own && rng === '14d' ? ask('/hashrate/pools/1m') : null;
+    const [p, h, dp] = await Promise.all([ask(plPath), ask(hrPath), daily]), sec = RANGE_INFO[rng].sec;
+    const fortnight = (list, month) => {
+      if (!Array.isArray(list) || !list.length || !month || !Array.isArray(month.pools)) return null;
+      const from = Math.max(...list.map((x) => x.timestamp)) - sec, w = {};
+      for (const x of list) if (x.timestamp > from && x.poolName) w[x.poolName] = (w[x.poolName] || 0) + (x.avgHashrate || 0);
+      const total = Object.values(w).reduce((a, v) => a + v, 0); if (!total) return null;
+      const blocks = Math.round((month.blockCount || 0) * 14 / 30), byName = Object.fromEntries(month.pools.map((x) => [x.name, x]));
+      return { blockCount: blocks, pools: Object.entries(w).sort((a, b) => b[1] - a[1]).map(([name, v]) => ({ name, slug: byName[name]?.slug, blockCount: Math.max(1, Math.round(blocks * v / total)), miners: byName[name]?.miners })) };
+    };
+    const fort = fortnight(dp, p);
     const hs = h && Array.isArray(h.hashrates) && h.hashrates.length ? trimSeries(h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), sec) : trimSeries(base.hashrates, sec);
     const ds = h && Array.isArray(h.hashrates) && h.hashrates.length ? trimSeries((h.difficulty ?? []).map((x) => [x.time, x.difficulty]), sec, true) : trimSeries(base.difficulty, sec, true);
-    const pools = p && Array.isArray(p.pools) && p.pools.length ? p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })) : null;
+    const pp = fort ?? p, summed = !!fort;
+    const pools = pp && Array.isArray(pp.pools) && pp.pools.length ? pp.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })) : null;
     rangeBy[key] = { live: true, at: Date.now() / 1000, partial: !pools || !h, retry: Date.now() + 20000, derived: !h,
-      window: pools ? (own ? rng : MEMPOOL_POOLS[rng]) : base.window, sampled: !!(pools && p.sampled),
-      blockCount: pools ? (p.blockCount || pools.reduce((a, x) => a + x.blocks, 0)) : base.blockCount, pools: pools ?? base.pools,
+      window: pools ? (own || summed ? rng : MEMPOOL_POOLS[rng]) : base.window, sampled: !!(pools && pp.sampled), summed,
+      blockCount: pools ? (pp.blockCount || pools.reduce((a, x) => a + x.blocks, 0)) : base.blockCount, pools: pools ?? base.pools,
       hashrates: hs, difficulty: ds, hash: (h && h.currentHashrate) || base.hash, diff: (h && h.currentDifficulty) || base.diff, avg: meanOf(hs) || base.hash };
     rangeBusy[key] = false;
     if (net === netId) renderMiningStats();
@@ -3546,7 +3558,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     note.textContent = (POOLS_NOTE[netId] ? POOLS_NOTE[netId] + ' ' : '')
       + `Each pool's hashrate is an estimate: its share of the blocks found in ${windowSpoken(rv.window)} times the chain's average hashrate.`
       + (rv.window !== range ? ` ${windowSpoken(rv.window).replace(/^the /, 'The ')} is the nearest period this source offers for ${info.label}.` : '')
-      + (rv.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '');
+      + (rv.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '')
+      + (rv.summed ? ' The 14 days are summed from the daily hashrate of each pool.' : '');
     $('ms-hash').textContent = si(rv.avg || m.hash, 1) + 'H/s';   // the average over the chosen period
     $('ms-hash-sub').textContent = hashrateThen(rv, info, range);
     $('ms-source').textContent = m.live
