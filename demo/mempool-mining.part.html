@@ -119,7 +119,7 @@
     <h2 class="mtitle"><span id="pools-title">Hashrate mining pools</span> <span class="mperiod" id="pools-period"></span></h2>
   </header>
   <div class="mrange" id="mrange" role="group" aria-label="Period shown in both charts">
-    <button type="button" data-range="24h">24 hours</button><button type="button" data-range="14d">14 days</button><button type="button" data-range="1m">1 month</button><button type="button" data-range="6m">6 months</button><button type="button" data-range="1y">1 year</button>
+    <button type="button" data-range="14d">14 days</button><button type="button" data-range="1m">1 month</button><button type="button" data-range="6m">6 months</button><button type="button" data-range="1y">1 year</button>
   </div>
   <article class="mcard m-hr" aria-labelledby="hr-title">
     <a class="calc-link" id="calc-link" href="#calc">Hashrate calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
@@ -226,7 +226,7 @@
   var POOLS_TITLE = { monero: 'How blocks are paid out' };
   // the stretch of chain the pool section covers: a day where the mining pages serve it,
   // a week on the explorers running on your own Umbrel, which compute the split themselves
-  var POOLS_WINDOW = { sha256: '24h', blake2b: '24h', dogecoin: '1w', monero: '1w' };
+  var POOLS_WINDOW = { sha256: '1m', blake2b: '1m', dogecoin: '1w', monero: '1w' };
   const windowLabel = (w) => w;
   const WINDOW_NAME = { '24h': '24 hours', '1w': '1 week', '14d': '14 days', '1m': '1 month', '3m': '3 months', '6m': '6 months', '1y': '1 year' };
   const WINDOW_WORDS = { '24h': "the last day's blocks", '1w': "last week's blocks", '14d': "the last 14 days' blocks", '1m': "the last month's blocks", '3m': "the last 3 months' blocks", '6m': "the last 6 months' blocks", '1y': "the last year's blocks" };
@@ -294,7 +294,7 @@
   var MEMPOOL_HASH = { '24h': '24h', '14d': '1m', '1m': '1m', '6m': '6m', '1y': '1y' };
   var MEMPOOL_POOLS = { '24h': '24h', '14d': '1m', '1m': '1m', '6m': '6m', '1y': '1y' };
   var range = '1m';
-  try { const saved = localStorage.getItem('mining-range'); if (saved && RANGE_INFO[saved]) range = saved; } catch { /* no storage: the default stands */ }
+  try { const saved = localStorage.getItem('mining-range'); if (saved && saved !== '24h' && RANGE_INFO[saved]) range = saved; } catch { /* no storage: the default stands */ }
   var rangeBy = {}, rangeBusy = {};
   // cut a series to the last stretch of time it covers; a step series (difficulty) keeps the value that held at the start
   function trimSeries(pts, sec, step) {
