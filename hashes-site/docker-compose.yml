@@ -22,6 +22,17 @@ services:
       MONERO_HOST: ${APP_MONERO_NODE_IP}
       MONERO_RPC_PORT: ${APP_MONERO_RPC_PORT}
       MONERO_RPC_AUTH: ${APP_MONERO_RPC_AUTH}
+      # the Bitcoin Node app on this Umbrel: the Find Mempool page's Bitcoin SHA-256 hashrate and pool split
+      APP_BITCOIN_NODE_IP: ${APP_BITCOIN_NODE_IP:-}
+      APP_BITCOIN_RPC_PORT: ${APP_BITCOIN_RPC_PORT:-}
+      APP_BITCOIN_RPC_USER: ${APP_BITCOIN_RPC_USER:-}
+      APP_BITCOIN_RPC_PASS: ${APP_BITCOIN_RPC_PASS:-}
+      # the Bitcoin Knots app (the BLAKE2b chain), when it is installed next to it: Bitcoin BLAKE2b hashrate and pool split
+      APP_BITCOIN_KNOTS_NODE_IP: ${APP_BITCOIN_KNOTS_NODE_IP:-}
+      APP_BITCOIN_KNOTS_INTERNAL_RPC_PORT: ${APP_BITCOIN_KNOTS_INTERNAL_RPC_PORT:-}
+      APP_BITCOIN_KNOTS_RPC_PORT: ${APP_BITCOIN_KNOTS_RPC_PORT:-}
+      APP_BITCOIN_KNOTS_RPC_USER: ${APP_BITCOIN_KNOTS_RPC_USER:-}
+      APP_BITCOIN_KNOTS_RPC_PASS: ${APP_BITCOIN_KNOTS_RPC_PASS:-}
     volumes:
       - ${APP_DATA_DIR}/site.py:/app/site.py:ro
       - ${APP_DATA_DIR}/mempool.html:/site/index.html:ro

@@ -19,6 +19,7 @@ this page shows: it comes from your own node, and it is the number that matters 
 Monero's hashrate stays in many hands.
 """
 
+import base64
 import hashlib
 import http.client
 import http.server
@@ -298,7 +299,269 @@ def pools_1w():
     return {"blockCount": len(blocks), "pools": pools}
 
 
-# ---------- mining statistics of the two Bitcoin chains, passed on ----------
+# ---------- the two Bitcoin chains, from your own nodes ----------
+# The Find Mempool page shows "Global hashrate" and "Mining pools" for Bitcoin SHA-256 and Bitcoin BLAKE2b. They are
+# worked out here from a node on this Umbrel (hashrate and difficulty from the block headers' chainwork, the pool of
+# every block from the tags and payout addresses in its coinbase), so neither mempool.space nor mempool.guide is
+# needed. A chain without a node, or whose node is not answering, answers 503, and the page then falls back to the
+# stored numbers it ships with. The nodes come from the apps this one is linked to:
+#   Bitcoin SHA-256: the Bitcoin Node app (APP_BITCOIN_*), or SHA256_RPC_HOST / _PORT / _USER / _PASS
+#   Bitcoin BLAKE2b: the Bitcoin Knots app (APP_BITCOIN_KNOTS_*), or BLAKE2B_RPC_HOST / _PORT / _USER / _PASS
+# A pruned node is fine: headers are never pruned, and the pool of a block is read while its data is still there.
+
+
+def _env(*names, default=""):
+    for n in names:
+        v = os.environ.get(n, "")
+        if v:
+            return v
+    return default
+
+
+CHAIN_NODES = {
+    "sha256": (_env("SHA256_RPC_HOST", "APP_BITCOIN_NODE_IP"), _env("SHA256_RPC_PORT", "APP_BITCOIN_RPC_PORT", default="8332"),
+               _env("SHA256_RPC_USER", "APP_BITCOIN_RPC_USER"), _env("SHA256_RPC_PASS", "APP_BITCOIN_RPC_PASS")),
+    "blake2b": (_env("BLAKE2B_RPC_HOST", "APP_BITCOIN_KNOTS_NODE_IP"),
+                _env("BLAKE2B_RPC_PORT", "APP_BITCOIN_KNOTS_INTERNAL_RPC_PORT", "APP_BITCOIN_KNOTS_RPC_PORT", default="8332"),
+                _env("BLAKE2B_RPC_USER", "APP_BITCOIN_KNOTS_RPC_USER"), _env("BLAKE2B_RPC_PASS", "APP_BITCOIN_KNOTS_RPC_PASS")),
+}
+POOL_BLOCKS = int(os.environ.get("POOL_BLOCKS", "4320"))     # how far back the pool of each block is read: 30 days
+POOLS_URL = os.environ.get("POOLS_URL", "https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json")
+BTC_BLOCKS_PER_DAY = 144
+POOL_WINDOWS = {"24h": DAY, "1w": WEEK, "14d": 14 * DAY, "1m": 30 * DAY}   # the periods the pool split is cut to
+# tags to know when the public list cannot be fetched (and for chains it knows nothing about)
+FALLBACK_POOLS = [
+    ("Foundry USA", ["Foundry USA Pool"]), ("AntPool", ["AntPool"]), ("F2Pool", ["F2Pool", "\U0001F41F"]), ("ViaBTC", ["ViaBTC"]),
+    ("SpiderPool", ["SpiderPool"]), ("SECPOOL", ["SECPOOL"]), ("MARA Pool", ["MARA Pool"]), ("Luxor", ["Luxor"]),
+    ("OCEAN", ["OCEAN\\.XYZ"]), ("Braiins Pool", ["/slush/", "Braiins"]), ("NiceHash", ["NiceHash"]), ("BTC.com", ["BTC\\.COM"]),
+    ("Binance Pool", ["binance"]), ("CONVOY", ["convoy"]), ("BTCB2", ["btcb2"]), ("B2Pool", ["b2pool"]),
+]
+
+
+class BtcRpc:
+    """A bitcoind-style JSON-RPC client (Bitcoin Core, Bitcoin Knots) over one kept-open connection."""
+
+    def __init__(self, host, port, user, password):
+        self.host, self.port = host, int(port)
+        self.auth = "Basic " + base64.b64encode((user + ":" + password).encode()).decode()
+        self.conn, self.lock = None, threading.Lock()
+
+    def call(self, method, *params, timeout=60):
+        body = json.dumps({"jsonrpc": "1.0", "id": "hs", "method": method, "params": list(params)}).encode()
+        with self.lock:
+            for attempt in (1, 2):
+                try:
+                    if self.conn is None:
+                        self.conn = http.client.HTTPConnection(self.host, self.port, timeout=timeout)
+                    self.conn.timeout = timeout
+                    self.conn.request("POST", "/", body=body, headers={"Authorization": self.auth, "Content-Type": "application/json"})
+                    r = self.conn.getresponse()
+                    status, data = r.status, r.read()
+                    break
+                except (http.client.HTTPException, OSError):
+                    try:
+                        self.conn and self.conn.close()
+                    except Exception:
+                        pass
+                    self.conn = None
+                    if attempt == 2:
+                        raise
+        if status == 401:
+            raise RuntimeError("the node refused the RPC login")
+        out = json.loads(data)             # an RPC error comes back as HTTP 500 with the error in the JSON
+        if out.get("error"):
+            raise RuntimeError(str(out["error"].get("message", out["error"])))
+        return out["result"]
+
+
+def bits_work(bits_hex):
+    """The hashes one block takes on average at this target (the compact 'bits' of a header)."""
+    b = int(bits_hex, 16)
+    exp, mant = b >> 24, b & 0x7FFFFF
+    target = mant << (8 * (exp - 3)) if exp > 3 else mant >> (8 * (3 - exp))
+    return (1 << 256) // (target + 1) if target > 0 else 0
+
+
+class PoolList:
+    """Which pool wrote a coinbase: payout addresses first, then the tags a pool puts in its coinbase text."""
+
+    def __init__(self):
+        self.addresses, self.tags, self.loaded = {}, [], False
+
+    def load(self):
+        entries = []
+        try:
+            req = urllib.request.Request(POOLS_URL, headers={"User-Agent": "hashes.space"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                for e in json.loads(r.read()):
+                    entries.append((e["name"], e.get("tags") or [], e.get("addresses") or []))
+            self.loaded = True
+        except Exception as exc:
+            log("pool list: " + str(exc) + " (using the short built-in list)")
+            entries = [(n, t, []) for n, t in FALLBACK_POOLS]
+        known = {n.lower() for n, _, _ in entries}
+        entries += [(n, t, []) for n, t in FALLBACK_POOLS if n.lower() not in known]   # pools of the BLAKE2b chain and friends
+        self.addresses, self.tags = {}, []
+        for name, tags, addrs in entries:
+            for a in addrs:
+                self.addresses[a] = name
+            for t in tags:
+                try:
+                    self.tags.append((re.compile(t, re.I), name))
+                except re.error:
+                    pass
+
+    def find(self, coinbase_text, addresses):
+        for a in addresses:
+            if a in self.addresses:
+                return self.addresses[a]
+        for rx, name in self.tags:
+            if rx.search(coinbase_text):
+                return name
+        return "Unknown"
+
+
+POOLS = PoolList()
+
+
+class ChainStats:
+    def __init__(self, name, rpc):
+        self.name, self.rpc, self.lock = name, rpc, threading.Lock()
+        self.headers = {}                  # height -> (time, chainwork, hashes per block, difficulty)
+        self.pool_of = {}                  # height -> pool name
+        self.tip, self.fine, self.coarse, self.now = None, [], [], (0, 0)
+        self.ready, self.pruned_at, self.error = False, None, ""
+
+    def header(self, h):
+        hit = self.headers.get(h)
+        if hit:
+            return hit
+        hd = self.rpc.call("getblockheader", self.rpc.call("getblockhash", h))
+        hit = (int(hd["time"]), int(hd["chainwork"], 16), bits_work(hd["bits"]), float(hd["difficulty"]))
+        self.headers[h] = hit
+        return hit
+
+    def _series(self, heights):
+        hs, ds, last = [], [], None
+        for a, b in zip(heights, heights[1:]):
+            ta, wa, _, _ = self.header(a)
+            tb, wb, work, diff = self.header(b)
+            if tb > ta and wb > wa:
+                hs.append((tb, (wb - wa) / (tb - ta)))
+            d = work if self.name == "blake2b" else diff   # BLAKE2b: the hashes a block takes, as mempool.guide shows it
+            if d != last:
+                ds.append((tb, d))
+                last = d
+        return hs, ds
+
+    def refresh_hashrate(self):
+        tip = int(self.rpc.call("getblockcount"))
+        step_f, step_c = 18, BTC_BLOCKS_PER_DAY                  # 3 hours for the month, a day for the year
+        grid = lambda step, n: sorted({max(1, (tip // step - i) * step) for i in range(n, -1, -1)} | {tip})
+        fine, coarse = self._series(grid(step_f, 30 * 8)), self._series(grid(step_c, 366))
+        a, b = self.header(max(1, tip - BTC_BLOCKS_PER_DAY)), self.header(tip)
+        rate = (b[1] - a[1]) / (b[0] - a[0]) if b[0] > a[0] else 0
+        with self.lock:
+            self.tip, self.fine, self.coarse = tip, fine, coarse
+            self.now = (rate, b[2] if self.name == "blake2b" else b[3])
+            self.ready = True
+        # forget what is out of reach, so the cache stays small
+        for h in [h for h in self.headers if h < tip - 400 * BTC_BLOCKS_PER_DAY]:
+            del self.headers[h]
+
+    def classify(self, h):
+        block_hash = self.rpc.call("getblockhash", h)
+        txid = self.rpc.call("getblock", block_hash, 1)["tx"][0]
+        tx = self.rpc.call("getrawtransaction", txid, True, block_hash)
+        text = bytes.fromhex(tx["vin"][0].get("coinbase", "")).decode("latin-1")
+        addrs = []
+        for o in tx.get("vout", []):
+            sp = o.get("scriptPubKey", {})
+            addrs += [sp["address"]] if sp.get("address") else (sp.get("addresses") or [])
+        self.header(h)
+        return POOLS.find(text, addrs)
+
+    def refresh_pools(self):
+        tip = self.tip
+        for h in range(tip, max(1, tip - POOL_BLOCKS) - 1, -1):    # newest first, so the day and the week are ready early
+            if h in self.pool_of:
+                continue
+            try:
+                self.pool_of[h] = self.classify(h)
+            except Exception as exc:
+                if self.pruned_at is None:
+                    log(self.name + ": block " + str(h) + " cannot be read (" + str(exc) + "): the pool split covers the blocks from " + str(h + 1))
+                self.pruned_at = h
+                break
+        for h in [h for h in self.pool_of if h < tip - POOL_BLOCKS]:
+            del self.pool_of[h]
+
+    def hashrate(self, period):
+        with self.lock:
+            if not self.ready:
+                raise RuntimeError("no data yet")
+            (fine_h, fine_d), (coarse_h, coarse_d), (rate, diff) = self.fine, self.coarse, self.now
+        span = {"24h": DAY, "14d": 14 * DAY, "1m": 30 * DAY, "6m": 183 * DAY, "1y": YEAR}[period]
+        hs, ds = (fine_h, fine_d) if span <= 30 * DAY else (coarse_h, coarse_d)
+        cut = hs[-1][0] - span if hs else 0
+        keep = [x for x in hs if x[0] >= cut]
+        before = [x for x in ds if x[0] < cut][-1:]
+        return {"currentHashrate": rate, "currentDifficulty": diff,
+                "hashrates": [{"timestamp": t, "avgHashrate": v} for t, v in keep],
+                "difficulty": [{"time": t, "difficulty": d} for t, d in before + [x for x in ds if x[0] >= cut]]}
+
+    def pools(self, period):
+        with self.lock:
+            heights = list(self.pool_of.items())
+        if not heights:
+            raise RuntimeError("no data yet")
+        times = {h: self.headers[h][0] for h, _ in heights if h in self.headers}
+        newest = max(times.values()), min(times.values())
+        # the nearest period (not longer than asked for) that the blocks read so far reach back to
+        want = POOL_WINDOWS.get(period, POOL_WINDOWS["1m"])
+        fits = [(sec, name) for name, sec in POOL_WINDOWS.items() if sec <= want and newest[1] <= newest[0] - sec + 3600]
+        sec, name = max(fits) if fits else (min(POOL_WINDOWS.values()), "24h")
+        count = {}
+        for h, pool in heights:
+            if h in times and times[h] >= newest[0] - sec:
+                count[pool] = count.get(pool, 0) + 1
+        total = sum(count.values())
+        return {"window": name, "blockCount": total,
+                "pools": [{"name": n, "slug": re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-"), "blockCount": c}
+                          for n, c in sorted(count.items(), key=lambda x: -x[1])]}
+
+
+CHAINS = {}
+
+
+def chain_worker(stats):
+    first = True
+    while True:
+        try:
+            stats.refresh_hashrate()
+            stats.refresh_pools()
+            if first:
+                log(stats.name + " mining statistics ready (tip " + str(stats.tip) + ")")
+                first = False
+        except Exception as exc:
+            stats.error = str(exc)
+            log(stats.name + ": " + str(exc))
+        time.sleep(600)
+
+
+def start_chains():
+    configured = {n: v for n, v in CHAIN_NODES.items() if v[0]}
+    if not configured:
+        log("no Bitcoin node configured: Bitcoin mining statistics come from the page's stored numbers")
+        return
+    threading.Thread(target=POOLS.load, daemon=True).start()
+    for name, (host, port, user, password) in configured.items():
+        CHAINS[name] = ChainStats(name, BtcRpc(host, port, user, password))
+        threading.Thread(target=chain_worker, args=(CHAINS[name],), daemon=True).start()
+        log(name + " node: " + host + ":" + str(port))
+
+
+# ---------- mining statistics of the two Bitcoin chains, passed on (when no node is linked) ----------
 # mempool.guide sends two Access-Control-Allow-Origin headers, which a browser rejects, so the Find Mempool page
 # could not read its BLAKE2b statistics. Asked here instead (same site as the page), they arrive with one header.
 
@@ -374,6 +637,19 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(body)
                     return
+                if path.startswith("/api/v1/mining/node/"):
+                    # /api/v1/mining/node/<chain>/api/v1/mining/<hashrate|pools>/<period>
+                    chain, _, rest = path[len("/api/v1/mining/node/"):].partition("/")
+                    m = re.fullmatch(r"api/v1/mining/(hashrate|pools)/(24h|14d|1w|1m|3m|6m|1y)", rest)
+                    stats = CHAINS.get(chain)
+                    if not m or not stats:
+                        return self.send_error_json(404, "no node for this chain")
+                    kind, period = m.groups()
+                    if kind == "hashrate":
+                        if period == "1w":
+                            period = "14d"
+                        return self.send_json(stats.hashrate(period), 300)
+                    return self.send_json(stats.pools(period), 300)
                 if path == "/api/v1/mining/hashrate/1y":
                     return self.send_json(hashrate_1y(), 300)
                 if path == "/api/v1/mining/pools/1w":
@@ -392,6 +668,7 @@ class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
 if __name__ == "__main__":
     refresh_pages()
     threading.Thread(target=pages_worker, daemon=True).start()
+    start_chains()
     if NODE:
         threading.Thread(target=worker, daemon=True).start()
     else:

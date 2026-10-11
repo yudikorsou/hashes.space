@@ -3502,6 +3502,12 @@ window.__coins = COIN_LOGOS;
   // served from hashes.space, the two Bitcoin chains can also be asked through the hashes.space app, which passes the
   // statistics on with a single CORS header (mempool.guide sends two, so a browser refuses its answer)
   if (/(^|\.)hashes\.space$/.test(location.hostname)) for (const n of ['sha256', 'blake2b']) MINING_FALLBACK[n] = location.host + '/api/v1/mining/proxy/' + MINING_SITES[n];
+  // Served from hashes.space, the two Bitcoin chains are asked first of the hashes.space app itself, which works the global hashrate
+  // and the pool split out of the Bitcoin nodes on your Umbrel; mempool.space / mempool.guide are only the fallback when no node answers
+  var MINING_NODE = {};
+  if (/(^|\.)hashes\.space$/.test(location.hostname)) for (const n of ['sha256', 'blake2b']) MINING_NODE[n] = location.host + '/api/v1/mining/node/' + n;
+  const NODE_NAME = { sha256: 'your Bitcoin node', blake2b: 'your Bitcoin BLAKE2b node' };
+  const fromName = (net, site) => (miningBy[net]?.node ? NODE_NAME[net] : MINING_FROM[net] ?? site + '/mining');
   // sites without mempool.space's mining pages: "View more" opens the explorer itself
   var MINING_MORE = { dogecoin: 'https://doge.hashes.space/', monero: 'https://xmr.hashes.space/' };
   // a Monero block never says which pool mined it: the reward goes to a one-time address that names nobody.
@@ -3552,8 +3558,9 @@ window.__coins = COIN_LOGOS;
     try {
       const win = POOLS_WINDOW[net] ?? '1w';
       const from = async (host) => Promise.all([getJson(host, '/pools/' + win), getJson(host, '/hashrate/1y')]);
-      const [p, h] = await from(site).catch((e) => { if (!MINING_FALLBACK[net]) throw e; return from(MINING_FALLBACK[net]); });
-      miningBy[net] = { live: true, at: Date.now() / 1000, blockCount: p.blockCount, window: win,
+      const viaNodeAnswer = MINING_NODE[net] ? await from(MINING_NODE[net]).catch(() => null) : null, viaNode = !!viaNodeAnswer;
+      const [p, h] = viaNodeAnswer ?? await from(site).catch((e) => { if (!MINING_FALLBACK[net]) throw e; return from(MINING_FALLBACK[net]); });
+      miningBy[net] = { node: viaNode, live: true, at: Date.now() / 1000, blockCount: p.blockCount, window: viaNode ? (p.window ?? win) : win,
         pools: p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
         hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: (h.difficulty ?? []).map((x) => [x.time, x.difficulty]),
         hash: h.currentHashrate, diff: h.currentDifficulty };
@@ -3599,13 +3606,18 @@ window.__coins = COIN_LOGOS;
   async function loadRangeFor(net, rng) {
     const key = net + ':' + rng; if (rangeBusy[key]) return; rangeBusy[key] = true;
     const base = miningBy[net]; if (!base) { rangeBusy[key] = false; return; }
-    const own = !!MINING_MORE[net], hosts = [MINING_SITES[net], MINING_FALLBACK[net]].filter(Boolean);
+    const own = !!MINING_MORE[net], node = base.node ? MINING_NODE[net] : null, hosts = [MINING_SITES[net], MINING_FALLBACK[net]].filter(Boolean);
     const hrPath = '/hashrate/' + (own ? rng : MEMPOOL_HASH[rng]), plPath = '/pools/' + (own ? rng : MEMPOOL_POOLS[rng]);
     // the pools and the hashrate are asked for separately, each from the hosts in turn: one that fails leaves the other standing
-    const ask = async (path) => { for (const host of hosts) { try { return await getJson(host, path); } catch { /* the next host */ } } return null; };
+    // (your own node, when it answered the first time, is asked first and by the exact period; the mempool sites only when it does not)
+    let nodeP = false;
+    const ask = async (path, kind) => {
+      if (node && kind) { try { const r = await getJson(node, `/${kind}/${rng}`); if (kind === 'pools') nodeP = true; return r; } catch { /* the sites next */ } }
+      for (const host of hosts) { try { return await getJson(host, path); } catch { /* the next host */ } } return null;
+    };
     // mempool sites have no 14-day pool shares; their daily per-pool hashrate does cover it, so those are summed over the last 14 days
-    const daily = !own && rng === '14d' ? ask('/hashrate/pools/1m') : null;
-    const [p, h, dp] = await Promise.all([ask(plPath), ask(hrPath), daily]), sec = RANGE_INFO[rng].sec;
+    const daily = !own && !node && rng === '14d' ? ask('/hashrate/pools/1m') : null;
+    const [p, h, dp] = await Promise.all([ask(plPath, 'pools'), ask(hrPath, 'hashrate'), daily]), sec = RANGE_INFO[rng].sec;
     const fortnight = (list, month) => {
       if (!Array.isArray(list) || !list.length || !month || !Array.isArray(month.pools)) return null;
       const from = Math.max(...list.map((x) => x.timestamp)) - sec, w = {};
@@ -3620,7 +3632,7 @@ window.__coins = COIN_LOGOS;
     const pp = fort ?? p, summed = !!fort;
     const pools = pp && Array.isArray(pp.pools) && pp.pools.length ? pp.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })) : null;
     rangeBy[key] = { live: true, at: Date.now() / 1000, partial: !pools || !h, retry: Date.now() + 20000, derived: !h,
-      window: pools ? (own || summed ? rng : MEMPOOL_POOLS[rng]) : base.window, sampled: !!(pools && pp.sampled), summed,
+      window: pools ? (nodeP ? (pp.window ?? rng) : own || summed ? rng : MEMPOOL_POOLS[rng]) : base.window, sampled: !!(pools && pp.sampled), summed,
       blockCount: pools ? (pp.blockCount || pools.reduce((a, x) => a + x.blocks, 0)) : base.blockCount, pools: pools ?? base.pools,
       hashrates: hs, difficulty: ds, hash: (h && h.currentHashrate) || base.hash, diff: (h && h.currentDifficulty) || base.diff, avg: meanOf(hs) || base.hash };
     rangeBusy[key] = false;
@@ -3659,7 +3671,7 @@ window.__coins = COIN_LOGOS;
           : `Calculate how much hashrate you need to mine a block on ${network().chain}.`)
         : `Waiting for the difficulty of ${network().chain} from ${site ?? network().source}. Pick another proof-of-work network above, or try again in a moment.`;
       $('calc-source').textContent = m && m.live
-        ? `Difficulty live from ${MINING_FROM[netId] ?? site + '/mining'} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+        ? `Difficulty live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
         : m ? `Difficulty from a snapshot of ${site}/mining (${site} is not reachable from this page)` : '';
     }
     if (!m) return;
@@ -3686,7 +3698,7 @@ window.__coins = COIN_LOGOS;
     $('ms-hash').textContent = si(rv.avg || m.hash, 1) + 'H/s';   // the average over the chosen period
     $('ms-hash-sub').textContent = hashrateThen(rv, info, range);
     $('ms-source').textContent = m.live
-      ? `Live from ${MINING_FROM[netId] ?? site + '/mining'} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
+      ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
     if (!sec.hidden) { drawPie(rv); drawChart(rv, range); }
     renderCalc(); fillPools(); renderPoolCalc();
