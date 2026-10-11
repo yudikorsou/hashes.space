@@ -329,6 +329,7 @@ POOL_BLOCKS = int(os.environ.get("POOL_BLOCKS", "4320"))     # how far back the 
 POOLS_URL = os.environ.get("POOLS_URL", "https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json")
 BTC_BLOCKS_PER_DAY = 144
 POOL_WINDOWS = {"24h": DAY, "1w": WEEK, "14d": 14 * DAY, "1m": 30 * DAY}   # the periods the pool split is cut to
+EPOCH = 2016                 # one difficulty period: the "14 days" are the last 2016 blocks, the stretch the difficulty is set over
 # tags to know when the public list cannot be fetched (and for chains it knows nothing about)
 FALLBACK_POOLS = [
     ("Foundry USA", ["Foundry USA Pool"]), ("AntPool", ["AntPool"]), ("F2Pool", ["F2Pool", "\U0001F41F"]), ("ViaBTC", ["ViaBTC"]),
@@ -504,6 +505,8 @@ class ChainStats:
         span = {"24h": DAY, "14d": 14 * DAY, "1m": 30 * DAY, "6m": 183 * DAY, "1y": YEAR}[period]
         hs, ds = (fine_h, fine_d) if span <= 30 * DAY else (coarse_h, coarse_d)
         cut = hs[-1][0] - span if hs else 0
+        if period == "14d":                # the last difficulty period (2016 blocks), not a fixed 14 days
+            cut = self.header(max(1, self.tip - EPOCH))[0]
         keep = [x for x in hs if x[0] >= cut]
         before = [x for x in ds if x[0] < cut][-1:]
         return {"currentHashrate": rate, "currentDifficulty": diff,
@@ -516,6 +519,16 @@ class ChainStats:
         if not heights:
             raise RuntimeError("no data yet")
         times = {h: self.headers[h][0] for h, _ in heights if h in self.headers}
+        if period == "14d":                # the last difficulty period: the last 2016 blocks, as far as they have been read
+            top = max(h for h, _ in heights)
+            if min(h for h, _ in heights) <= top - EPOCH + 1:
+                count = {}
+                for h, pool in heights:
+                    if h > top - EPOCH:
+                        count[pool] = count.get(pool, 0) + 1
+                return {"window": "14d", "blockCount": sum(count.values()),
+                        "pools": [{"name": n, "slug": re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-"), "blockCount": c}
+                                  for n, c in sorted(count.items(), key=lambda x: -x[1])]}
         newest = max(times.values()), min(times.values())
         # the nearest period (not longer than asked for) that the blocks read so far reach back to
         want = POOL_WINDOWS.get(period, POOL_WINDOWS["1m"])
