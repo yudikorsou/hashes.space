@@ -54,10 +54,16 @@
   .glows > section { padding: 14px 16px; border-radius: 14px; background: rgba(10, 12, 24, 0.45); border: 1px solid var(--line); display: grid; gap: 10px; }
   .glows h4 { margin: 0; font: 600 15px/1.2 var(--sans); color: var(--text); }
   .glows h4 small { font: 500 12px/1 var(--mono); color: var(--muted-2, var(--muted)); margin-left: 6px; }
-  .glow-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .glow-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 18px; align-items: center; padding: 6px 0; }
+  @media (max-width: 560px) { .glow-row { grid-template-columns: minmax(0, 1fr); justify-items: center; text-align: center; } }
+  .mini { --s: 125px; --d: 16px; display: grid; justify-items: center; }
+  .mini .below { display: grid; justify-items: center; gap: 6px; white-space: nowrap; max-width: none; overflow-wrap: normal; }
+  .mini .datum-badge { white-space: nowrap; }
+  .mini .block-wrap { width: auto; min-width: calc(var(--s) + var(--d)); }
+  .mini .block-wrap { cursor: default; }
+  .mini .cube { animation: datum-glow 4s ease-in-out infinite; --glow: 255,77,77; }
+  .mini.compatible .cube { --glow: 247,147,26; } .mini.verified .cube { --glow: 60,226,107; }
   .glow-row p { font-size: 13.5px !important; line-height: 1.6 !important; }
-  .gsw { width: 18px; height: 18px; margin-top: 2px; border-radius: 5px; background: var(--c); box-shadow: 0 0 10px 2px var(--c); }
-  .gsw.red { --c: rgba(255, 82, 70, .85); } .gsw.green { --c: rgba(52, 232, 120, .85); } .gsw.orange { --c: rgba(255, 150, 40, .9); }
   .glow-row b.red { color: #ff7a6e; } .glow-row b.green { color: var(--matrix); } .glow-row b.orange { color: var(--orange); }
 <!--HTML-->
 <section class="learn" id="learn" aria-labelledby="learn-title">
@@ -135,22 +141,22 @@
     <p>The glow around a mined block tells you <b>who built its block template</b>, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay. Every proof-of-work chain has its own rules:</p>
     <div class="glows">
     <section><h4>Bitcoin<small>SHA-256 · mempool.space</small></h4>
-      <div class="glow-row"><span class="gsw orange" aria-hidden="true"></span><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>OCEAN</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
-      <div class="glow-row"><span class="gsw green" aria-hidden="true"></span><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
-      <div class="glow-row"><span class="gsw red" aria-hidden="true"></span><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
+      <div class="glow-row"><div class="mini" data-net="sha256" data-kind="compatible" data-pool="OCEAN" aria-hidden="true"></div><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>OCEAN</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
+      <div class="glow-row"><div class="mini" data-net="sha256" data-kind="verified" data-pool="Solo miner" aria-hidden="true"></div><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
+      <div class="glow-row"><div class="mini" data-net="sha256" data-kind="central" data-pool="Any other pool" aria-hidden="true"></div><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
     </section>
     <section><h4>Bitcoin BLAKE2b<small>BLAKE2b · mempool.guide</small></h4>
-      <div class="glow-row"><span class="gsw orange" aria-hidden="true"></span><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>CONVOY</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
-      <div class="glow-row"><span class="gsw green" aria-hidden="true"></span><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
-      <div class="glow-row"><span class="gsw red" aria-hidden="true"></span><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
+      <div class="glow-row"><div class="mini" data-net="blake2b" data-kind="compatible" data-pool="CONVOY" aria-hidden="true"></div><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>CONVOY</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
+      <div class="glow-row"><div class="mini" data-net="blake2b" data-kind="verified" data-pool="Solo miner" aria-hidden="true"></div><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
+      <div class="glow-row"><div class="mini" data-net="blake2b" data-kind="central" data-pool="Any other pool" aria-hidden="true"></div><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
     </section>
     <section><h4>Monero<small>RandomX · our own Monero node</small></h4>
       <p>A Monero block never names its pool, so the glow comes from how the block reward was paid.</p>
-      <div class="glow-row"><span class="gsw green" aria-hidden="true"></span><p><b class="green">Decentralised (green glow)</b> The block was mined on <b>P2Pool</b>. P2Pool is a decentralised pool: every miner runs their own Monero node and builds their own block, and the reward is paid straight to all the miners inside the block itself.</p></div>
-      <div class="glow-row"><span class="gsw red" aria-hidden="true"></span><p><b class="red">Centralised (red glow)</b> Every other Monero block, mined on a <b>regular mining pool</b>. The reward is paid to a single address, the pool, which builds the block template and pays its miners out afterwards.</p></div>
+      <div class="glow-row"><div class="mini" data-net="monero" data-kind="verified" data-pool="P2Pool" aria-hidden="true"></div><p><b class="green">Decentralised (green glow)</b> The block was mined on <b>P2Pool</b>. P2Pool is a decentralised pool: every miner runs their own Monero node and builds their own block, and the reward is paid straight to all the miners inside the block itself.</p></div>
+      <div class="glow-row"><div class="mini" data-net="monero" data-kind="central" data-pool="" aria-hidden="true"></div><p><b class="red">Centralised (red glow)</b> Every other Monero block, mined on a <b>regular mining pool</b>. The reward is paid to a single address, the pool, which builds the block template and pays its miners out afterwards.</p></div>
     </section>
     <section><h4>Dogecoin<small>Scrypt · our own Dogecoin node</small></h4>
-      <div class="glow-row"><span class="gsw red" aria-hidden="true"></span><p><b class="red">Centralised (red glow)</b> Every mined Dogecoin block gets the red glow, whichever pool tag it carries, because Dogecoin pools build the block templates for their miners. No Dogecoin block gets a green or orange glow.</p></div>
+      <div class="glow-row"><div class="mini" data-net="dogecoin" data-kind="central" data-pool="Any pool" aria-hidden="true"></div><p><b class="red">Centralised (red glow)</b> Every mined Dogecoin block gets the red glow, whichever pool tag it carries, because Dogecoin pools build the block templates for their miners. No Dogecoin block gets a green or orange glow.</p></div>
     </section>
     </div>
   </div>
@@ -168,6 +174,7 @@
     next.textContent = cur < tabs.length - 1 ? `${tabs[cur + 1].textContent.replace(/^\d/, '')} →` : 'Next →';
     const bar = tabs[cur].parentElement, t = tabs[cur]; // keep the picked tab in view in the row (phones), without scrolling the page
     if (t.offsetLeft < bar.scrollLeft || t.offsetLeft + t.offsetWidth > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = t.offsetLeft - 16;
+    if (cur === 6 && window.learnBuildMinis) window.learnBuildMinis();
     if (focus) tabs[cur].focus();
   }
   tabs.forEach((t, k) => t.addEventListener('click', () => show(k)));
@@ -178,5 +185,28 @@
   prev.addEventListener('click', () => show(cur - 1)); next.addEventListener('click', () => show(cur + 1));
   window.learnShow = show;
   show(0);
+})();
+
+(() => {
+  // miniature versions of the blocks on the main page, same faces, coin, plate and badge
+  const DATA = {
+    sha256:   { unit: 'sat/vB', fee: 4,  range: '2 - 180', size: '1.62 MB', tx: '2,411', h: '948,213' },
+    blake2b:  { unit: 'sat/vB', fee: 3,  range: '1 - 96',  size: '1.31 MB', tx: '1,874', h: '970,839' },
+    monero:   { unit: 'nXMR/B', fee: 20, range: '20 - 320', size: '86 kB',  tx: '38',    h: '3,512,904' },
+    dogecoin: { unit: 'koinu/B', fee: 1, range: '1 - 12',  size: '212 kB', tx: '641',   h: '6,402,177' },
+  };
+  const BADGE = { verified: '<span class="datum-badge verified">✓ Decentralised</span>', compatible: '<span class="datum-badge">◆ DATUM Compatible</span>', central: '<span class="datum-badge central">Centralised</span>' };
+  const CLS = { verified: ' datum-verified', compatible: ' datum', central: ' datum-central' };
+  function build() {
+    document.querySelectorAll('#learn .mini').forEach((el) => {
+      const d = DATA[el.dataset.net], k = el.dataset.kind, coin = (window.__coins || {})[el.dataset.net];
+      el.classList.add(k);
+      el.innerHTML = `<div class="block-wrap${CLS[k]}"><div class="above height"><b>${d.h}</b></div>
+        <div class="cube"><div class="face front" style="background:repeating-linear-gradient(#2d3348, #2d3348 30%, #9339f4 30%, #105fb0 100%)">${coin ? `<img class="cube-coin" src="${coin}" alt="">` : ''}<div class="txt">
+        <span class="fee">~${d.fee} ${d.unit}</span><span class="range">${d.range} ${d.unit}</span><span class="size">${d.size}</span><span class="txs">${d.tx} transactions</span><span class="time">5 minutes ago</span></div></div><div class="face top"></div><div class="face side"></div></div>
+        <div class="below">${el.dataset.pool ? el.dataset.pool : ''}${BADGE[k]}</div></div>`;
+    });
+  }
+  build(); window.learnBuildMinis = build;
 })();
 </script>
