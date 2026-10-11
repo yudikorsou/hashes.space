@@ -46,14 +46,17 @@
   .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
   .mcard .kpis dt { font-size: 17px; }
   /* the way to the calculators: a pill in the section's bottom-left corner, level with "View more »" (below it on narrower cards) */
-  .calc-link { position: absolute; bottom: 14px; left: 18px; z-index: 2; display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 500 12.5px/1 var(--sans); text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s; }
-  .calc-link svg { width: 11px; height: 11px; flex: none; color: var(--muted); transition: transform .15s, color .15s; }
-  .calc-link:hover { border-color: var(--muted); background: rgba(22, 26, 48, .8); }
-  .calc-link:hover svg { color: var(--text); transform: translateX(2px); }
-  .calc-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .mcard .calc-link { position: absolute; bottom: 14px; left: 18px; z-index: 2; display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 500 12.5px/1 var(--sans); text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s; }
+  .mcard .calc-link svg { width: 11px; height: 11px; flex: none; color: var(--muted); transition: transform .15s, color .15s; }
+  .mcard .calc-link:hover { border-color: var(--muted); background: rgba(22, 26, 48, .8); }
+  .mcard .calc-link:hover svg { color: var(--text); transform: translateX(2px); }
+  .mcard .calc-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   /* "Return to Mempool", under the headline of the calculator page: the same pill, its arrow pointing back */
-  .calchead .calc-link { position: static; display: flex; width: fit-content; margin: 16px auto 0; }
-  .calchead .calc-link:hover svg { transform: translateX(-2px); }
+  .back-link { position: static; display: flex; width: fit-content; margin: 16px auto 0; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 500 12.5px/1 var(--sans); text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s; }
+  .back-link svg { width: 11px; height: 11px; flex: none; color: var(--muted); transition: transform .15s, color .15s; }
+  .back-link:hover { border-color: var(--muted); background: rgba(22, 26, 48, .8); }
+  .back-link:hover svg { color: var(--text); transform: translateX(-2px); }
+  .back-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   @media (max-width: 1239px) { .mcard .calc-link { position: static; order: 99; align-self: flex-start; } }   /* the corner is only free of "View more »" when the card is wide */
   .mcard .hrsub { margin: 4px 0 0; text-align: center; color: var(--muted); font: 400 12px/1.35 var(--sans); }
   .mcard .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
@@ -131,7 +134,7 @@
   <header class="calchead">
     <h1 id="calcpage-title">Calculate hashrate</h1>
     <p id="calc-context">Calculate how much hashrate you need to mine a block or the amount of coins you can mine in a DATUM mining pool with Tides payouts.</p>
-    <a class="calc-link" id="back-link" href="#dashboard"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 6h-7M5.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Return to Mempool</a>
+    <a class="back-link" id="back-link" href="#dashboard"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 6h-7M5.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Return to Mempool</a>
   </header>
   <article class="mcard m-calc" aria-labelledby="calc-title">
     <h2 class="mtitle" id="calc-title">Solomining calculator</h2>
