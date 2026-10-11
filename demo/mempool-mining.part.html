@@ -654,8 +654,38 @@
   function tip(e, html) { let t = $('mtip'); if (!t) { t = document.createElement('div'); t.id = 'mtip'; t.className = 'mtip'; document.body.appendChild(t); } if (!html) { t.hidden = true; return; } t.hidden = false; t.innerHTML = html; t.style.left = Math.min(innerWidth - 250, e.clientX + 12) + 'px'; t.style.top = e.clientY + 12 + 'px'; }
   // the pools as a half ring: it opens at the left, runs over the top and closes at the right,
   // so the chain's week reads as one sweep from the pool with the most hashrate to the one with the least
-  function drawPie(m) {
+  // Bitcoin: the pools as ranked bars, the biggest on top: the easiest way to read how much hashrate each pool brings
+  function drawPoolBars(m) {
     const svg = $('ms-pie'); svg.replaceChildren();
+    const total = m.pools.reduce((a, p) => a + p.blocks, 0) || 1, basis = m.avg || m.hash;
+    const hr = (n) => (basis ? `${si((n / total) * basis, 1)}H/s` : null);
+    const sorted = m.pools.slice().sort((p, q) => q.blocks - p.blocks), TOP = 15;
+    const rows = sorted.slice(0, TOP).map((p) => ({ name: p.name, blocks: p.blocks, p }));
+    const rest = sorted.slice(TOP); if (rest.length) rows.push({ name: `${rest.length} smaller pool${rest.length > 1 ? 's' : ''}`, blocks: rest.reduce((a, p) => a + p.blocks, 0), other: true });
+    const ROW = 30, TOPY = 54, X0 = 168, X1 = 440, W = 600, H = TOPY + rows.length * ROW + 6, max = rows[0].blocks / total || 1;
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const top3 = rows.slice(0, 3).reduce((a, r) => a + r.blocks, 0) / total;
+    svg.appendChild(svgEl('text', { x: W / 2, y: 20, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 15, 'font-weight': 600 }, `The 3 biggest pools bring ${(top3 * 100).toFixed(0)}% of the hashrate`));
+    svg.appendChild(svgEl('text', { x: W / 2, y: 38, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 12 }, basis ? `${si(basis, 1)}H/s in total · ${fmt(total)} blocks` : `${fmt(total)} blocks`));
+    rows.forEach((r, i) => {
+      const y = TOPY + i * ROW, share = r.blocks / total, w = Math.max(2, ((X1 - X0) * share) / max);
+      const g = svgEl('g', { class: 'slice', tabindex: '0', role: 'img', 'aria-label': `${r.name}: ${hr(r.blocks) ? 'about ' + hr(r.blocks) + ', ' : ''}${(share * 100).toFixed(1)}% of the hashrate, ${r.blocks} blocks` });
+      g.appendChild(svgEl('rect', { x: 0, y: y - 2, width: W, height: ROW - 2, rx: 8, fill: 'transparent' }));
+      g.appendChild(svgEl('text', { x: 6, y: y + 15, fill: 'var(--muted)', 'font-size': 11.5, 'font-variant-numeric': 'tabular-nums' }, r.other ? '' : String(i + 1)));
+      g.appendChild(svgEl('text', { x: 26, y: y + 15, fill: r.other ? 'var(--muted)' : 'var(--text)', 'font-size': 14, 'font-weight': r.other ? 400 : 600 }, r.name.length > 17 ? r.name.slice(0, 16) + '…' : r.name));
+      g.appendChild(svgEl('rect', { x: X0, y: y + 3, width: X1 - X0, height: 16, rx: 8, fill: 'rgba(120, 130, 210, .12)' }));
+      g.appendChild(svgEl('rect', { x: X0, y: y + 3, width: w, height: 16, rx: 8, fill: r.other ? 'rgba(160, 170, 230, .45)' : i === 0 ? '#ffc46b' : '#f7931a', opacity: r.other ? 1 : Math.max(0.55, 1 - i * 0.04) }));
+      g.appendChild(svgEl('text', { x: 520, y: y + 16, 'text-anchor': 'end', fill: 'var(--text)', 'font-size': 13, 'font-family': 'var(--mono)', 'font-variant-numeric': 'tabular-nums' }, hr(r.blocks) ?? `${fmt(r.blocks)} blocks`));
+      g.appendChild(svgEl('text', { x: W - 2, y: y + 16, 'text-anchor': 'end', fill: 'var(--muted)', 'font-size': 13, 'font-family': 'var(--mono)', 'font-variant-numeric': 'tabular-nums' }, `${(share * 100).toFixed(share >= 0.1 ? 1 : 2)}%`));
+      const miners = r.p ? r.p.miners.slice(0, 5) : [];
+      g.addEventListener('mousemove', (e) => tip(e, `<b>${esc(r.name)}</b><br>${hr(r.blocks) ? '≈ ' + hr(r.blocks) + ' · ' : ''}${(share * 100).toFixed(1)}% of the hashrate<br>${fmt(r.blocks)} blocks${miners.length ? '<br>' + miners.map(([n, b]) => `${esc(n)} ${hr(b) ?? b + ' blocks'}`).join('<br>') : ''}`));
+      g.addEventListener('mouseleave', () => tip(null, null));
+      svg.appendChild(g);
+    });
+  }
+  function drawPie(m) {
+    if (netId === 'sha256') return drawPoolBars(m);
+    const svg = $('ms-pie'); svg.replaceChildren(); svg.setAttribute('viewBox', '0 0 600 344');
     const cx = 300, cy = 306, R = 150, R0 = 72, total = m.pools.reduce((a, p) => a + p.blocks, 0) || 1;
     let a = -Math.PI; const labels = [];
     // a pool's hashrate is not on the chain: it is its share of the blocks found in the window times the chain's hashrate
