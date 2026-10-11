@@ -71,6 +71,7 @@
   .lv-blocks > div { display: grid; gap: 14px; justify-items: center; width: 330px; text-align: center; font: 500 23px/1.35 var(--sans); color: var(--muted); }
   .lv-blocks .mini .above { min-height: 0; }
   .lv-blocks > div b { font-weight: 600; } .lv-blocks .g b { color: var(--matrix); } .lv-blocks .o b { color: var(--orange); } .lv-blocks .r b { color: #ff7a6e; }
+  .lv-blocks.sm { gap: 34px; } .lv-blocks.sm .mini { zoom: .72; } .lv-blocks.sm > div { width: 300px; gap: 6px; font-size: 20px; }
   .lv-chain { font: 600 22px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--link); }
   /* chrome */
   .lv-poster { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; padding: 20px; background: radial-gradient(ellipse 80% 75% at 50% 40%, rgba(70, 78, 140, .32), rgba(0, 0, 0, 0) 80%), var(--bg); }
@@ -200,12 +201,19 @@
       'Every mined Dogecoin block gets the red glow and Centralised, because Dogecoin pools build the block templates for their miners.',
     ], stack: true, html: `<div style="display:grid;gap:34px;justify-items:center"><div class="lv-note lv-el" data-r="0-0" style="font-size:30px">The <b>glow</b> shows <b>who built the block template</b>.<br>The <b>colour</b> of the block shows the fees.</div>
       <div class="lv-row lv-el" data-r="0-0" style="gap:40px"><div class="lv-chip g">green<small>Decentralised</small></div><div class="lv-chip o">orange<small>DATUM Compatible</small></div><div class="lv-chip r">red<small>Centralised</small></div></div></div>
-      <div style="display:grid;gap:22px;justify-items:center"><div class="lv-chain lv-el" data-r="1-3">Bitcoin · Bitcoin BLAKE2b</div>
-      <div class="lv-blocks lv-el" data-r="1-3">
+      <div style="display:grid;gap:12px;justify-items:center"><div class="lv-chain lv-el" data-r="1-3">Bitcoin</div>
+      <div class="lv-blocks sm lv-el" data-r="1-3">
         <div class="g lv-el" data-r="1-9">${mini('sha256', 'verified', 'Solo miner')}<span><b>Decentralised</b><br>DATUM verified solominer</span></div>
-        <div class="o lv-el" data-r="2-9">${mini('sha256', 'compatible', 'OCEAN')}<span><b>DATUM Compatible</b><br>OCEAN · CONVOY</span></div>
+        <div class="o lv-el" data-r="2-9">${mini('sha256', 'compatible', 'OCEAN')}<span><b>DATUM Compatible</b><br>OCEAN</span></div>
         <div class="r lv-el" data-r="3-9">${mini('sha256', 'central', 'Any other pool')}<span><b>Centralised</b><br>the pool builds the template</span></div>
-      </div></div>
+      </div>
+      <div class="lv-chain lv-el" data-r="1-3">Bitcoin BLAKE2b</div>
+      <div class="lv-blocks sm lv-el" data-r="1-3">
+        <div class="g lv-el" data-r="1-9">${mini('blake2b', 'verified', 'Solo miner')}<span><b>Decentralised</b><br>DATUM verified solominer</span></div>
+        <div class="o lv-el" data-r="2-9">${mini('blake2b', 'compatible', 'CONVOY')}<span><b>DATUM Compatible</b><br>CONVOY</span></div>
+        <div class="r lv-el" data-r="3-9">${mini('blake2b', 'central', 'Any other pool')}<span><b>Centralised</b><br>the pool builds the template</span></div>
+      </div>
+      </div>
       <div style="display:grid;gap:22px;justify-items:center"><div class="lv-chain lv-el" data-r="4-4">Monero</div>
       <div class="lv-blocks lv-el" data-r="4-4">
         <div class="g">${mini('monero', 'verified', 'P2Pool')}<span><b>Decentralised</b><br>P2Pool pays every miner in the block</span></div>
