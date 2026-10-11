@@ -354,6 +354,7 @@
   // a period that only came in part (a source still computing it) is asked for again every so often
   setInterval(() => { const got = rangeBy[netId + ':' + range]; if (got && got.partial && Date.now() > got.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('#mrange button'); if (b) setRange(b.dataset.range); });
+  setInterval(() => { if (typeof view !== 'undefined' && view === 'globe') renderMiningStats(); }, 1500);
   const onCalcPage = () => typeof view !== 'undefined' && (view === 'calc' || view === 'poolcalc');
   // the charts belong to the mempool page; the Learn page carries no chain of its own
   const onMempoolPage = () => typeof view === 'undefined' || view === 'dashboard';
@@ -387,9 +388,12 @@
         : m ? `Difficulty from a snapshot of ${site}/mining (${site} is not reachable from this page)` : '';
     }
     $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
+    { const g = typeof view !== 'undefined' && view === 'globe', gp = $('globe-page'); // Bitcoin hashrate by country
+      if (gp) { gp.hidden = !g; if (window.globeRun) window.globeRun(g); if (g && window.globeSet) window.globeSet((miningBy.sha256 || {}).hash || 0); } }
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
     $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
+    if (netId === 'sha256') { $('ms-more-hr').href = '#globe'; $('ms-more-hr').removeAttribute('target'); } else $('ms-more-hr').target = '_blank';
     $('ms-more-pools').href = MINING_MORE[netId] ?? `https://${site}/mining/pools`;
     setUnits('calc-unit'); setUnits('pcalc-unit');
     // the two charts follow the period chosen above; the calculators and pool pages keep working from the base data
