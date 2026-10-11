@@ -3373,6 +3373,9 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // the hashes.space app (mempool.hashes.space) computes them too and answers while the explorer has not been updated yet
   var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space', monero: 'xmr.hashes.space' };
   var MINING_FALLBACK = { monero: 'mempool.hashes.space' };
+  // served from hashes.space, the two Bitcoin chains can also be asked through the hashes.space app, which passes the
+  // statistics on with a single CORS header (mempool.guide sends two, so a browser refuses its answer)
+  if (/(^|\.)hashes\.space$/.test(location.hostname)) for (const n of ['sha256', 'blake2b']) MINING_FALLBACK[n] = location.host + '/api/v1/mining/proxy/' + MINING_SITES[n];
   // sites without mempool.space's mining pages: "View more" opens the explorer itself
   var MINING_MORE = { dogecoin: 'https://doge.hashes.space/', monero: 'https://xmr.hashes.space/' };
   // a Monero block never says which pool mined it: the reward goes to a one-time address that names nobody.
