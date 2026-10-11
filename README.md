@@ -403,6 +403,7 @@ Monero blocks come from an [Onion Monero Blockchain Explorer](https://github.com
 4. **Point hashes.space at it.**
    - Backend: `networks.json` reads Monero from `https://xmr.hashes.space/api` and uses xmrchain.net (`fallbackApiUrl`) only while yours can't be reached, switching back as soon as it answers. Or set `MONERO_EXPLORER_URL=https://xmr.hashes.space` (or `http://umbrel.local:4081` on your own network). Monero blocks, mempool and block links then come from your explorer instead of xmrchain.net.
    - Find Mempool page and demos: `XMR_EXPLORERS` in `demo/demo.template.html` lists the explorers tried in order, `https://xmr.hashes.space` first and xmrchain.net as the fallback. Change the first address if you publish it elsewhere.
+   - The page's **Global hashrate** and **Mining pools** sections for Monero also come from the Monero Explorer: since 0.18.5.1-4 a small `stats` service stands in front of the explorer, passes every request on and answers `/api/v1/mining/hashrate/1y` and `/api/v1/mining/pools/1w` from your Monero node (the payout split, as Monero blocks name no pool). Until the app is updated the page falls back to the same statistics from the hashes.space app (`mempool.hashes.space`). Dogecoin's come from the Dogecoin Explorer the same way.
 
 ## Your own Dogecoin block explorer on Umbrel
 

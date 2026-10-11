@@ -3357,8 +3357,10 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // ---------- Find Mempool: mining pools + hashrate & difficulty (as on <site>/mining) for the Bitcoin networks ----------
   // per network: the mempool site it comes from; Monero (xmrchain.net) has no pool statistics
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, computing the same statistics from your Dogecoin Core node
-  // Monero: the hashes.space app on your Umbrel, computing the same statistics from your Monero node
-  var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space', monero: 'mempool.hashes.space' };
+  // Monero: the Monero Explorer app on your Umbrel (xmr.hashes.space), computing the same statistics from your Monero node;
+  // the hashes.space app (mempool.hashes.space) computes them too and answers while the explorer has not been updated yet
+  var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space', monero: 'xmr.hashes.space' };
+  var MINING_FALLBACK = { monero: 'mempool.hashes.space' };
   // sites without mempool.space's mining pages: "View more" opens the explorer itself
   var MINING_MORE = { dogecoin: 'https://doge.hashes.space/', monero: 'https://xmr.hashes.space/' };
   // a Monero block never says which pool mined it: the reward goes to a one-time address that names nobody.
@@ -3405,7 +3407,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     const site = MINING_SITES[net];
     try {
       const win = POOLS_WINDOW[net] ?? '1w';
-      const [p, h] = await Promise.all([getJson(site, '/pools/' + win), getJson(site, '/hashrate/1y')]);
+      const from = async (host) => Promise.all([getJson(host, '/pools/' + win), getJson(host, '/hashrate/1y')]);
+      const [p, h] = await from(site).catch((e) => { if (!MINING_FALLBACK[net]) throw e; return from(MINING_FALLBACK[net]); });
       miningBy[net] = { live: true, at: Date.now() / 1000, blockCount: p.blockCount, window: win,
         pools: p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
         hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: h.difficulty.map((x) => [x.time, x.difficulty]),

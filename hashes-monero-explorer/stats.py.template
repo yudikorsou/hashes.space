@@ -1,0 +1,328 @@
+#!/usr/bin/env python3
+"""Monero Explorer front: the explorer itself, plus mining statistics from your own node.
+
+The Onion Monero Blockchain Explorer (xmrblocks) answers every request it knows (its pages and
+its /api/... JSON). This small server stands in front of it on the app's port, hands everything
+on to it unchanged, and adds the two endpoints the hashes.space Find Mempool page reads for its
+"Global hashrate" and "Mining pools" sections, in mempool.space's shape:
+
+  /api/v1/mining/hashrate/1y   hashrate and difficulty over the past year
+  /api/v1/mining/pools/1w      how last week's blocks were paid out
+
+so the page gets those graphs from the same Monero Explorer that streams the blocks
+(xmr.hashes.space), computed from the Monero Node app on this Umbrel.
+
+A note on Monero and pool names. On Bitcoin every block says who mined it: the pool writes its
+name into the coinbase. Monero blocks say nothing of the sort - the reward goes to a one-time
+address that reveals nothing - so no node can tell you "F2Pool mined this block". What the chain
+does show is how a block's reward was split. P2Pool, the decentralised pool, pays every one of its
+miners directly in the block's own coinbase, so its blocks carry many payouts; a block from a
+custodial pool (or from a solo miner) carries a single payout. That split is what is shown.
+"""
+
+import hashlib
+import http.client
+import http.server
+import json
+import os
+import re
+import secrets
+import socketserver
+import threading
+import time
+
+PORT = int(os.environ.get("PORT", "3000"))
+EXPLORER_HOST = os.environ.get("EXPLORER_HOST", "explorer")
+EXPLORER_PORT = int(os.environ.get("EXPLORER_PORT", "8081"))
+
+NODE = os.environ.get("MONERO_HOST", "")
+NODE_PORT = os.environ.get("MONERO_RPC_PORT", "18081")
+LOGIN = os.environ.get("MONERO_RPC_AUTH", "")  # user:password, from the Monero Node app
+
+BLOCK_SECONDS = 120          # Monero's target block time: hashrate = difficulty / 120
+DAY = 86400
+WEEK = 7 * DAY
+YEAR = 365 * DAY
+BLOCKS_PER_DAY = DAY // BLOCK_SECONDS
+
+
+def log(*a):
+    print("[stats]", *a, flush=True)
+
+
+# ---------- the Monero node ----------
+
+class Node:
+    """Talks to monerod over HTTP digest auth.
+
+    monerod ties its digest nonce to the TCP connection, so a fresh connection per request is
+    answered with 401 forever. This keeps one connection open, does the challenge once on it and
+    reuses it; if the node closes it, the next call reconnects and challenges again."""
+
+    def __init__(self, host, port, login):
+        self.host, self.port = host, int(port)
+        self.user, _, self.password = login.partition(":")
+        self.conn, self.chal, self.nc = None, None, 0
+        self.lock = threading.Lock()
+
+    @staticmethod
+    def _parse(header):
+        # monerod offers MD5 and MD5-sess in one header; the first (MD5) is the one we answer
+        first = header.split(", Digest")[0]
+        return dict((m[0].lower(), m[1].strip('"')) for m in re.findall(r'(\w+)=("[^"]*"|[^,]*)', first))
+
+    def _authorization(self, path):
+        c = self.chal
+        self.nc += 1
+        nc, cnonce = "{:08x}".format(self.nc), secrets.token_hex(8)
+        md5 = lambda text: hashlib.md5(text.encode()).hexdigest()
+        ha1 = md5(self.user + ":" + c.get("realm", "") + ":" + self.password)
+        ha2 = md5("POST:" + path)
+        resp = md5(ha1 + ":" + c.get("nonce", "") + ":" + nc + ":" + cnonce + ":auth:" + ha2)
+        return ('Digest username="' + self.user + '", realm="' + c.get("realm", "") + '", nonce="'
+                + c.get("nonce", "") + '", uri="' + path + '", algorithm=MD5, qop=auth, nc=' + nc
+                + ', cnonce="' + cnonce + '", response="' + resp + '"')
+
+    def _send(self, path, body, timeout):
+        headers = {"Content-Type": "application/json", "Connection": "keep-alive"}
+        if self.chal and self.password:
+            headers["Authorization"] = self._authorization(path)
+        self.conn.timeout = timeout
+        self.conn.request("POST", path, body=body, headers=headers)
+        r = self.conn.getresponse()
+        data = r.read()
+        return r.status, r.getheader("WWW-Authenticate") or r.getheader("WWW-authenticate") or "", data
+
+    def post(self, path, body, timeout):
+        with self.lock:
+            for attempt in (1, 2, 3):
+                try:
+                    if self.conn is None:
+                        self.conn = http.client.HTTPConnection(self.host, self.port, timeout=timeout)
+                        self.chal, self.nc = None, 0
+                    status, challenge, data = self._send(path, body, timeout)
+                except (http.client.HTTPException, OSError):
+                    self._drop()
+                    if attempt == 3:
+                        raise
+                    continue
+                if status == 401 and challenge.lower().startswith("digest") and self.password:
+                    self.chal, self.nc = self._parse(challenge), 0
+                    continue
+                if status != 200:
+                    raise RuntimeError("the Monero node answered HTTP " + str(status))
+                return json.loads(data)
+        raise RuntimeError("the Monero node would not authenticate")
+
+    def _drop(self):
+        try:
+            if self.conn:
+                self.conn.close()
+        except Exception:
+            pass
+        self.conn, self.chal, self.nc = None, None, 0
+
+
+NODE_RPC = Node(NODE, NODE_PORT, LOGIN)
+
+
+def rpc(method, params=None, timeout=20):
+    body = json.dumps({"jsonrpc": "2.0", "id": "0", "method": method, "params": params or {}}).encode()
+    out = NODE_RPC.post("/json_rpc", body, timeout)
+    if "error" in out:
+        raise RuntimeError(str(out["error"]))
+    return out["result"]
+
+
+def payouts_in(height):
+    """How many miners this block paid directly. P2Pool pays all of its miners in the block's
+    own coinbase, so its blocks have many outputs; everything else has one."""
+    block = rpc("get_block", {"height": height})
+    miner = json.loads(block["json"])["miner_tx"]
+    return max(1, len(miner.get("vout") or []))
+
+
+# ---------- the rolling week (pools) and the year (hashrate) ----------
+
+_lock = threading.Lock()
+_state = {"week": {}, "year": [], "tip": None, "info": None, "ready": False}
+
+
+def refresh_week():
+    """Keep the last week of blocks: height -> (timestamp, difficulty, payouts)."""
+    info = rpc("get_info")
+    tip = int(info["height"]) - 1
+    start = max(1, tip - 7 * BLOCKS_PER_DAY)
+    with _lock:
+        known = dict(_state["week"])
+    headers = []
+    h = start
+    while h <= tip:                       # the node returns these 1000 at a time
+        end = min(tip, h + 999)
+        headers.extend(rpc("get_block_headers_range", {"start_height": h, "end_height": end})["headers"])
+        h = end + 1
+    fresh = {}
+    for hd in headers:
+        height = int(hd["height"])
+        if height in known:
+            fresh[height] = known[height]
+            continue
+        try:
+            outs = payouts_in(height)
+        except Exception as exc:          # one unreadable block must not sink the whole window
+            log("block " + str(height) + ": " + str(exc))
+            outs = 1
+        fresh[height] = (int(hd["timestamp"]), int(hd["difficulty"]), outs)
+    with _lock:
+        _state["week"], _state["tip"], _state["info"] = fresh, tip, info
+
+
+def refresh_year():
+    """One block a day for the past year, for the hashrate and difficulty chart."""
+    info = rpc("get_info")
+    tip = int(info["height"]) - 1
+    points = []
+    for days_ago in range(365, -1, -1):
+        height = tip - days_ago * BLOCKS_PER_DAY
+        if height < 1:
+            continue
+        try:
+            hd = rpc("get_block_header_by_height", {"height": height})["block_header"]
+        except Exception as exc:
+            log("header " + str(height) + ": " + str(exc))
+            continue
+        points.append((int(hd["timestamp"]), int(hd["difficulty"])))
+    with _lock:
+        _state["year"] = points
+
+
+def worker():
+    first = True
+    while True:
+        try:
+            refresh_week()
+            if first or int(time.time()) % DAY < 900:
+                refresh_year()
+            with _lock:
+                _state["ready"] = True
+            if first:
+                log("Monero mining statistics ready")
+                first = False
+        except Exception as exc:
+            log("refresh: " + str(exc))
+        time.sleep(600)
+
+
+# ---------- the statistics, in mempool.space's shape ----------
+
+def hashrate_1y():
+    with _lock:
+        year, week, info = list(_state["year"]), dict(_state["week"]), _state["info"]
+    if not info:
+        raise RuntimeError("no data yet")
+    hashrates = [{"timestamp": t, "avgHashrate": d / BLOCK_SECONDS} for t, d in year]
+    difficulty = [{"time": t, "difficulty": d} for t, d in year[::7]] or [{"time": t, "difficulty": d} for t, d in year]
+    now = int(info["difficulty"])
+    return {"currentHashrate": now / BLOCK_SECONDS, "currentDifficulty": now,
+            "hashrates": hashrates, "difficulty": difficulty}
+
+
+def pools_1w():
+    with _lock:
+        week = dict(_state["week"])
+    cutoff = time.time() - WEEK
+    blocks = [v for v in week.values() if v[0] >= cutoff]
+    if not blocks:
+        raise RuntimeError("no data yet")
+    shared = sum(1 for b in blocks if b[2] > 1)
+    payouts = sum(b[2] for b in blocks if b[2] > 1)
+    pools = []
+    if shared:
+        pools.append({"name": "P2Pool", "blockCount": shared,
+                      "miners": [{"name": str(round(payouts / shared)) + " miners paid per block", "blockCount": shared}]})
+    single = len(blocks) - shared
+    if single:
+        pools.append({"name": "Single payout (pool or solo miner)", "blockCount": single})
+    return {"blockCount": len(blocks), "pools": pools}
+
+
+# ---------- the web server ----------
+
+HOP = {"connection", "keep-alive", "transfer-encoding", "te", "trailer", "upgrade", "proxy-authenticate",
+       "proxy-authorization", "content-length", "server", "date"}
+
+
+class Handler(http.server.BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+    server_version = "hashes.space"
+
+    def log_message(self, fmt, *args):     # one line per request, without the client address
+        log(fmt % args)
+
+    def send_json(self, code, obj, seconds):
+        body = json.dumps(obj).encode()
+        self.send_response(code)
+        self.send_header("Content-Type", "application/json")
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "public, max-age=" + str(seconds))
+        self.send_header("Content-Length", str(len(body)))
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(body)
+
+    def mining(self, path):
+        try:
+            if path == "/api/v1/mining/hashrate/1y":
+                return self.send_json(200, hashrate_1y(), 300)
+            if path == "/api/v1/mining/pools/1w":
+                return self.send_json(200, pools_1w(), 300)
+        except Exception as exc:
+            return self.send_json(503, {"error": str(exc)}, 0)
+        return self.send_json(404, {"error": "unknown endpoint"}, 0)
+
+    def forward(self):
+        length = int(self.headers.get("Content-Length") or 0)
+        body = self.rfile.read(length) if length else None
+        headers = {k: v for k, v in self.headers.items() if k.lower() not in HOP and k.lower() != "host"}
+        try:
+            conn = http.client.HTTPConnection(EXPLORER_HOST, EXPLORER_PORT, timeout=60)
+            conn.request(self.command, self.path, body=body, headers=headers)
+            r = conn.getresponse()
+            data = r.read()
+        except Exception as exc:
+            return self.send_json(502, {"error": "the explorer did not answer: " + str(exc)}, 0)
+        finally:
+            try:
+                conn.close()
+            except Exception:
+                pass
+        self.send_response(r.status)
+        for k, v in r.getheaders():
+            if k.lower() not in HOP:
+                self.send_header(k, v)
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(data)
+
+    def handle_any(self):
+        path = self.path.split("?")[0]
+        if path.startswith("/api/v1/mining/") and self.command in ("GET", "HEAD"):
+            return self.mining(path)
+        return self.forward()
+
+    do_GET = do_POST = do_HEAD = do_OPTIONS = handle_any
+
+
+class Server(socketserver.ThreadingMixIn, http.server.HTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
+
+
+if __name__ == "__main__":
+    if NODE:
+        threading.Thread(target=worker, daemon=True).start()
+    else:
+        log("no Monero node configured: only passing the explorer through")
+    log("listening on port " + str(PORT))
+    Server(("0.0.0.0", PORT), Handler).serve_forever()

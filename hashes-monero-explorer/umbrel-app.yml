@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-monero-explorer
 category: crypto
 name: Monero Explorer
-version: "0.18.5.1-3"
+version: "0.18.5.1-4"
 tagline: A Monero block explorer on your own Monero node
 description: >-
   An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
@@ -31,5 +31,9 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The explorer now also serves the hashrate and payout-split statistics (/api/v1/mining/...) that the
+  hashes.space Find Mempool page shows for Monero, computed from your own Monero node.
+
+
   The explorer now runs on Alpine Linux like the Monero Node app, so both can share the blockchain
   database (it used to hang on start), and on any 64-bit Intel/AMD or ARM processor.
