@@ -654,7 +654,10 @@
   .calcpage .calchead { grid-area: head; text-align: center; max-width: 60ch; margin: 0 auto; display: grid; gap: 8px; }
   .calcpage .calchead h1 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
   .calcpage .calchead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
-  .mcard.m-calc, .mcard.m-pcalc { grid-area: one; }   /* each calculator has a page of its own */
+  .mcard.m-calc, .mcard.m-pcalc { grid-area: one; }
+  .mstats.calcpage.both { grid-template-areas: 'head' 'one' 'two' 'src'; }
+  .mstats.calcpage.both .mcard.m-pcalc { grid-area: two; }
+  .poolspage .m-pools .calc-link { display: none; }   /* each calculator has a page of its own */
   .poolspage { max-width: 1180px; margin: 0 auto; padding: 28px 20px 40px; display: grid; gap: 18px; }
   .poolspage[hidden] { display: none !important; }
   .poolspage .calchead { text-align: center; max-width: 60ch; margin: 0 auto; display: grid; gap: 8px; }
@@ -3710,9 +3713,12 @@ window.__coins = COIN_LOGOS;
     page.hidden = !calc;
     if (calc) {
       // the calculators work from the network's difficulty, so they wait for it like the charts do
-      const poolPage = view === 'poolcalc', hasPool = !!(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
+      const hasPool = !!(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
+      const both = netId === 'sha256' && hasPool;      // Bitcoin: solomining and the DATUM pool calculator share one page
+      const poolPage = view === 'poolcalc' && !both;
+      page.classList.toggle('both', both);
       page.querySelector('.m-calc').hidden = !m || poolPage;
-      page.querySelector('.m-pcalc').hidden = !m || !poolPage || !hasPool;
+      page.querySelector('.m-pcalc').hidden = !m || !hasPool || !(both || poolPage);
       $('calcpage-title').textContent = poolPage ? 'Mining pool calculator' : 'Calculate hashrate';
       $('pcalc-title').textContent = P2POOLS[netId] ? 'P2Pool calculator' : 'DATUM pool calculator';
       $('pcalc-side-row').hidden = !P2POOLS[netId];
@@ -3724,6 +3730,7 @@ window.__coins = COIN_LOGOS;
             : DATUM_TIDES_POOLS[netId]
             ? 'Calculate the amount of coins you can mine in a DATUM mining pool with Tides payouts.'
             : `There is no mining pool calculator for ${network().chain} yet.`)
+          : both ? `Calculate how much hashrate you need to mine a block on ${network().chain}, or what your hashrate earns in a DATUM mining pool with Tides payouts.`
           : `Calculate how much hashrate you need to mine a block on ${network().chain}.`)
         : `Waiting for the difficulty of ${network().chain} from ${site ?? network().source}. Pick another proof-of-work network above, or try again in a moment.`;
       $('calc-source').textContent = m && m.live
