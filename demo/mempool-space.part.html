@@ -105,6 +105,8 @@
   };
 
   // ---- built-in themes ----
+  // Plain (default): the page's own dark background, no animation
+  HashesThemes.register({ id: 'plain', label: 'Plain', swatch: '#11131f' });
   // Space: a soothing starfield drifting slowly to the lower left, with faint nebula clouds
   HashesThemes.register({
     id: 'space', label: 'Space', background: '#070913',
@@ -132,7 +134,5 @@
       };
     },
   });
-  // Plain (default): the page's own dark background, no animation
-  HashesThemes.register({ id: 'plain', label: 'Plain', swatch: '#11131f' });
 })();
 </script>
