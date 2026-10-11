@@ -1,6 +1,6 @@
 <!--CSS-->
   /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
-  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hrh poolsh' 'hr pools' 'src src'; align-items: stretch; gap: 20px; row-gap: 14px; }
+  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'src'; grid-template-columns: minmax(0, 760px); justify-content: center; align-items: stretch; gap: 20px; row-gap: 14px; }
   /* the period for both charts: a row of pills, the chosen one filled */
   .mrange { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
   .mrange button { padding: 7px 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--muted); font: 500 12.5px/1 var(--sans); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
@@ -11,7 +11,8 @@
   .mhead .kpis { width: 100%; }
   .m-hr-head { grid-area: hrh; } .m-pools-head { grid-area: poolsh; }
   .mcard.m-hr { grid-area: hr; } .mcard.m-pools { grid-area: pools; } .mcard.m-globe { grid-area: globe; } .m-globe-head { grid-area: globeh; }
-  .mstats.has-globe { grid-template-areas: 'hrh globeh' 'hr globe' 'poolsh poolsh' 'pools pools' 'src src'; }
+  .mstats.has-globe { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-content: stretch; grid-template-areas: 'hrh globeh' 'hr globe' 'src src'; }
+  .mstats > .m-pools, .mstats > .m-pools-head { display: none; }   /* the pools have a page of their own */
   .mstats.has-globe .mcard.m-pools { width: 100%; max-width: 760px; justify-self: center; }
   .mstats.has-globe .mcard.m-pools::before { display: none; }
   .mstats.has-globe .m-pools-head { margin-top: 24px; }
@@ -34,8 +35,8 @@
   .mrange { align-self: center; }
   .calc-link[hidden] { display: none !important; }
   @media (max-width: 900px) {
-    .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'poolsh' 'pools' 'src'; }
-    .mstats.has-globe { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'globeh' 'globe' 'poolsh' 'pools' 'src'; }
+    .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'src'; grid-template-columns: minmax(0, 1fr); }
+    .mstats.has-globe { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'globeh' 'globe' 'src'; }
     .mcard.m-globe::before { display: none; }
   }
   .mstats[hidden], .mcard[hidden] { display: none !important; }
@@ -160,7 +161,7 @@
     </div>
     <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
     <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i><span id="ms-key-avg">Hashrate (7-day average)</span></li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
-    <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
+    <a class="more" id="ms-more-hr" href="#pools">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
     <a class="calc-link" id="pcalc-link" href="#poolcalc" hidden>Mining pool calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
@@ -444,7 +445,7 @@
     if (netId === 'sha256' && window.globeSet) window.globeSet((miningBy.sha256 || {}).hash || 0);
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
-    $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
+    $('ms-more-hr').href = '#pools';                    // "View more" opens the mining pools page
     setUnits('calc-unit'); setUnits('pcalc-unit');
     // the two charts follow the period chosen above; the calculators and pool pages keep working from the base data
     const rv = rangeView(netId, range, m), info = RANGE_INFO[range];
@@ -470,7 +471,7 @@
     $('ms-source').textContent = m.live
       ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
-    if (!sec.hidden || onPools) drawPie(rp);
+    if (onPools) drawPie(rp);
     if (!sec.hidden) drawChart(rv, range);
     renderCalc(); fillPools(); renderPoolCalc();
   }
