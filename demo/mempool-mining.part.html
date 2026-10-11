@@ -453,6 +453,11 @@
     return Math.exp(-lam + k * Math.log(lam) - lnFact);
   }
   function smallPct(f) { const v = f * 100; if (!v) return '0%'; if (v >= 0.1) return pct(f); const d = Math.min(14, 1 - Math.floor(Math.log10(v))); return v.toFixed(d) + '%'; }
+  function lastAdjustment(m) {
+    if (!['sha256', 'blake2b'].includes(netId) || !m.difficulty || !m.difficulty.length) return null;
+    const t = m.difficulty[m.difficulty.length - 1][0], since = (m.hashrates || []).filter((x) => x[0] >= t);
+    return { t, hash: since.length >= 2 ? since.reduce((a, x) => a + x[1], 0) / since.length : 0 };
+  }
   function renderCalc() {
     const m = mining; if (!m || !$('calc-form')) return;
     const h = Math.max(0, Number($('calc-hash').value) || 0) * Number($('calc-unit').value);
@@ -469,9 +474,12 @@
           + (lam >= 1 ? `\nmost likely ${fmt(k)}: ${pct(poissonPmf(k, lam))}` : '')
         : '';
     });
-    const share = m.hash ? h / m.hash : 0;
+    // Bitcoin's difficulty is set every 2016 blocks, so the calculator works from the difficulty of the last adjustment and from
+    // the hashrate the network has had since then (not from the latest few days), as far as the data reaches
+    const adj = lastAdjustment(m), netHash = adj && adj.hash ? adj.hash : m.hash;
+    const share = netHash ? h / netHash : 0;
     $('calc-note').textContent = h
-      ? `The number of blocks you can expect to find on ${network().chain} at a network difficulty of ${siShort(m.diff).replace(' ', '')}, and the chance of finding at least one. That is ${smallPct(share)} of the global hashrate: on average one block every ${ageText(1 / rate)}. Blocks are found at random, so the real number varies around the average.`
+      ? `The number of blocks you can expect to find on ${network().chain} at a network difficulty of ${siShort(m.diff).replace(' ', '')}, and the chance of finding at least one. That is ${smallPct(share)} of the global hashrate${adj ? ` since the last difficulty adjustment on ${new Date(adj.t * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })}${adj.hash ? ` (about ${si(adj.hash, 1)}H/s on average)` : ''}` : ''}: on average one block every ${ageText(1 / rate)}. Blocks are found at random, so the real number varies around the average.`
       : 'Enter your hashrate to see how many blocks you can expect to find.';
   }
   $('calc-form').addEventListener('input', renderCalc);
