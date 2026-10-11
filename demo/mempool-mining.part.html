@@ -249,7 +249,7 @@
       const [p, h] = await from(site).catch((e) => { if (!MINING_FALLBACK[net]) throw e; return from(MINING_FALLBACK[net]); });
       miningBy[net] = { live: true, at: Date.now() / 1000, blockCount: p.blockCount, window: win,
         pools: p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
-        hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: h.difficulty.map((x) => [x.time, x.difficulty]),
+        hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: (h.difficulty ?? []).map((x) => [x.time, x.difficulty]),
         hash: h.currentHashrate, diff: h.currentDifficulty };
     } catch {
       if (miningBy[net]?.live) return; // keep the last live numbers
@@ -295,19 +295,16 @@
     const base = miningBy[net]; if (!base) { rangeBusy[key] = false; return; }
     const own = !!MINING_MORE[net], hosts = [MINING_SITES[net], MINING_FALLBACK[net]].filter(Boolean);
     const hrPath = '/hashrate/' + (own ? rng : MEMPOOL_HASH[rng]), plPath = '/pools/' + (own ? rng : MEMPOOL_POOLS[rng]);
-    try {
-      let got = null;
-      for (const host of hosts) {
-        try { got = await Promise.all([getJson(host, plPath), getJson(host, hrPath)]); break; } catch { /* the next host */ }
-      }
-      if (!got) throw new Error('no answer');
-      const [p, h] = got, sec = RANGE_INFO[rng].sec;
-      const hs = trimSeries(h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), sec);
-      const ds = trimSeries(h.difficulty.map((x) => [x.time, x.difficulty]), sec, true);
-      rangeBy[key] = { live: true, at: Date.now() / 1000, window: own ? rng : MEMPOOL_POOLS[rng], blockCount: p.blockCount, sampled: !!p.sampled,
-        pools: p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
-        hashrates: hs, difficulty: ds, hash: h.currentHashrate ?? base.hash, diff: h.currentDifficulty ?? base.diff, avg: meanOf(hs) || h.currentHashrate };
-    } catch { /* the base data stands: the period's own is not offered from here yet */ }
+    // the pools and the hashrate are asked for separately, each from the hosts in turn: one that fails leaves the other standing
+    const ask = async (path) => { for (const host of hosts) { try { return await getJson(host, path); } catch { /* the next host */ } } return null; };
+    const [p, h] = await Promise.all([ask(plPath), ask(hrPath)]), sec = RANGE_INFO[rng].sec;
+    const hs = h && Array.isArray(h.hashrates) && h.hashrates.length ? trimSeries(h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), sec) : trimSeries(base.hashrates, sec);
+    const ds = h && Array.isArray(h.hashrates) && h.hashrates.length ? trimSeries((h.difficulty ?? []).map((x) => [x.time, x.difficulty]), sec, true) : trimSeries(base.difficulty, sec, true);
+    const pools = p && Array.isArray(p.pools) && p.pools.length ? p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })) : null;
+    rangeBy[key] = { live: true, at: Date.now() / 1000, partial: !pools || !h, retry: Date.now() + 20000, derived: !h,
+      window: pools ? (own ? rng : MEMPOOL_POOLS[rng]) : base.window, sampled: !!(pools && p.sampled),
+      blockCount: pools ? (p.blockCount || pools.reduce((a, x) => a + x.blocks, 0)) : base.blockCount, pools: pools ?? base.pools,
+      hashrates: hs, difficulty: ds, hash: (h && h.currentHashrate) || base.hash, diff: (h && h.currentDifficulty) || base.diff, avg: meanOf(hs) || base.hash };
     rangeBusy[key] = false;
     if (net === netId) renderMiningStats();
   }
@@ -316,6 +313,8 @@
     range = rng; try { localStorage.setItem('mining-range', rng); } catch { /* fine without */ }
     renderMiningStats();
   };
+  // a period that only came in part (a source still computing it) is asked for again every so often
+  setInterval(() => { const got = rangeBy[netId + ':' + range]; if (got && got.partial && Date.now() > got.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('#mrange button'); if (b) setRange(b.dataset.range); });
   const onCalcPage = () => typeof view !== 'undefined' && view === 'calc';
   // the charts belong to the mempool page; the Learn page carries no chain of its own
@@ -348,7 +347,7 @@
     setUnits('calc-unit'); setUnits('pcalc-unit');
     // the two charts follow the period chosen above; the calculators and pool pages keep working from the base data
     const rv = rangeView(netId, range, m), info = RANGE_INFO[range];
-    if (miningBy[netId].live && !rangeBy[netId + ':' + range]) loadRangeFor(netId, range);
+    { const got = rangeBy[netId + ':' + range]; if (miningBy[netId].live && (!got || (got.partial && Date.now() > got.retry))) loadRangeFor(netId, range); }
     for (const b of document.querySelectorAll('#mrange button')) b.setAttribute('aria-pressed', String(b.dataset.range === range));
     // each headline carries the period its chart shows; the pools say so honestly when the source can't give the chosen one
     $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
