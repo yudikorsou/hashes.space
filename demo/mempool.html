@@ -3547,8 +3547,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       + `Each pool's hashrate is an estimate: its share of the blocks found in ${windowSpoken(rv.window)} times the chain's average hashrate.`
       + (rv.window !== range ? ` ${windowSpoken(rv.window).replace(/^the /, 'The ')} is the nearest period this source offers for ${info.label}.` : '')
       + (rv.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '');
-    $('ms-hash').textContent = si(m.hash, 1) + 'H/s';
-    $('ms-hash-sub').textContent = hashrateThen(rv, info);
+    $('ms-hash').textContent = si(rv.avg || m.hash, 1) + 'H/s';   // the average over the chosen period
+    $('ms-hash-sub').textContent = hashrateThen(rv, info, range);
     $('ms-source').textContent = m.live
       ? `Live from ${MINING_FROM[netId] ?? site + '/mining'} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
@@ -3712,14 +3712,14 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     }
   }
   // how the chain stands against where it was a year ago, in words under the headline figure
-  function hashrateThen(m, info) {
+  function hashrateThen(m, info, period) {
     const hs = m.hashrates ?? [], then = hs.length ? hs[0][1] : 0, now = m.hash;
-    if (!then || !now || hs.length < 2) return 'Hashes per second the whole network runs right now.';
+    if (!then || !now || hs.length < 2) return `Hashes per second the whole network runs, averaged over ${windowSpoken(period)}.`;
     const since = `${info.ago} it was ${si(then, 1)}H/s`, f = then / now;
     const move = f >= 1.5 ? `${f >= 10 ? fmt(f, f >= 100 ? 0 : 1) + '× lower' : (100 * (1 - 1 / f)).toFixed(0) + '% lower'}`
       : f <= 0.67 ? `${f <= 0.1 ? fmt(1 / f, 1 / f >= 100 ? 0 : 1) + '× higher' : (100 * (1 / f - 1)).toFixed(0) + '% higher'}`
         : 'about the same';
-    return `Hashes per second the whole network runs right now — ${move}: ${since}.`;
+    return `Average over ${windowSpoken(period)}. Right now ${si(now, 1)}H/s — ${move}: ${since}.`;
   }
   function niceStep(max, n) { const raw = max / n, p = 10 ** Math.floor(Math.log10(raw)), f = raw / p; return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 3 ? 3 : f <= 5 ? 5 : 10) * p; }
   // a scale for one series: linear while the values stay within about 1.5 decades,
