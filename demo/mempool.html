@@ -851,8 +851,8 @@
   .glow-row p { font-size: 13.5px !important; line-height: 1.6 !important; }
   .glow-row b.red { color: #ff7a6e; } .glow-row b.green { color: var(--matrix); } .glow-row b.orange { color: var(--orange); }
 
-  /* Learn video: a 1280x720 animated stage, scaled to the card; chapters 1-7 follow the topics below it */
-  .lv { width: min(100%, 860px); display: grid; gap: 12px; }
+  /* Academy videos: one 1280x720 animated stage per chapter, scaled to its card */
+  .lv { width: min(100%, 900px); display: grid; gap: 12px; }
   .lv-frame { position: relative; aspect-ratio: 16 / 9; border-radius: 28px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(ellipse 80% 75% at 50% 35%, rgba(70, 78, 140, 0.30), rgba(70, 78, 140, 0) 78%), var(--bg); isolation: isolate; }
   .lv-stage { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; color: var(--text); }
   .lv-scene { position: absolute; inset: 0; padding: 44px 64px 40px; display: none; grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
@@ -873,58 +873,115 @@
   .lv-chip { padding: 14px 22px; border-radius: 16px; background: rgba(10, 12, 24, .62); border: 1px solid var(--line-strong); font: 500 24px/1.25 var(--sans); color: var(--text); text-align: center; }
   .lv-chip small { display: block; margin-top: 6px; font: 400 19px/1.3 var(--sans); color: var(--muted); }
   .lv-chip.g { border-color: rgba(60, 226, 107, .55); } .lv-chip.o { border-color: rgba(247, 147, 26, .6); } .lv-chip.r { border-color: rgba(255, 77, 77, .6); } .lv-chip.c { border-color: rgba(27, 216, 244, .55); }
-  /* scene 1 */
-  .lv-bits { width: 1100px; height: 150px; overflow: hidden; border-radius: 18px; border: 1px solid var(--line); background: rgba(10, 12, 24, .5); display: grid; align-content: space-around; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-  .lv-bits div { white-space: nowrap; font: 500 22px/1 var(--mono); letter-spacing: .5em; color: rgba(158, 164, 188, .55); animation: lv-slide 18s linear infinite; }
-  .lv-bits div:nth-child(2) { animation-direction: reverse; animation-duration: 24s; } .lv-bits div b { color: var(--link); font-weight: 600; }
-  @keyframes lv-slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
-  .lv-syms { display: flex; gap: 10px; }
-  .lv-syms span { width: 58px; height: 66px; display: grid; place-items: center; border-radius: 12px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 600 30px/1 var(--mono); color: var(--matrix); }
-  .lv-syms span:nth-child(n+11) { color: var(--orange); }
-  .lv-nibs { display: flex; gap: 14px; }
-  .lv-nibs span { display: grid; justify-items: center; gap: 8px; padding: 12px 18px; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); }
-  .lv-nibs code { font: 500 24px/1 var(--mono); color: var(--muted); letter-spacing: .08em; } .lv-nibs b { font: 700 38px/1 var(--mono); color: var(--matrix); }
   .lv-hexline { padding: 22px 28px; border-radius: 18px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 500 25px/1.4 var(--mono); color: var(--text); letter-spacing: .02em; }
   .lv-hexline em { font-style: normal; color: var(--matrix); }
-  /* scene 2 */
   .lv-fn { position: relative; padding: 22px 30px; border-radius: 20px; border: 1px solid rgba(27, 216, 244, .55); background: rgba(27, 216, 244, .08); font: 600 28px/1.2 var(--sans); box-shadow: 0 0 40px rgba(27, 216, 244, .18); }
-  .lv-data { display: grid; gap: 8px; width: 190px; } .lv-data i { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--muted), rgba(158, 164, 188, .2)); } .lv-data i:nth-child(1) { width: 100%; } .lv-data i:nth-child(2) { width: 62%; } .lv-data i:nth-child(3) { width: 84%; } .lv-data i:nth-child(4) { width: 40%; }
-  .lv-ops { display: flex; gap: 22px; }
-  .lv-ops div { display: grid; gap: 10px; justify-items: center; padding: 18px 26px; border-radius: 18px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 500 26px/1 var(--mono); }
-  .lv-ops b { color: var(--link); font: 700 28px/1 var(--sans); } .lv-ops span { color: var(--muted); } .lv-ops u { text-decoration: none; color: var(--matrix); }
-  .lv-bytes { display: grid; grid-template-columns: repeat(16, 1fr); gap: 7px; width: 1000px; }
-  .lv-bytes span { padding: 11px 0; text-align: center; border-radius: 9px; background: rgba(10, 12, 24, .65); border: 1px solid var(--line); font: 600 21px/1 var(--mono); color: var(--matrix); }
-  .lv-json { padding: 24px 30px; border-radius: 18px; background: rgba(10, 12, 24, .7); border: 1px solid var(--line-strong); font: 500 25px/1.5 var(--mono); color: var(--text); max-width: 1000px; overflow-wrap: anywhere; } .lv-json i { font-style: normal; color: var(--link); } .lv-json s { text-decoration: none; color: var(--matrix); }
-  /* scene 3 */
-  .lv-flow { display: flex; align-items: flex-start; justify-content: center; gap: 6px; }
-  .lv-flow .step { display: grid; justify-items: center; gap: 12px; width: 178px; flex: none; }
-  .lv-flow .lv-tag { font: 500 21px/1.3 var(--mono); color: var(--link); text-align: center; min-height: 56px; }
-  .lv-flow .lv-chip { width: 100%; padding: 18px 10px; }
-  .lv-flow .lv-arrow { margin-top: 26px; }
-  /* scene 4 */
   .lv-big { font: 700 96px/1 var(--mono); color: var(--matrix); text-shadow: 0 0 30px rgba(60, 226, 107, .35); font-variant-numeric: tabular-nums; }
-  .lv-ladder { display: flex; gap: 10px; }
-  .lv-ladder span { display: grid; justify-items: center; gap: 8px; min-width: 112px; padding: 16px 10px; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 500 20px/1 var(--mono); color: var(--muted); }
-  .lv-ladder b { font: 700 28px/1 var(--mono); color: var(--orange); }
-  .lv-bars { display: grid; gap: 22px; width: 1000px; }
-  .lv-bar { display: grid; grid-template-columns: 270px 1fr; gap: 20px; align-items: center; font: 500 24px/1.3 var(--sans); color: var(--muted); }
-  .lv-bar > span:last-child { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
-  .lv-bar i { flex: none; display: block; height: 30px; border-radius: 8px; width: 0; background: linear-gradient(90deg, #9339f4, #105fb0); transition: width 1.6s cubic-bezier(.2, .8, .2, 1); } .lv-bar b { color: var(--text); font-weight: 600; }
-  .lv-el.on .lv-bar i { width: var(--w); }
-  /* scene 5 and 6 */
-  .lv-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; width: 1100px; }
-  .lv-card { display: grid; gap: 16px; align-content: start; padding: 26px 30px; border-radius: 22px; background: rgba(10, 12, 24, .55); border: 1px solid var(--line); font: 400 24px/1.5 var(--sans); color: var(--muted); }
-  .lv-card h4 { margin: 0; font: 600 32px/1.2 var(--display); } .lv-card.c h4 { color: #ff8a65; } .lv-card.d h4 { color: var(--matrix); }
-  .lv-card.c { border-color: rgba(255, 77, 77, .4); box-shadow: 0 0 40px rgba(255, 77, 77, .1); } .lv-card.d { border-color: rgba(60, 226, 107, .4); box-shadow: 0 0 40px rgba(60, 226, 107, .1); }
-  .lv-dots { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; min-height: 66px; } .lv-dots i { width: 18px; height: 18px; border-radius: 50%; background: var(--muted); opacity: .7; } .lv-dots .pool { width: 120px; height: 46px; border-radius: 12px; background: rgba(255, 77, 77, .22); border: 1px solid rgba(255, 77, 77, .7); font: 600 20px/46px var(--sans); text-align: center; color: #ff8a65; font-style: normal; opacity: 1; }
-  .lv-dots .own { width: 34px; height: 34px; border-radius: 9px; background: rgba(60, 226, 107, .18); border: 1px solid rgba(60, 226, 107, .7); opacity: 1; }
-  /* scene 7 */
-  .lv-blocks { display: flex; gap: 44px; align-items: flex-start; justify-content: center; }
-  .lv-blocks > div { display: grid; gap: 14px; justify-items: center; width: 330px; text-align: center; font: 500 23px/1.35 var(--sans); color: var(--muted); }
-  .lv-blocks .mini .above { min-height: 0; }
-  .lv-blocks > div b { font-weight: 600; } .lv-blocks .g b { color: var(--matrix); } .lv-blocks .o b { color: var(--orange); } .lv-blocks .r b { color: #ff7a6e; }
-  .lv-blocks.sm { gap: 34px; } .lv-blocks.sm .mini { zoom: .72; } .lv-blocks.sm > div { width: 300px; gap: 6px; font-size: 20px; }
-  .lv-chain { font: 600 22px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--link); }
+  .lv-layer { display: grid; gap: 26px; justify-items: center; align-content: center; width: 100%; }
+  .lv-cap { font: 500 24px/1.3 var(--sans); color: var(--muted); letter-spacing: .02em; text-align: center; }
+  .lv-down { font: 500 22px/1 var(--mono); color: var(--link); } .lv-down::before { content: '↓  '; } 
+  .lv-bits256 { width: 1000px; padding: 18px 24px; border-radius: 18px; border: 1px solid var(--line); background: rgba(10, 12, 24, .5); display: grid; gap: 6px; }
+  .lv-bits256 div { font: 500 18px/1.25 var(--mono); letter-spacing: .13em; color: rgba(158, 164, 188, .7); white-space: nowrap; text-align: center; }
+  .lv-hexline.sm { font-size: 21px; padding: 16px 22px; max-width: 1100px; overflow-wrap: anywhere; min-height: 1.4em; }
+  .lv-conv { display: flex; gap: 10px; } .lv-conv .nib { width: 124px; text-align: center; padding: 16px 0; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 600 40px/1 var(--mono); color: var(--muted); transition: all .3s; }
+  .lv-conv .nib.done { color: var(--text); } .lv-conv .nib.hl { border-color: var(--link); box-shadow: 0 0 30px rgba(27, 216, 244, .35); color: var(--link); transform: translateY(-4px); }
+  .lv-conv .hx { width: 124px; text-align: center; padding: 14px 0; border-radius: 14px; border: 1px solid rgba(60, 226, 107, .5); background: rgba(60, 226, 107, .08); font: 700 54px/1 var(--mono); color: var(--matrix); opacity: 0; transform: scale(.6); transition: all .4s; }
+  .lv-conv .hx.on { opacity: 1; transform: none; }
+  .lv-syms2 { display: grid; grid-template-columns: repeat(8, 124px); gap: 12px; }
+  .lv-syms2 > div { display: grid; gap: 4px; justify-items: center; padding: 14px 0 10px; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); opacity: 0; transform: translateY(10px) scale(.92); transition: all .35s; }
+  .lv-syms2 > div.on { opacity: 1; transform: none; } .lv-syms2 b { font: 700 46px/1 var(--mono); color: var(--matrix); } .lv-syms2 .l b { color: var(--orange); }
+  .lv-syms2 code { font: 500 22px/1 var(--mono); color: var(--muted); letter-spacing: .08em; } .lv-syms2 small { font: 400 16px/1 var(--mono); color: var(--muted); opacity: .7; }
+  .lv-nibble { display: flex; align-items: center; gap: 34px; }
+  .lv-nibble .nbits { display: flex; gap: 10px; } .lv-nibble .nbits i { width: 92px; height: 112px; display: grid; place-items: center; border-radius: 16px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 700 58px/1 var(--mono); font-style: normal; color: var(--muted); transition: all .25s; }
+  .lv-nibble .nbits i.one { color: var(--link); border-color: var(--link); background: rgba(27, 216, 244, .12); box-shadow: 0 0 26px rgba(27, 216, 244, .3); }
+  .lv-nibble .hexc { width: 150px; height: 130px; display: grid; place-items: center; border-radius: 20px; border: 1px solid rgba(60, 226, 107, .6); background: rgba(60, 226, 107, .1); font: 700 84px/1 var(--mono); color: var(--matrix); } .lv-nibble .hexc.let { color: var(--orange); border-color: rgba(247, 147, 26, .6); background: rgba(247, 147, 26, .1); }
+  .lv-nibble .dec { font: 500 30px/1 var(--mono); color: var(--muted); min-width: 110px; }
+  .lv-cells { display: grid; grid-template-columns: repeat(32, 29px); gap: 4px; }
+  .lv-cells span { height: 52px; display: grid; place-items: center; border-radius: 7px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 600 25px/1 var(--mono); color: var(--text); opacity: 0; transform: translateY(8px); transition: all .3s; }
+  .lv-cells span.on { opacity: 1; transform: none; } .lv-cells span.z { color: var(--matrix); border-color: rgba(60, 226, 107, .55); background: rgba(60, 226, 107, .1); }
+  .lv-chip.lv-el, [data-k=zchip] { transition: opacity .6s, transform .6s; } [data-k=zchip]:not(.on) { opacity: .25; }
+  /* chapter 2 */
+  .lv-ins { display: grid; gap: 22px; } .lv-in { display: flex; align-items: center; gap: 18px; opacity: .22; transition: opacity .5s; } .lv-in.on { opacity: 1; }
+  .lv-in .lv-chip { width: 330px; padding: 14px 16px; } .lv-in .msg { font: 500 20px/1.3 var(--mono); display: block; overflow-wrap: anywhere; }
+  .lv-fn.sm { padding: 16px 22px; font-size: 24px; border-radius: 16px; } .lv-fn.hit { animation: lv-hit .7s ease; }
+  @keyframes lv-hit { 0% { box-shadow: 0 0 0 rgba(27, 216, 244, 0); } 40% { box-shadow: 0 0 70px rgba(27, 216, 244, .8); background: rgba(27, 216, 244, .3); } 100% { box-shadow: 0 0 40px rgba(27, 216, 244, .18); } }
+  .lv-out { width: 410px; min-height: 62px; padding: 10px 14px; border-radius: 12px; background: rgba(10, 12, 24, .6); border: 1px solid rgba(60, 226, 107, .45); } .lv-out code { font: 500 20px/1.3 var(--mono); color: var(--matrix); }
+  .lv-sha { display: grid; grid-template-columns: 200px minmax(0, 1fr) 230px; gap: 28px; align-items: center; width: 1100px; }
+  .lv-sha .msgblocks { display: grid; gap: 12px; } .lv-sha .msgblocks > b { font: 600 20px/1 var(--mono); color: var(--muted); letter-spacing: .08em; text-transform: uppercase; }
+  .mb { padding: 14px 10px; text-align: center; border-radius: 14px; border: 1px solid var(--line); background: rgba(10, 12, 24, .6); font: 600 26px/1.2 var(--mono); color: var(--muted); transition: all .35s; } .mb small { display: block; font: 400 17px/1.3 var(--sans); }
+  .mb.on { color: var(--text); border-color: var(--link); background: rgba(27, 216, 244, .14); box-shadow: 0 0 34px rgba(27, 216, 244, .35); transform: translateX(14px); } .mb.done { opacity: .4; }
+  .comp { display: grid; gap: 14px; justify-items: center; } .rounds { font: 600 28px/1 var(--mono); color: var(--link); } .rounds span { display: inline-block; min-width: 2ch; text-align: right; }
+  .regs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; } .reg { display: grid; gap: 4px; justify-items: center; padding: 10px 6px; border-radius: 12px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); }
+  .reg small { font: 500 16px/1 var(--mono); color: var(--muted); } .reg code { font: 600 21px/1 var(--mono); color: var(--text); } .reg code.hot { color: var(--matrix); text-shadow: 0 0 14px rgba(60, 226, 107, .7); }
+  .lv-sha-out { opacity: .2; transition: opacity .6s; } .lv-sha-out.on { opacity: 1; }
+  .lv-hdr { display: flex; gap: 34px; align-items: center; }
+  .lv-bytegrid { display: grid; grid-template-columns: repeat(20, 42px); gap: 4px; } .lv-bytegrid span { height: 32px; display: grid; place-items: center; border-radius: 6px; background: rgba(10, 12, 24, .5); border: 1px solid var(--line); font: 500 17px/1 var(--mono); color: transparent; transition: all .25s; }
+  .lv-bytegrid span.on { color: var(--text); border-color: rgba(27, 216, 244, .5); background: rgba(27, 216, 244, .1); }
+  .lv-hdr-side { display: grid; gap: 14px; justify-items: center; } .lv-hdr-side .lv-arrow { transform: rotate(90deg); font-size: 34px; line-height: 1; }
+  .lv-counter { display: grid; justify-items: center; gap: 2px; } .lv-counter b { font: 700 46px/1 var(--mono); color: var(--link); font-variant-numeric: tabular-nums; } .lv-counter small { font: 400 18px/1.2 var(--sans); color: var(--muted); } .lv-counter.wide b { font-size: 54px; color: var(--matrix); }
+  .lv-silicon { display: grid; grid-template-columns: repeat(32, 18px); gap: 5px; padding: 12px 16px; border-radius: 14px; border: 1px solid var(--line); background: rgba(10, 12, 24, .5); } .lv-silicon i { height: 18px; border-radius: 3px; background: rgba(158, 164, 188, .15); transition: all .25s; } .lv-silicon i.hi { background: var(--orange); box-shadow: 0 0 10px rgba(247, 147, 26, .7); }
+  .lv-ops2 { display: flex; gap: 24px; } .lv-ops2 .op { display: grid; gap: 8px; justify-items: center; padding: 14px 22px; border-radius: 18px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); min-width: 330px; }
+  .lv-ops2 b { font: 700 28px/1 var(--sans); color: var(--link); } .lv-ops2 .r { display: flex; gap: 4px; min-height: 36px; align-items: center; } .lv-ops2 .r i { width: 30px; height: 36px; display: grid; place-items: center; border-radius: 7px; background: rgba(158, 164, 188, .08); font: 600 22px/1 var(--mono); font-style: normal; color: var(--muted); }
+  .lv-ops2 .r i.one { color: var(--link); background: rgba(27, 216, 244, .14); } .lv-ops2 .r.o i { border: 1px solid rgba(60, 226, 107, .5); } .lv-ops2 .r.o i.one { color: var(--matrix); background: rgba(60, 226, 107, .15); } .lv-ops2 em { font: 600 24px/1 var(--mono); font-style: normal; color: var(--muted); } .lv-ops2 .rl { font: 400 16px/1.2 var(--sans); color: var(--muted); min-height: 1.2em; }
+  .lv-bus { display: flex; align-items: center; gap: 24px; } .lv-bus .lane { width: 600px; display: grid; gap: 8px; justify-items: center; } .lv-bus .lane > span { font: 600 22px/1 var(--mono); color: var(--link); letter-spacing: .06em; }
+  .lv-bus .track { display: grid; grid-template-columns: repeat(16, 1fr); gap: 5px; width: 100%; padding: 12px; border-radius: 12px; background: repeating-linear-gradient(90deg, rgba(27, 216, 244, .06) 0 12px, transparent 12px 24px); border: 1px solid rgba(27, 216, 244, .4); }
+  .lv-bus .track i { font: 600 17px/1 var(--mono); font-style: normal; text-align: center; padding: 9px 0; border-radius: 6px; background: rgba(10, 12, 24, .7); color: var(--matrix); opacity: 0; transform: translateX(-260px); transition: all .55s cubic-bezier(.2, .8, .2, 1); } .lv-bus .track i.go { opacity: 1; transform: none; }
+  .lv-b2h { display: flex; gap: 14px; } .lv-b2h .bb { display: grid; gap: 10px; justify-items: center; opacity: 0; transition: opacity .4s; } .lv-b2h .bb.on { opacity: 1; }
+  .lv-b2h .by { padding: 10px 12px; border-radius: 12px; border: 1px solid var(--line-strong); background: rgba(10, 12, 24, .6); font: 600 22px/1 var(--mono); color: var(--link); letter-spacing: .08em; }
+  .lv-b2h .nb { display: flex; gap: 6px; opacity: 0; transform: translateY(-12px); transition: all .4s; } .lv-b2h .bb.split .nb { opacity: 1; transform: none; } .lv-b2h .nb span { width: 54px; padding: 10px 0; text-align: center; border-radius: 10px; border: 1px solid rgba(60, 226, 107, .5); background: rgba(60, 226, 107, .1); font: 700 34px/1 var(--mono); color: var(--matrix); }
+  .lv-net { display: flex; align-items: center; gap: 22px; } .lv-net .wire { position: relative; width: 420px; height: 70px; } .lv-net .wire::before { content: ''; position: absolute; left: 0; right: 0; top: 40px; height: 3px; background: repeating-linear-gradient(90deg, var(--link) 0 10px, transparent 10px 18px); opacity: .6; }
+  .lv-net .wire > span { position: absolute; left: 0; right: 0; top: 0; text-align: center; font: 500 18px/1 var(--mono); color: var(--muted); } .lv-net.slim .wire { width: 340px; }
+  .pkt { position: absolute; top: 24px; left: 0; padding: 6px 12px; border-radius: 8px; background: var(--link); color: #0b0d17; font: 700 18px/1 var(--mono); opacity: 0; } .pkt.go { animation: lv-pkt 1.8s ease-in-out forwards; } .pkt.back { background: var(--matrix); animation: lv-pktb 1.6s ease-in-out forwards; }
+  @keyframes lv-pkt { 0% { opacity: 1; left: 0; } 90% { opacity: 1; } 100% { opacity: 0; left: calc(100% - 50px); } } @keyframes lv-pktb { 0% { opacity: 1; left: calc(100% - 50px); } 100% { opacity: 0; left: 0; } }
+  .lv-json2 { width: 1060px; min-height: 84px; padding: 18px 24px; border-radius: 16px; border: 1px solid var(--line-strong); background: rgba(10, 12, 24, .7); font: 500 23px/1.45 var(--mono); color: var(--text); overflow-wrap: anywhere; } .lv-json2.reply { color: var(--matrix); min-height: 0; border-color: rgba(60, 226, 107, .4); } .lv-json2.reply:empty { visibility: hidden; } .lv-json2.sm { font-size: 20px; width: 1000px; }
+  /* chapter 3 */
+  .lv-pipe { display: flex; align-items: center; justify-content: center; margin-top: 8px; } .lv-pipe .pn { width: 180px; flex: none; opacity: .4; transition: opacity .4s; } .lv-pipe .pn.act { opacity: 1; } .lv-pipe .pn .lv-chip { padding: 12px 8px; font-size: 20px; } .lv-pipe .pn .lv-chip small { font-size: 16px; } .lv-pipe .pn.act .lv-chip { border-color: var(--link); box-shadow: 0 0 28px rgba(27, 216, 244, .3); }
+  .lv-pipe .pe { position: relative; width: 48px; height: 4px; flex: none; background: rgba(158, 164, 188, .25); border-radius: 2px; } .lv-pipe .pe i { position: absolute; top: -5px; left: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--link); opacity: 0; } .lv-pipe .pe.act { background: rgba(27, 216, 244, .5); } .lv-pipe .pe.act i { animation: lv-dot 1.1s linear infinite; }
+  @keyframes lv-dot { 0% { left: 0; opacity: 1; } 100% { left: 34px; opacity: 1; } }
+  .lv-detail { display: grid; justify-items: center; align-items: center; min-height: 0; } .lv-detail > .dp { grid-area: 1 / 1; display: grid; gap: 22px; justify-items: center; }
+  .lv-hx2b { display: flex; gap: 10px; } .lv-hx2b > div { display: grid; gap: 8px; justify-items: center; padding: 14px 8px; width: 108px; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); opacity: 0; transform: translateY(12px); transition: all .4s; } .lv-hx2b > div.on { opacity: 1; transform: none; }
+  .lv-hx2b code { font: 700 32px/1 var(--mono); color: var(--matrix); } .lv-hx2b span { font: 500 17px/1 var(--mono); color: var(--link); letter-spacing: .05em; }
+  .lv-board { display: grid; gap: 10px; width: 760px; padding: 18px 22px 22px; border-radius: 16px; background: linear-gradient(160deg, #123a2b, #0b2018); border: 1px solid rgba(60, 226, 107, .35); } .lv-board .bus { height: 8px; border-radius: 4px; background: rgba(60, 226, 107, .2); position: relative; overflow: hidden; } .lv-board .bus i { position: absolute; top: 0; left: -80px; width: 80px; height: 8px; background: linear-gradient(90deg, transparent, var(--matrix)); } .lv-board .bus i.go { animation: lv-bus 1.4s linear 2; } @keyframes lv-bus { to { left: 100%; } }
+  .lv-board .chips { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; } .lv-board .chips i { height: 40px; border-radius: 7px; background: #0d1512; border: 1px solid rgba(255, 255, 255, .1); transition: all .3s; } .lv-board .chips i.on { background: rgba(247, 147, 26, .45); border-color: var(--orange); box-shadow: 0 0 14px rgba(247, 147, 26, .6); }
+  .lv-nonce { display: grid; gap: 18px; justify-items: center; } .lv-nonce .nbytes { display: flex; gap: 12px; } .lv-nonce .nbytes span { width: 96px; padding: 16px 0; text-align: center; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line-strong); font: 700 46px/1 var(--mono); color: var(--muted); } .lv-nonce .nbytes span.hit { color: var(--matrix); border-color: var(--matrix); box-shadow: 0 0 26px rgba(60, 226, 107, .4); }
+  .lv-nonce .try { display: grid; gap: 6px; justify-items: center; } .lv-nonce .try small { font: 400 18px/1 var(--sans); color: var(--muted); } .lv-nonce .try code { font: 500 26px/1 var(--mono); color: var(--muted); } .lv-nonce .try code em { font-style: normal; color: var(--matrix); font-weight: 700; }
+  .lv-nonce .tgt { font: 600 24px/1.2 var(--sans); color: var(--muted); } .lv-nonce .tgt.hit { color: var(--matrix); }
+  .lv-ok { font: 700 30px/1 var(--sans); color: var(--matrix); opacity: 0; transition: opacity .5s; } .lv-ok.on { opacity: 1; }
+  /* chapter 4 */
+  .lv-rain-wrap { display: grid; grid-template-columns: 250px 440px 380px; gap: 40px; align-items: center; }
+  .lv-miners { display: grid; grid-template-columns: repeat(8, 1fr); gap: 8px; } .lv-miners i { height: 24px; border-radius: 5px; background: rgba(158, 164, 188, .18); transition: all .15s; } .lv-miners i.hi { background: var(--orange); box-shadow: 0 0 10px rgba(247, 147, 26, .7); }
+  .lv-rain { padding: 16px 18px; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); overflow: hidden; } .lv-rain div { font: 500 17px/1.55 var(--mono); color: var(--matrix); white-space: nowrap; } .lv-rain em { font-style: normal; color: var(--text); }
+  .lv-rate { display: grid; gap: 14px; justify-items: center; } .lv-rate .lv-big { font-size: 78px; }
+  .lv-ladder2 { display: flex; align-items: flex-end; gap: 12px; height: 380px; } .rung { width: 128px; height: calc(96px + var(--i) * 38px); display: grid; align-content: end; justify-items: center; gap: 6px; padding: 12px 6px; border-radius: 14px 14px 6px 6px; background: linear-gradient(180deg, rgba(147, 57, 244, .5), rgba(16, 95, 176, .35)); border: 1px solid var(--line-strong); opacity: 0; transform: translateY(24px); transition: all .45s; }
+  .rung.on { opacity: .55; transform: none; } .rung.cur { opacity: 1; box-shadow: 0 0 30px rgba(147, 57, 244, .5); } .rung b { font: 700 26px/1 var(--mono); color: var(--text); } .rung span { font: 600 22px/1 var(--mono); color: var(--orange); } .rung small { font: 400 16px/1.2 var(--sans); color: var(--muted); }
+  .lv-logbars { width: 1000px; display: grid; gap: 26px; position: relative; padding-bottom: 46px; } .lb { display: grid; grid-template-columns: 250px 1fr; gap: 22px; align-items: center; font: 500 24px/1.3 var(--sans); color: var(--muted); } .lb .tr { position: relative; height: 44px; border-radius: 10px; background: rgba(158, 164, 188, .1); }
+  .lb .tr i { position: absolute; left: 0; top: 0; bottom: 0; width: var(--w, 0%); border-radius: 10px; background: linear-gradient(90deg, #9339f4, #105fb0); transition: width 1.6s cubic-bezier(.2, .8, .2, 1); } .lb .tr b { position: absolute; left: 14px; top: 0; bottom: 0; display: grid; align-items: center; color: var(--text); font: 600 22px/1 var(--sans); white-space: nowrap; }
+  .lv-logbars .axis { position: absolute; left: 272px; right: 0; bottom: 0; height: 30px; border-top: 1px solid var(--line-strong); } .lv-logbars .axis span { position: absolute; top: 8px; transform: translateX(-50%); font: 500 18px/1 var(--mono); color: var(--muted); white-space: nowrap; }
+  /* chapter 5 */
+  .lv-tpl { display: flex; align-items: center; gap: 34px; } .lv-tpl .mem { display: grid; gap: 10px; justify-items: center; padding: 18px 20px; border-radius: 20px; border: 1px dashed var(--line-strong); background: rgba(10, 12, 24, .4); } .lv-tpl .mem b, .lv-tpl .blk b { font: 600 20px/1 var(--mono); letter-spacing: .08em; color: var(--link); text-transform: uppercase; } .lv-tpl .mem small, .lv-tpl .blk small { font: 400 18px/1.2 var(--sans); color: var(--muted); }
+  .lv-tpl .txs { display: grid; grid-template-columns: repeat(9, 30px); gap: 7px; } .lv-tpl .txs i { height: 30px; border-radius: 7px; background: hsl(calc(200 - var(--f) * 1.4) 70% 52%); transition: all .4s; } .lv-tpl .txs i.gone { opacity: .1; transform: scale(.5); }
+  .lv-tpl .node { display: grid; gap: 16px; justify-items: center; } .lv-tpl .blk { display: grid; gap: 10px; justify-items: center; padding: 16px 20px; border-radius: 18px; border: 1px solid rgba(60, 226, 107, .55); background: rgba(60, 226, 107, .07); box-shadow: 0 0 34px rgba(60, 226, 107, .15); }
+  .lv-tpl .slots { display: grid; grid-template-columns: repeat(6, 44px); gap: 8px; } .lv-tpl .slots i { height: 44px; border-radius: 9px; background: rgba(158, 164, 188, .1); border: 1px dashed rgba(158, 164, 188, .3); transition: all .4s; } .lv-tpl .slots i.on { border-style: solid; border-color: transparent; background: hsl(calc(200 - var(--f) * 1.4) 70% 52%); }
+  .lv-dist { display: grid; gap: 40px; justify-items: center; } .lv-dist > .lv-chip { } .lv-dist .wire2 { display: none; }
+  .lv-dist { grid-template-columns: auto 160px auto; align-items: center; justify-content: center; gap: 14px 24px; } .lv-dist .wire2 { display: block; position: relative; height: 4px; background: rgba(27, 216, 244, .4); border-radius: 2px; } .lv-dist .wire2 i { position: absolute; top: -5px; left: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--link); animation: lv-dot2 1.3s linear infinite; } .lv-dist .wire2 i:nth-child(2) { animation-delay: .43s; } .lv-dist .wire2 i:nth-child(3) { animation-delay: .86s; } @keyframes lv-dot2 { 0% { left: 0; opacity: 1; } 100% { left: calc(100% - 14px); opacity: 1; } }
+  .lv-dist .mfan { grid-column: 1 / -1; display: flex; gap: 22px; justify-content: center; margin-top: 8px; } .lv-dist .mn { display: grid; gap: 10px; justify-items: center; opacity: 0; transform: translateY(14px); transition: all .5s; } .lv-dist .mn.on { opacity: 1; transform: none; } .lv-dist .mn code { font: 500 17px/1 var(--mono); color: var(--matrix); }
+  /* chapter 6 */
+  .lv-vs { display: grid; grid-template-columns: 1fr 1fr; gap: 34px; width: 1150px; align-self: center; } .lv-vs .vside { display: grid; gap: 14px; align-content: start; padding: 24px 24px 20px; border-radius: 24px; border: 1px solid var(--line); background: rgba(10, 12, 24, .5); transition: all .5s; min-height: 470px; }
+  .lv-vs .vside h4 { margin: 0; text-align: center; font: 600 32px/1.2 var(--display); } .lv-vs .vside.c h4 { color: #ff8a65; } .lv-vs .vside.d h4 { color: var(--matrix); } .lv-vs .vside p { margin: 0; text-align: center; font: 400 22px/1.45 var(--sans); color: var(--muted); }
+  .lv-vs .vside.c.act { border-color: rgba(255, 77, 77, .6); box-shadow: 0 0 50px rgba(255, 77, 77, .15); } .lv-vs .vside.d.act { border-color: rgba(60, 226, 107, .6); box-shadow: 0 0 50px rgba(60, 226, 107, .15); } .lv-vs .vside.dim { opacity: .35; }
+  .lv-vs .diag { display: flex; align-items: center; justify-content: center; gap: 18px; min-height: 250px; }
+  .lv-vs .ms { display: grid; grid-template-columns: repeat(3, 26px); gap: 10px; } .lv-vs .ms i { width: 26px; height: 26px; border-radius: 6px; background: rgba(158, 164, 188, .35); } .lv-vs .ms i.hash { animation: lv-blink 1.2s ease-in-out infinite; } .lv-vs .ms i:nth-child(3n) { animation-delay: .3s; } .lv-vs .ms i:nth-child(3n+1) { animation-delay: .6s; }
+  @keyframes lv-blink { 0%, 100% { background: rgba(158, 164, 188, .3); } 50% { background: var(--orange); box-shadow: 0 0 10px rgba(247, 147, 26, .7); } }
+  .lv-vs .mflow { position: relative; width: 90px; height: 4px; background: rgba(255, 138, 101, .35); border-radius: 2px; } .lv-vs .mflow i { position: absolute; top: -5px; left: 0; width: 14px; height: 14px; border-radius: 50%; background: var(--orange); animation: lv-dot2 1.2s linear infinite; } .lv-vs .mflow i:nth-child(2) { animation-delay: .4s; } .lv-vs .mflow i:nth-child(3) { animation-delay: .8s; }
+  .lv-vs .pool { display: grid; gap: 10px; justify-items: center; padding: 14px 16px; border-radius: 16px; border: 1px solid rgba(255, 77, 77, .5); background: rgba(255, 77, 77, .07); } .lv-vs .pool b { font: 700 26px/1 var(--display); color: #ff8a65; }
+  .lv-vs .tl { display: grid; gap: 6px; } .lv-vs .tl span { padding: 7px 14px; border-radius: 9px; font: 500 20px/1 var(--mono); background: rgba(10, 12, 24, .6); border: 1px solid var(--line); opacity: 0; transform: translateX(-10px); transition: all .4s; } .lv-vs .tl span.on { opacity: 1; transform: none; }
+  .lv-vs .tl span.in { color: var(--text); } .lv-vs .tl span.in::before { content: '✓ '; color: var(--matrix); } .lv-vs .tl span.out { color: var(--muted); text-decoration: line-through; border-color: rgba(255, 77, 77, .5); } .lv-vs .tl span.out::before { content: '✕ '; color: #ff7a6e; text-decoration: none; display: inline-block; }
+  .lv-vs .own-miners { display: flex; gap: 16px; } .lv-vs .om { display: grid; gap: 10px; justify-items: center; padding: 12px 10px; border-radius: 16px; border: 1px solid rgba(60, 226, 107, .45); background: rgba(60, 226, 107, .06); } .lv-vs .om .nd { text-align: center; font: 600 20px/1.1 var(--mono); color: var(--matrix); } .lv-vs .om .nd small { display: block; font: 400 14px/1.3 var(--sans); color: var(--muted); }
+  .lv-vs .om .tl span { padding: 6px 10px; font-size: 17px; } .lv-vs .asicbar { width: 70px; height: 26px; border-radius: 6px; background: rgba(158, 164, 188, .3); } .lv-vs .asicbar.hash { animation: lv-blink 1.2s ease-in-out infinite; }
+  .lv-list { width: min(100%, 900px); display: grid; gap: 56px; justify-items: center; }
+  .lv-ch { font: 600 13px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--link); }
+  .lv-prog button.cur::before { background: rgba(27, 216, 244, .35); }
+  .lv-voicebar { width: 100%; }
   /* chrome */
   .lv-poster { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; padding: 20px; background: radial-gradient(ellipse 80% 75% at 50% 40%, rgba(70, 78, 140, .32), rgba(0, 0, 0, 0) 80%), var(--bg); }
   .lv-poster[hidden] { display: none; }
@@ -936,7 +993,7 @@
   .lv-ctl { display: flex; align-items: center; gap: 12px; }
   .lv-bar-btn { flex: none; display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-strong); background: rgba(10, 12, 24, .5); color: var(--text); cursor: pointer; padding: 0; }
   .lv-bar-btn:hover { border-color: var(--link); color: var(--link); } .lv-bar-btn svg { width: 16px; height: 16px; fill: currentColor; }
-  .lv-prog { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; min-width: 0; }
+  .lv-prog { flex: 1; display: grid; grid-template-columns: repeat(var(--steps, 5), 1fr); gap: 5px; min-width: 0; }
   .lv-prog button { height: 22px; padding: 0; border: 0; background: none; cursor: pointer; position: relative; }
   .lv-prog button::before { content: ''; position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 3px; background: rgba(158, 164, 188, .25); }
   .lv-prog button i { position: absolute; left: 0; top: 9px; height: 4px; border-radius: 3px; background: var(--link); width: 0; transition: width .4s linear; }
@@ -1228,26 +1285,12 @@
 <section class="learn" id="learn" aria-labelledby="learn-title">
   <div class="learn-head">
     <h2 id="learn-title">Academy</h2>
-    <p>From bits to blocks</p>
+    <p>From bits to blocks: six short videos</p>
   </div>
 
-<section class="lv" id="learn-video" aria-label="Video: from bits to blocks">
-  <div class="lv-frame" id="lv-frame">
-    <div class="lv-stage" id="lv-stage" aria-hidden="true"></div>
-    <div class="lv-poster" id="lv-poster">
-      <h3>From bits to blocks</h3>
-      <p>7 short chapters with narration: hashes, shares, hashrate and how to read the blocks</p>
-      <button type="button" class="lv-play" id="lv-start" aria-label="Play the video"><svg viewBox="0 0 24 24"><path d="M6 4.5v15l13-7.5z"/></svg></button>
-    </div>
-  </div>
-  <div class="lv-caption" id="lv-caption" aria-live="off"></div>
-  <div class="lv-ctl">
-    <button type="button" class="lv-bar-btn" id="lv-pp" aria-label="Play"><svg viewBox="0 0 24 24" id="lv-pp-ico"><path d="M6 4.5v15l13-7.5z"/></svg></button>
-    <div class="lv-prog" id="lv-prog" role="group" aria-label="Chapters"></div>
-    <button type="button" class="lv-bar-btn" id="lv-snd" aria-label="Narration on" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button>
-  </div>
-  <div class="lv-voice"><span id="lv-vlabel"></span> <select id="lv-vsel" aria-label="Narrator voice"></select></div>
-</section>
+<div class="lv-list" id="lv-list">
+  <div class="lv-voice lv-voicebar"><span id="lv-vlabel"></span> <select id="lv-vsel" aria-label="Narrator voice"></select></div>
+</div>
 
 </section>
 <!-- How to read the blocks: a page of its own, reached from the link beside the search bar -->
@@ -4330,25 +4373,83 @@ window.__coins = COIN_LOGOS;
 <script>
 
 (() => {
-  const H = '0000000000000000000' + '1a7c3f09b2e6d48c15f7e2a9b0c34d6e81f25a9c7b3e0';
-  const bitsRow = (n, seed) => { let s = ''; for (let i = 0; i < n; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; const b = (seed >> 8) & 1; s += b ? '<b>1</b>' : '0'; } return s; };
-  const mini = (net, kind, pool) => `<div class="mini" data-net="${net}" data-kind="${kind}" data-pool="${pool}"></div>`;
-  // each step: say (spoken), cap (caption, default = say), r: ranges are on the elements (data-r="from-to")
+  // ---------- real SHA-256, so every hash on screen is the true hash of the text beside it ----------
+  const PR = []; for (let n = 2; PR.length < 64; n++) { let ok = true; for (let d = 2; d * d <= n; d++) if (n % d === 0) { ok = false; break; } if (ok) PR.push(n); }
+  const SK = PR.map((p) => Math.floor((Math.cbrt(p) % 1) * 2 ** 32) >>> 0), SH0 = PR.slice(0, 8).map((p) => Math.floor((Math.sqrt(p) % 1) * 2 ** 32) >>> 0);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  function sha256(bytes) {
+    const l = bytes.length, pad = ((l + 9 + 63) >> 6) << 6, m = new Uint8Array(pad); m.set(bytes); m[l] = 0x80;
+    const dv = new DataView(m.buffer); dv.setUint32(pad - 4, (l * 8) >>> 0); dv.setUint32(pad - 8, Math.floor((l * 8) / 2 ** 32));
+    let h = SH0.slice(); const states = [], w = new Uint32Array(64);
+    for (let o = 0; o < pad; o += 64) {
+      for (let i = 0; i < 16; i++) w[i] = dv.getUint32(o + i * 4);
+      for (let i = 16; i < 64; i++) { const a = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3), b = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10); w[i] = (w[i - 16] + a + w[i - 7] + b) >>> 0; }
+      let [a, b, c, d, e, f, g, hh] = h;
+      for (let i = 0; i < 64; i++) { const t1 = (hh + (rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25)) + ((e & f) ^ (~e & g)) + SK[i] + w[i]) >>> 0, t2 = ((rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22)) + ((a & b) ^ (a & c) ^ (b & c))) >>> 0; hh = g; g = f; f = e; e = (d + t1) >>> 0; d = c; c = b; b = a; a = (t1 + t2) >>> 0; }
+      h = [h[0] + a, h[1] + b, h[2] + c, h[3] + d, h[4] + e, h[5] + f, h[6] + g, h[7] + hh].map((x) => x >>> 0); states.push(h.slice());
+    }
+    return { states, hex: h.map((x) => x.toString(16).padStart(8, '0')).join('') };
+  }
+  const enc = (s) => new TextEncoder().encode(s), shaText = (s) => sha256(enc(s)).hex;
+  const hex2bits = (hx) => hx.split('').map((c) => parseInt(c, 16).toString(2).padStart(4, '0')).join('');
+  const HEXC = '0123456789abcdef', rhex = (n) => { let s = ''; for (let i = 0; i < n; i++) s += HEXC[(Math.random() * 16) | 0]; return s; };
+  const rbit = (n) => { let s = ''; for (let i = 0; i < n; i++) s += Math.random() < .5 ? '0' : '1'; return s; };
+  const chunk = (s, n) => s.match(new RegExp('.{1,' + n + '}', 'g')) || [];
+  const MSG = 'hashes.space';
+  const HASH = shaText(MSG);
+  const BLOCK = '0000000000000000000' + '1a7c3f09b2e6d48c15f7e2a9b0c34d6e81f25a9c7b3e0';   // a Bitcoin block hash: 64 hex characters, 19 leading zeros
+  const LONG = 'The quick brown fox jumps over the lazy dog. '.repeat(3).trim();
+  const SHA_MSG = 'hashes.space '.repeat(11).trim();                                      // 142 bytes: three 512-bit blocks once padded
+  const SHA_RUN = sha256(enc(SHA_MSG));
+
+  // ---------- small animation helpers (each is tied to the step that started it) ----------
+  const typeInto = (c, el, str, ms) => { el.textContent = ''; let i = 0; c.loop((stop) => { i++; el.textContent = str.slice(0, i); if (i >= str.length) stop(); }, ms); };
+  const scramble = (c, el, final, dur) => { const n = final.length, t0 = performance.now(); c.loop((stop) => { const p = Math.min(1, (performance.now() - t0) / dur), k = Math.floor(p * n); el.textContent = final.slice(0, k) + rhex(n - k); if (p >= 1) stop(); }, 40); };
+  const seq = (c, list, step, fn, start = 0) => list.forEach((x, i) => c.t(() => fn(x, i), start + i * step));
+  const fmt = (n) => n.toLocaleString('en-US');
+
   const SCENES = [
-    { t: 'Hashes', steps: [
+    // 1 ----------------------------------------------------------------------------------------------
+    { t: 'Hashes', blurb: 'Bits, hexadecimal and nibbles', steps: [
       'A hash is a collection of bits, zeros and ones, inside a computer. But it is shown to humans as a fixed-length string of letters and numbers.',
       'Reading a long sequence of zeros and ones is hard for people. So computers translate groups of bits into a text format called hexadecimal encoding.',
       'Hexadecimal uses sixteen symbols: the numbers zero to nine, and the letters A to F. That makes a hash far easier to read than the two hundred fifty-six or five hundred twelve bits behind it.',
       'Every group of four bits is called a nibble, and every nibble turns into a single letter or number in hexadecimal.',
       'A 256-bit block hash is sixty-four hex characters, sixty-four times four bits. The leading zeros are what miners search for.',
-    ], stack: true, html: `<div style="display:grid;gap:28px;justify-items:center"><div class="lv-bits lv-el" data-r="0-1"><div>${bitsRow(120, 7)}</div><div>${bitsRow(120, 99)}</div><div>${bitsRow(120, 1234)}</div></div>
-      <div class="lv-stack" style="min-height:130px"><div class="lv-hexline lv-el" data-r="0-0">${H.slice(0, 32)}<br>${H.slice(32)}</div>
-      <div class="lv-chip c lv-el" data-r="1-1">hexadecimal encoding<small>groups of bits become text</small></div></div></div>
-      <div class="lv-syms lv-el" data-r="2-2">${'0123456789ABCDEF'.split('').map((c) => `<span>${c}</span>`).join('')}</div>
-      <div class="lv-nibs lv-el" data-r="3-3"><span><code>0000</code><b>0</b></span><span><code>0001</code><b>1</b></span><span><code>1001</code><b>9</b></span><span><code>1010</code><b>A</b></span><span><code>1100</code><b>C</b></span><span><code>1111</code><b>F</b></span></div>
-      <div style="display:grid;gap:24px;justify-items:center"><div class="lv-hexline lv-el" data-r="4-4"><em>${H.slice(0, 19)}</em>${H.slice(19)}</div>
-      <div class="lv-note lv-el" data-r="4-4">256 bits = <b>64 hex characters</b> (64 × 4 bits)</div></div>` },
-    { t: 'Generating hashes', steps: [
+    ], html: `
+      <div class="lv-layer lv-el" data-r="0-0"><div class="lv-cap">the hash of “${MSG}”, as the computer stores it</div><div class="lv-bits256" data-k="bits"></div>
+        <div class="lv-down">shown to humans as</div><div class="lv-hexline" data-k="hex"></div><div class="lv-cap">256 bits  =  64 characters</div></div>
+      <div class="lv-layer lv-el" data-r="1-1"><div class="lv-cap">groups of four bits become one character</div>
+        <div class="lv-conv" data-k="bitrow">${chunk(hex2bits(HASH.slice(0, 8)), 4).map((b) => `<span class="nib">${b}</span>`).join('')}</div>
+        <div class="lv-down">hexadecimal encoding</div>
+        <div class="lv-conv hexrow" data-k="hexrow">${HASH.slice(0, 8).split('').map((h) => `<span class="hx">${h}</span>`).join('')}</div></div>
+      <div class="lv-layer lv-el" data-r="2-2"><div class="lv-cap">sixteen symbols: 0 to 9, then A to F</div><div class="lv-syms2" data-k="syms">${'0123456789ABCDEF'.split('').map((s, i) => `<div class="${i > 9 ? 'l' : 'd'}"><b>${s}</b><code>${i.toString(2).padStart(4, '0')}</code><small>${i}</small></div>`).join('')}</div>
+        <div class="lv-note">ten numbers + six letters = <b>16 symbols</b>, one for every 4-bit pattern</div></div>
+      <div class="lv-layer lv-el" data-r="3-3"><div class="lv-cap">one nibble = four bits = one character</div><div class="lv-nibble"><div class="nbits" data-k="nbits"><i>0</i><i>0</i><i>0</i><i>0</i></div><span class="lv-arrow">→</span><div class="hexc" data-k="nhex">0</div><div class="dec" data-k="ndec">= 0</div></div>
+        <div class="lv-note">counting from <b>0000</b> to <b>1111</b>: sixteen nibbles, sixteen characters</div></div>
+      <div class="lv-layer lv-el" data-r="4-4"><div class="lv-cap">a Bitcoin block hash</div><div class="lv-cells" data-k="cells">${BLOCK.split('').map((ch, i) => `<span class="${i < 19 ? 'z' : ''}">${ch}</span>`).join('')}</div>
+        <div class="lv-row" style="gap:40px"><div class="lv-chip g" data-k="zchip">19 leading zeros<small>what miners search for</small></div><div class="lv-chip c">64 characters × 4 bits<small>= 256 bits</small></div></div></div>`,
+      onStep(c, st) {
+        if (st === 0) {
+          const bits = hex2bits(HASH), rows = chunk(bits, 64), el = c.q('[data-k=bits]'); el.innerHTML = rows.map(() => '<div></div>').join('');
+          const kids = [...el.children], t0 = performance.now();
+          c.loop((stop) => { const p = Math.min(1, (performance.now() - t0) / 2200), k = Math.floor(p * 256); kids.forEach((d, i) => { const a = i * 64, fin = rows[i].slice(0, Math.max(0, Math.min(64, k - a))); d.textContent = fin + rbit(64 - fin.length); }); if (p >= 1) stop(); }, 50);
+          const hx = c.q('[data-k=hex]'); hx.textContent = ''; c.t(() => scramble(c, hx, HASH, 2400), 1500);
+        }
+        if (st === 1) {
+          const nibs = c.qa('[data-k=bitrow] .nib'), hxs = c.qa('[data-k=hexrow] .hx'); nibs.forEach((n) => n.classList.remove('hl', 'done')); hxs.forEach((n) => n.classList.remove('on'));
+          seq(c, nibs, 700, (n, i) => { nibs.forEach((x) => x.classList.remove('hl')); n.classList.add('hl', 'done'); c.t(() => hxs[i].classList.add('on'), 320); }, 500);
+        }
+        if (st === 2) { const t = c.qa('[data-k=syms] > div'); t.forEach((x) => x.classList.remove('on')); seq(c, t, 190, (x) => x.classList.add('on'), 400); }
+        if (st === 3) {
+          let n = 0; const bs = c.qa('[data-k=nbits] i'), hx = c.q('[data-k=nhex]'), dc = c.q('[data-k=ndec]');
+          const show = () => { const b = n.toString(2).padStart(4, '0'); bs.forEach((e, i) => { e.textContent = b[i]; e.classList.toggle('one', b[i] === '1'); }); hx.textContent = n.toString(16).toUpperCase(); hx.classList.toggle('let', n > 9); dc.textContent = '= ' + n; };
+          show(); c.loop(() => { n = (n + 1) % 16; show(); }, 620);
+        }
+        if (st === 4) { const cells = c.qa('[data-k=cells] span'); cells.forEach((x) => x.classList.remove('on')); seq(c, cells, 38, (x) => x.classList.add('on'), 200); c.q('[data-k=zchip]').classList.remove('on'); c.t(() => c.q('[data-k=zchip]').classList.add('on'), 2800); }
+      } },
+    // 2 ----------------------------------------------------------------------------------------------
+    { t: 'Generating hashes', blurb: 'Hash functions, SHA-256, BLAKE2b and Stratum', steps: [
       'A hash is generated by passing data of any size through a mathematical algorithm called a hash function.',
       'A miner using SHA-256, the function of Bitcoin, processes data in blocks of 512 bits, and outputs a hash of exactly 256 bits.',
       'A miner using BLAKE2b, on Bitcoin BLAKE2b, hashes a restructured 164-byte block header. Every 8 bits make a byte, so that is 1,312 bits of input, while the hash it outputs is still exactly 256 bits.',
@@ -4356,104 +4457,160 @@ window.__coins = COIN_LOGOS;
       'When your mining software talks to the hashing hardware, the bits are grouped into bytes: a 256-bit hash travels over the PCIe bus, or another interface, as a 32-byte array.',
       'When your miner finds a valid share in a pool, the software turns the bits into a hexadecimal string. One hex character is exactly one nibble, so a 256-bit hash travels as a readable 64-character text string.',
       'Most miners speak the Stratum protocol, to a pool or to their own DATUM Gateway, which packs these hex strings into standard JSON-RPC text messages sent over TCP.',
-    ], html: `<div class="lv-row lv-el" data-r="0-2"><div class="lv-data"><i></i><i></i><i></i><i></i></div><span class="lv-arrow">→</span><div class="lv-fn">hash function</div><span class="lv-arrow">→</span><div class="lv-chip g lv-mono">256 bits</div></div>
-      <div class="lv-stack" style="min-height:270px">
-        <div class="lv-row lv-el" data-r="1-1"><div class="lv-chip c">SHA-256<small>Bitcoin</small></div><div class="lv-chip">512 bits in<small>per block of data</small></div><span class="lv-arrow">→</span><div class="lv-chip g">256 bits out</div></div>
-        <div class="lv-row lv-el" data-r="2-2"><div class="lv-chip c">BLAKE2b<small>Bitcoin BLAKE2b</small></div><div class="lv-chip">164 bytes = 1,312 bits in<small>8 bits per byte</small></div><span class="lv-arrow">→</span><div class="lv-chip g">256 bits out</div></div>
-        <div class="lv-ops lv-el" data-r="3-3"><div><b>AND</b><span>1100</span><span>1010</span><u>1000</u></div><div><b>XOR</b><span>1100</span><span>1010</span><u>0110</u></div><div><b>SHIFT</b><span>1100</span><span>&lt;&lt; 1</span><u>1000</u></div><div style="border:0;background:none;font:500 24px/1.4 var(--sans);color:var(--muted)">billions of times<br>per second</div></div>
-        <div class="lv-el" data-r="4-4" style="display:grid;gap:16px;justify-items:center"><div class="lv-bytes">${H.match(/../g).map((x) => `<span>${x}</span>`).join('')}</div><div class="lv-note"><b>32-byte array</b> over the PCIe bus</div></div>
-        <div class="lv-el" data-r="5-5" style="display:grid;gap:16px;justify-items:center"><div class="lv-nibs"><span><code>0001</code><b>1</b></span><span><code>1010</code><b>a</b></span><span><code>0111</code><b>7</b></span><span><code>1100</code><b>c</b></span></div><div class="lv-hexline" style="font-size:22px">${H}</div><div class="lv-note">1 hex character = 1 nibble → <b>64 characters</b></div></div>
-        <div class="lv-el" data-r="6-6" style="display:grid;gap:16px;justify-items:center"><div class="lv-json"><i>{"id"</i>: 4, <i>"method"</i>: <s>"mining.submit"</s>, <i>"params"</i>: [ <s>"worker"</s>, <s>"job"</s>, <s>"…"</s>, <s>"nonce"</s> ]<i>}</i></div><div class="lv-row"><div class="lv-chip c">Stratum<small>to a pool or your DATUM Gateway</small></div><div class="lv-chip">JSON-RPC over TCP</div></div></div>
-      </div>` },
-    { t: 'Sending a share', steps: [
+    ], html: `
+      <div class="lv-layer lv-el" data-r="0-0"><div class="lv-ins">${[['a', '1 byte'], [MSG, '12 bytes'], [LONG, '133 bytes']].map(([s, n], i) => `<div class="lv-in" data-i="${i}"><div class="lv-chip"><span class="msg">“${s.length > 28 ? s.slice(0, 27) + '…' : s}”</span><small>${n} of data</small></div><span class="lv-arrow">→</span><div class="lv-fn sm">SHA-256</div><span class="lv-arrow">→</span><div class="lv-out"><code></code></div></div>`).join('')}</div>
+        <div class="lv-note">any size in, <b>always 256 bits out</b></div></div>
+      <div class="lv-layer lv-el" data-r="1-1"><div class="lv-sha"><div class="msgblocks"><b>message</b>${[0, 1, 2].map((i) => `<div class="mb" data-b="${i}">512 bits<small>block ${i + 1}</small></div>`).join('')}</div>
+        <div class="comp"><div class="lv-fn">SHA-256 compression</div><div class="rounds"><span data-k="rnd">0</span> / 64 rounds</div><div class="regs">${[0, 1, 2, 3, 4, 5, 6, 7].map((i) => `<div class="reg"><small>H${i}</small><code data-reg="${i}">${SH0[i].toString(16).padStart(8, '0')}</code></div>`).join('')}</div></div>
+        <div class="lv-sha-out"><div class="lv-chip g">256 bits<small>8 words × 32 bits</small></div></div></div>
+        <div class="lv-note" style="margin-top:18px">each 512-bit block updates the 256-bit state; the last state <b>is</b> the hash</div></div>
+      <div class="lv-layer lv-el" data-r="2-2"><div class="lv-hdr"><div class="lv-bytegrid" data-k="hdr">${Array.from({ length: 164 }, (_, i) => `<span>${shaText('b' + i).slice(0, 2)}</span>`).join('')}</div>
+        <div class="lv-hdr-side"><div class="lv-counter"><b data-k="hb">0</b><small>bytes</small></div><div class="lv-counter"><b data-k="hbits">0</b><small>bits</small></div><span class="lv-arrow">→</span><div class="lv-fn">BLAKE2b</div><span class="lv-arrow">→</span><div class="lv-chip g">256 bits</div></div></div>
+        <div class="lv-note" style="margin-top:14px">164 bytes × 8 bits = <b>1,312 bits</b> in, still <b>256 bits</b> out</div></div>
+      <div class="lv-layer lv-el" data-r="3-3"><div class="lv-silicon" data-k="si">${Array.from({ length: 96 }, () => '<i></i>').join('')}</div><div class="lv-ops2">${['AND', 'XOR', 'SHIFT'].map((o) => `<div class="op" data-op="${o}"><b>${o}</b><div class="r a"></div><div class="r b"></div><div class="rl"></div><div class="r o"></div></div>`).join('')}</div>
+        <div class="lv-counter wide"><b data-k="ops">0</b><small>bitwise operations per second, on a single chip</small></div></div>
+      <div class="lv-layer lv-el" data-r="4-4"><div class="lv-bus"><div class="lv-chip o">Hashing hardware<small>ASIC</small></div><div class="lane"><span>PCIe bus</span><div class="track" data-k="track">${SHA_RUN.hex.match(/../g).slice(0, 32).map((h) => `<i>${h}</i>`).join('')}</div></div><div class="lv-chip c">Mining software<small>reads a byte array</small></div></div>
+        <div class="lv-note"><b>256 bits ÷ 8 = 32 bytes</b>: a 32-byte array</div></div>
+      <div class="lv-layer lv-el" data-r="5-5"><div class="lv-cap">bytes → nibbles → hexadecimal characters</div><div class="lv-b2h" data-k="b2h">${SHA_RUN.hex.slice(0, 12).match(/../g).map((p) => `<div class="bb"><div class="by">${parseInt(p, 16).toString(2).padStart(8, '0')}</div><div class="nb"><span>${p[0]}</span><span>${p[1]}</span></div></div>`).join('')}</div>
+        <div class="lv-hexline sm" data-k="b2hfull"></div><div class="lv-note">one hex character = one nibble: <b>64 readable characters</b></div></div>
+      <div class="lv-layer lv-el" data-r="6-6"><div class="lv-net"><div class="lv-chip o">Your miner<small>mining software</small></div><div class="wire"><div class="pkt" data-k="pkt">{ }</div><span>Stratum over TCP</span></div><div class="lv-chip c">Pool or<br>DATUM Gateway<small>JSON-RPC</small></div></div>
+        <div class="lv-json2" data-k="json"></div><div class="lv-json2 reply" data-k="reply"></div></div>`,
+      onStep(c, st) {
+        if (st === 0) {
+          const rows = c.qa('.lv-in'); rows.forEach((r) => { r.classList.remove('on'); r.querySelector('code').textContent = ''; r.querySelector('.lv-fn').classList.remove('hit'); });
+          ['a', MSG, LONG].forEach((s, i) => c.t(() => { const r = rows[i]; r.classList.add('on'); c.t(() => r.querySelector('.lv-fn').classList.add('hit'), 500); c.t(() => { const out = r.querySelector('code'); const hx = shaText(s); out.innerHTML = hx.slice(0, 32) + '<br>' + hx.slice(32); }, 900); }, 400 + i * 1900));
+        }
+        if (st === 1) {
+          const mbs = c.qa('.mb'), rnd = c.q('[data-k=rnd]'), regs = c.qa('[data-reg]'); mbs.forEach((m) => m.classList.remove('on', 'done')); rnd.textContent = '0'; regs.forEach((r, i) => { r.textContent = SH0[i].toString(16).padStart(8, '0'); r.classList.remove('hot'); }); c.q('.lv-sha-out').classList.remove('on');
+          [0, 1, 2].forEach((b) => c.t(() => { mbs.forEach((m, i) => { if (i < b) m.classList.add('done'); m.classList.toggle('on', i === b); }); let r = 0; c.loop((stop) => { r += 2; rnd.textContent = Math.min(64, r); if (r >= 64) { stop(); regs.forEach((x, i) => { x.textContent = SHA_RUN.states[b][i].toString(16).padStart(8, '0'); x.classList.add('hot'); c.t(() => x.classList.remove('hot'), 500); }); if (b === 2) { mbs[2].classList.add('done'); mbs[2].classList.remove('on'); c.q('.lv-sha-out').classList.add('on'); } } }, 38); }, 300 + b * 1900));
+        }
+        if (st === 2) {
+          const cells = c.qa('[data-k=hdr] span'), hb = c.q('[data-k=hb]'), hbits = c.q('[data-k=hbits]'); cells.forEach((x) => x.classList.remove('on')); hb.textContent = '0'; hbits.textContent = '0';
+          let n = 0; c.t(() => c.loop((stop) => { for (let k = 0; k < 4 && n < 164; k++) cells[n++].classList.add('on'); hb.textContent = n; hbits.textContent = fmt(n * 8); if (n >= 164) stop(); }, 45), 400);
+        }
+        if (st === 3) {
+          const si = c.qa('[data-k=si] i'), ops = c.q('[data-k=ops]'), O = { AND: (a, b) => a & b, XOR: (a, b) => a ^ b, SHIFT: (a) => (a << 1) & 255 };
+          const upd = () => { si.forEach((x) => x.classList.toggle('hi', Math.random() < .35)); c.qa('.op').forEach((el) => { const a = (Math.random() * 256) | 0, b = (Math.random() * 256) | 0, f = O[el.dataset.op], bit = (v) => v.toString(2).padStart(8, '0').split('').map((x) => `<i class="${x === '1' ? 'one' : ''}">${x}</i>`).join('');
+            el.querySelector('.a').innerHTML = bit(a); el.querySelector('.b').innerHTML = el.dataset.op === 'SHIFT' ? '<em>&lt;&lt; 1</em>' : bit(b); el.querySelector('.rl').textContent = el.dataset.op === 'AND' ? '& (both 1 → 1)' : el.dataset.op === 'XOR' ? '^ (different → 1)' : 'every bit moves one place'; el.querySelector('.o').innerHTML = bit(f(a, b)); });
+            ops.textContent = fmt(8e9 + ((Math.random() * 3e9) | 0)); };
+          upd(); c.loop(upd, 520);
+        }
+        if (st === 4) { const cells = c.qa('[data-k=track] i'); cells.forEach((x) => { x.classList.remove('go'); }); seq(c, cells, 95, (x) => x.classList.add('go'), 300); }
+        if (st === 5) {
+          const bbs = c.qa('.bb'), full = c.q('[data-k=b2hfull]'); bbs.forEach((b) => b.classList.remove('on', 'split')); full.textContent = '';
+          seq(c, bbs, 520, (b) => { b.classList.add('on'); c.t(() => b.classList.add('split'), 260); }, 300);
+          c.t(() => scramble(c, full, SHA_RUN.hex, 2000), 3700);
+        }
+        if (st === 6) {
+          const j = c.q('[data-k=json]'), r = c.q('[data-k=reply]'), pkt = c.q('[data-k=pkt]'); j.textContent = ''; r.textContent = ''; pkt.classList.remove('go', 'back');
+          const msg = '{"id": 4, "method": "mining.submit", "params": ["rig1.worker", "job_42", "00000002", "6521a0f4", "9f3b11c7"]}';
+          c.t(() => typeInto(c, j, msg, 24), 300);
+          c.t(() => pkt.classList.add('go'), 3300);
+          c.t(() => { r.textContent = '{"id": 4, "result": true, "error": null}'; pkt.classList.add('back'); }, 5200);
+        }
+      } },
+    // 3 ----------------------------------------------------------------------------------------------
+    { t: 'Sending a share', blurb: 'From the block template to the pool', steps: [
       "Your mining software receives the work in hexadecimal, built from your node's block template, and converts it into raw binary bytes.",
       'The raw bytes are fed into the ASIC hashing boards over an internal serial bus.',
       'The ASIC hashes the bytes and returns a 32-bit nonce, four bytes, when it finds a share.',
       'The software sends that share back as hex text in a Stratum message, to the pool or through your DATUM Gateway.',
-    ], html: `<div class="lv-flow">
-        <div class="step lv-el" data-r="0-9"><div class="lv-chip c">Node<small>block template</small></div><div class="lv-tag">hex</div></div>
-        <span class="lv-arrow lv-el" data-r="0-9">→</span>
-        <div class="step lv-el" data-r="0-9"><div class="lv-chip">Mining software<small>hex → binary bytes</small></div><div class="lv-tag">raw bytes</div></div>
-        <span class="lv-arrow lv-el" data-r="1-9">→</span>
-        <div class="step lv-el" data-r="1-9"><div class="lv-chip o">ASIC boards<small>hash the bytes</small></div><div class="lv-tag">serial bus</div></div>
-        <span class="lv-arrow lv-el" data-r="2-9">→</span>
-        <div class="step lv-el" data-r="2-9"><div class="lv-chip g">Share found<small>32-bit nonce</small></div><div class="lv-tag">4 bytes</div></div>
-        <span class="lv-arrow lv-el" data-r="3-9">→</span>
-        <div class="step lv-el" data-r="3-9"><div class="lv-chip c">Pool or DATUM Gateway<small>Stratum message</small></div><div class="lv-tag">hex text</div></div>
-      </div>` },
-    { t: 'Hashrate', steps: [
+    ], html: `
+      <div class="lv-pipe" data-k="pipe">${[['Node', 'block template'], ['Mining software', 'hex → bytes'], ['ASIC boards', 'hash the bytes'], ['Share found', '32-bit nonce'], ['Pool or DATUM Gateway', 'Stratum']].map(([a, b], i) => `<div class="pn" data-n="${i}"><div class="lv-chip">${a}<small>${b}</small></div></div>${i < 4 ? `<div class="pe" data-e="${i}"><i></i></div>` : ''}`).join('')}</div>
+      <div class="lv-detail">
+        <div class="dp lv-el" data-r="0-0"><div class="lv-cap">block template (hex)  →  raw bytes</div><div class="lv-hx2b" data-k="hx2b">${['01000000', '81cd02ab', '7e569e8b'].join('').match(/../g).slice(0, 10).map((p) => `<div><code>${p}</code><span>${parseInt(p, 16).toString(2).padStart(8, '0')}</span></div>`).join('')}</div></div>
+        <div class="dp lv-el" data-r="1-1"><div class="lv-cap">internal serial bus  →  hashing chips</div><div class="lv-board"><div class="bus"><i data-k="bus"></i></div><div class="chips" data-k="chips">${Array.from({ length: 32 }, () => '<i></i>').join('')}</div></div></div>
+        <div class="dp lv-el" data-r="2-2"><div class="lv-cap">the ASIC tries nonce after nonce</div><div class="lv-nonce"><div class="nbytes" data-k="nbytes"><span>00</span><span>00</span><span>00</span><span>00</span></div><div class="try"><small>hash of header + nonce</small><code data-k="try">${rhex(32)}</code></div><div class="tgt" data-k="tgt">no share yet</div></div></div>
+        <div class="dp lv-el" data-r="3-3"><div class="lv-net slim"><div class="lv-chip g">Share<small>nonce 9f3b11c7</small></div><div class="wire"><div class="pkt" data-k="pkt2">hex</div></div><div class="lv-chip c">Pool or<br>DATUM Gateway</div></div><div class="lv-json2 sm" data-k="json2"></div><div class="lv-ok" data-k="ok">share accepted ✓</div></div>
+      </div>`,
+      onStep(c, st) {
+        const nodes = c.qa('.pn'), edges = c.qa('.pe'); nodes.forEach((n, i) => n.classList.toggle('act', i === st || i === st + 1)); edges.forEach((e, i) => { e.classList.toggle('act', i === st); });
+        if (st === 0) { const rows = c.qa('[data-k=hx2b] > div'); rows.forEach((r) => r.classList.remove('on')); seq(c, rows, 480, (r) => r.classList.add('on'), 300); }
+        if (st === 1) { const chips = c.qa('[data-k=chips] i'), bus = c.q('[data-k=bus]'); chips.forEach((x) => x.classList.remove('on')); bus.classList.remove('go'); void bus.offsetWidth; bus.classList.add('go'); seq(c, chips, 120, (x) => x.classList.add('on'), 700); }
+        if (st === 2) {
+          const nb = c.qa('[data-k=nbytes] span'), tr = c.q('[data-k=try]'), tg = c.q('[data-k=tgt]'); tg.textContent = 'no share yet'; tg.classList.remove('hit'); nb.forEach((x) => x.classList.remove('hit')); let n = 0;
+          const FINAL = ['9f', '3b', '11', 'c7'], good = '0000000000000' + shaText('share').slice(0, 19);
+          c.loop((stop) => { n++; if (n < 42) { nb.forEach((x) => (x.textContent = rhex(2))); tr.textContent = rhex(32).replace(/^./, '3'); } else { nb.forEach((x, i) => { x.textContent = FINAL[i]; x.classList.add('hit'); }); tr.innerHTML = '<em>0000000000000</em>' + good.slice(13, 32); tg.textContent = '13 leading zeros: below the share target ✓'; tg.classList.add('hit'); stop(); } }, 80);
+        }
+        if (st === 3) {
+          const j = c.q('[data-k=json2]'), ok = c.q('[data-k=ok]'), p = c.q('[data-k=pkt2]'); j.textContent = ''; ok.classList.remove('on'); p.classList.remove('go');
+          c.t(() => typeInto(c, j, '{"method": "mining.submit", "params": ["rig1.worker", "job_42", "00000002", "6521a0f4", "9f3b11c7"]}', 18), 300);
+          c.t(() => p.classList.add('go'), 2700); c.t(() => ok.classList.add('on'), 4300);
+        }
+      } },
+    // 4 ----------------------------------------------------------------------------------------------
+    { t: 'Hashrate', blurb: 'Hashes per second, from kilo to zetta', steps: [
       'Hashrate is the total computing power a proof-of-work network uses to process transactions and mine new blocks: how many hashes per second, all miners together, try.',
       'The units step up in thousands: hashes per second, kilo, mega, giga, tera, peta, exa and zetta. Each unit is one thousand times the one before.',
       'A home ASIC does a few hundred terahashes per second. The whole Bitcoin network does around one zettahash per second.',
-    ], stack: true, html: `<div style="display:grid;gap:18px;justify-items:center"><div class="lv-big lv-el" data-r="0-0" id="lv-ticker">0 H/s</div>
-      <div class="lv-note lv-el" data-r="0-0">hashes per second, all miners together</div></div>
-      <div style="display:grid;gap:24px;justify-items:center"><div class="lv-ladder lv-el" data-r="1-1"><span><b>H/s</b>1</span><span><b>kH/s</b>10³</span><span><b>MH/s</b>10⁶</span><span><b>GH/s</b>10⁹</span><span><b>TH/s</b>10¹²</span><span><b>PH/s</b>10¹⁵</span><span><b>EH/s</b>10¹⁸</span><span><b>ZH/s</b>10²¹</span></div>
-      <div class="lv-note lv-el" data-r="1-1">each unit = <b>1,000 ×</b> the one before</div></div>
-      <div class="lv-bars lv-el" data-r="2-2"><div class="lv-bar"><span>A home ASIC</span><span><i style="--w:6%"></i><b>a few hundred TH/s</b></span></div><div class="lv-bar"><span>The Bitcoin network</span><span><i style="--w:96%"></i><b>around 1 ZH/s</b></span></div><div class="lv-note" style="font-size:20px">not to scale: the network is millions of times bigger</div></div>` },
-    { t: 'Decentralised hashrate', steps: [
+    ], html: `
+      <div class="lv-layer lv-el" data-r="0-0"><div class="lv-rain-wrap"><div class="lv-miners" data-k="miners">${Array.from({ length: 48 }, () => '<i></i>').join('')}</div><div class="lv-rain" data-k="rain"></div><div class="lv-rate"><div class="lv-big" data-k="ticker">0 H/s</div><div class="lv-note">hashes per second, all miners together</div></div></div></div>
+      <div class="lv-layer lv-el" data-r="1-1"><div class="lv-ladder2" data-k="ladder">${[['H/s', '1', ''], ['kH/s', '10³', 'thousand'], ['MH/s', '10⁶', 'million'], ['GH/s', '10⁹', 'billion'], ['TH/s', '10¹²', 'trillion'], ['PH/s', '10¹⁵', 'quadrillion'], ['EH/s', '10¹⁸', 'quintillion'], ['ZH/s', '10²¹', 'sextillion']].map(([u, e, w], i) => `<div class="rung" style="--i:${i}"><b>${u}</b><span>${e}</span><small>${w || 'one hash'}</small></div>`).join('')}</div>
+        <div class="lv-note" data-k="lnote">each unit = <b>1,000 ×</b> the one before</div></div>
+      <div class="lv-layer lv-el" data-r="2-2"><div class="lv-logbars"><div class="lb"><span>A home ASIC</span><div class="tr"><i data-w="55"></i><b>a few hundred TH/s</b></div></div><div class="lb"><span>The Bitcoin network</span><div class="tr"><i data-w="95"></i><b>around 1 ZH/s</b></div></div>
+        <div class="axis"><span style="left:0%">1 TH/s</span><span style="left:31.7%">1 PH/s</span><span style="left:63.3%">1 EH/s</span><span style="left:95%">1 ZH/s</span></div></div><div class="lv-note" data-k="eq">logarithmic scale: every tick is <b>1,000 ×</b> more. The network equals <b>millions of home ASICs</b>.</div></div>`,
+      onStep(c, st) {
+        if (st === 0) {
+          const rain = c.q('[data-k=rain]'), tk = c.q('[data-k=ticker]'), mi = c.qa('[data-k=miners] i'); const lines = Array.from({ length: 15 }, () => rhex(48)); let v = 0; const U = ['H/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s', 'ZH/s'];
+          c.loop(() => { lines.unshift(rhex(48)); lines.pop(); rain.innerHTML = lines.map((l, i) => `<div style="opacity:${1 - i / 17}">${i === 0 ? '<em>' + l + '</em>' : l}</div>`).join(''); mi.forEach((x) => x.classList.toggle('hi', Math.random() < .3)); }, 90);
+          c.loop((stop) => { v++; const u = Math.min(7, Math.floor(v / 5)); tk.textContent = ((v % 5 + 1) * 190 % 1000 + 100) + ' ' + U[u]; if (v >= 36) { tk.textContent = '1 ZH/s'; stop(); } }, 130);
+        }
+        if (st === 1) {
+          const r = c.qa('.rung'); r.forEach((x) => x.classList.remove('on')); seq(c, r, 520, (x, i) => { r.forEach((y) => y.classList.remove('cur')); x.classList.add('on', 'cur'); }, 300);
+        }
+        if (st === 2) { const bars = c.qa('.lv-logbars i'); bars.forEach((b) => b.style.setProperty('--w', '0%')); c.t(() => { bars[0].style.setProperty('--w', '26%'); }, 400); c.t(() => { bars[1].style.setProperty('--w', '95%'); }, 1800); }
+      } },
+    // 5 ----------------------------------------------------------------------------------------------
+    { t: 'Decentralised hashrate', blurb: 'Your node builds the block template', steps: [
       'Decentralised hashrate is the computing power a proof-of-work network uses to process transactions and mine new blocks with locally constructed block templates.',
       'Every miner decides what goes into the block they work on. Your node builds the block template, DATUM Gateway hands out the work, and your miners hash it.',
-    ], html: `<div class="lv-flow">
-        <div class="step lv-el" data-r="0-9"><div class="lv-chip g">Your node<small>builds the block template</small></div></div>
-        <span class="lv-arrow lv-el" data-r="1-9">→</span>
-        <div class="step lv-el" data-r="1-9"><div class="lv-chip c">DATUM Gateway<small>hands out the work</small></div></div>
-        <span class="lv-arrow lv-el" data-r="1-9">→</span>
-        <div class="step lv-el" data-r="1-9"><div class="lv-chip o">Your miners<small>hash it</small></div></div>
-      </div>
-      <div class="lv-note lv-el" data-r="1-1">every miner decides what goes into their own block</div>` },
-    { t: 'Centralised vs decentralised', steps: [
+    ], html: `
+      <div class="lv-layer lv-el" data-r="0-0"><div class="lv-tpl"><div class="mem"><b>mempool</b><div class="txs" data-k="txs">${Array.from({ length: 36 }, (_, i) => `<i style="--f:${(i * 37) % 100}"></i>`).join('')}</div><small>transactions waiting</small></div>
+        <span class="lv-arrow">→</span><div class="node"><div class="lv-chip g">Your node<small>Bitcoin Knots / Bitcoin Core</small></div><div class="blk"><b>block template</b><div class="slots" data-k="slots">${Array.from({ length: 12 }, () => '<i></i>').join('')}</div><small data-k="tcount">0 transactions chosen by you</small></div></div></div>
+        <div class="lv-note">built <b>locally</b>, on your own node</div></div>
+      <div class="lv-layer lv-el" data-r="1-1"><div class="lv-dist"><div class="lv-chip g">Your node<small>builds the block template</small></div><div class="wire2"><i></i><i></i><i></i></div><div class="lv-chip c">DATUM Gateway<small>hands out the work</small></div>
+        <div class="mfan">${[0, 1, 2, 3].map((i) => `<div class="mn" data-m="${i}"><div class="lv-chip o">Miner ${i + 1}<small>hashing…</small></div><code>${rhex(20)}</code></div>`).join('')}</div></div>
+        <div class="lv-note">every miner decides what goes into <b>their own block</b></div></div>`,
+      onStep(c, st) {
+        if (st === 0) {
+          const txs = c.qa('[data-k=txs] i'), slots = c.qa('[data-k=slots] i'), tc = c.q('[data-k=tcount]'); txs.forEach((x) => x.classList.remove('gone')); slots.forEach((x) => x.classList.remove('on')); tc.textContent = '0 transactions chosen by you';
+          const order = txs.map((x, i) => [i, +x.style.getPropertyValue('--f')]).sort((a, b) => b[1] - a[1]).slice(0, 12);
+          seq(c, order, 260, ([i], k) => { txs[i].classList.add('gone'); slots[k].classList.add('on'); slots[k].style.setProperty('--f', txs[i].style.getPropertyValue('--f')); tc.textContent = (k + 1) + ' transactions chosen by you'; }, 500);
+        }
+        if (st === 1) { const m = c.qa('.mn'); m.forEach((x) => x.classList.remove('on')); seq(c, m, 420, (x) => x.classList.add('on'), 900); c.loop(() => m.forEach((x) => (x.querySelector('code').textContent = rhex(20))), 110); }
+      } },
+    // 6 ----------------------------------------------------------------------------------------------
+    { t: 'Centralised vs decentralised', blurb: 'Who decides what goes into a block?', steps: [
       "Centralised: miners have little to no visibility or control over which transactions are included or excluded. They merely rent out raw hash power, and a handful of large mining pools decide the contents of most of the network's blocks.",
       'Decentralised: miners have sovereign control and visibility over which transactions are included or excluded. They run their own Bitcoin full node, such as Bitcoin Knots or Bitcoin Core, and a protocol like DATUM Gateway that talks directly to their mining hardware.',
-    ], html: `<div class="lv-cards">
-        <div class="lv-card c lv-el" data-r="0-9"><h4>Centralised</h4><div class="lv-dots">${'<i></i>'.repeat(14)}<i class="pool">pool</i></div>Miners only rent out hash power. A handful of pools decide what goes into the blocks.</div>
-        <div class="lv-card d lv-el" data-r="1-9"><h4>Decentralised</h4><div class="lv-dots">${'<i class="own"></i>'.repeat(5)}</div>Miners run their own full node and DATUM Gateway, and choose the transactions themselves.</div>
-      </div>` },
-    { t: 'How to read the blocks', steps: [
-      'The glow around a mined block tells you who built its block template, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay.',
-      'On Bitcoin and Bitcoin BLAKE2b, a green glow and Decentralised are only for blocks found by DATUM Gateway verified solominers of pools that are one hundred percent DATUM. The miner built the block template on their own node.',
-      'An orange glow and DATUM Compatible mean a pool that lets its miners build their own templates with their own node and DATUM Gateway: OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b. The pool gives miners the choice.',
-      'A red glow and Centralised are for every other pool. The pool builds the block template, so the pool decides which transactions go in, and its miners only rent out hash power.',
-      'On Monero a block never names its pool, so the glow comes from how the reward was paid. A P2Pool block pays every miner directly inside the block: green, Decentralised. Every other Monero block pays a single address, the pool: red, Centralised.',
-      'Every mined Dogecoin block gets the red glow and Centralised, because Dogecoin pools build the block templates for their miners.',
-    ], stack: true, html: `<div style="display:grid;gap:34px;justify-items:center"><div class="lv-note lv-el" data-r="0-0" style="font-size:30px">The <b>glow</b> shows <b>who built the block template</b>.<br>The <b>colour</b> of the block shows the fees.</div>
-      <div class="lv-row lv-el" data-r="0-0" style="gap:40px"><div class="lv-chip g">green<small>Decentralised</small></div><div class="lv-chip o">orange<small>DATUM Compatible</small></div><div class="lv-chip r">red<small>Centralised</small></div></div></div>
-      <div style="display:grid;gap:12px;justify-items:center"><div class="lv-chain lv-el" data-r="1-3">Bitcoin</div>
-      <div class="lv-blocks sm lv-el" data-r="1-3">
-        <div class="g lv-el" data-r="1-9">${mini('sha256', 'verified', 'Solo miner')}<span><b>Decentralised</b><br>DATUM verified solominer</span></div>
-        <div class="o lv-el" data-r="2-9">${mini('sha256', 'compatible', 'OCEAN')}<span><b>DATUM Compatible</b><br>OCEAN</span></div>
-        <div class="r lv-el" data-r="3-9">${mini('sha256', 'central', 'Any other pool')}<span><b>Centralised</b><br>the pool builds the template</span></div>
-      </div>
-      <div class="lv-chain lv-el" data-r="1-3">Bitcoin BLAKE2b</div>
-      <div class="lv-blocks sm lv-el" data-r="1-3">
-        <div class="g lv-el" data-r="1-9">${mini('blake2b', 'verified', 'Solo miner')}<span><b>Decentralised</b><br>DATUM verified solominer</span></div>
-        <div class="o lv-el" data-r="2-9">${mini('blake2b', 'compatible', 'CONVOY')}<span><b>DATUM Compatible</b><br>CONVOY</span></div>
-        <div class="r lv-el" data-r="3-9">${mini('blake2b', 'central', 'Any other pool')}<span><b>Centralised</b><br>the pool builds the template</span></div>
-      </div>
-      </div>
-      <div style="display:grid;gap:22px;justify-items:center"><div class="lv-chain lv-el" data-r="4-4">Monero</div>
-      <div class="lv-blocks lv-el" data-r="4-4">
-        <div class="g">${mini('monero', 'verified', 'P2Pool')}<span><b>Decentralised</b><br>P2Pool pays every miner in the block</span></div>
-        <div class="r">${mini('monero', 'central', '')}<span><b>Centralised</b><br>one address: a regular pool</span></div>
-      </div></div>
-      <div style="display:grid;gap:22px;justify-items:center"><div class="lv-chain lv-el" data-r="5-5">Dogecoin</div>
-      <div class="lv-blocks lv-el" data-r="5-5">
-        <div class="r">${mini('dogecoin', 'central', 'Any pool')}<span><b>Centralised</b><br>every mined block</span></div>
-      </div></div>` },
+    ], html: `
+      <div class="lv-vs"><div class="vside c" data-k="cen"><h4>Centralised</h4>
+          <div class="diag"><div class="ms">${Array.from({ length: 12 }, () => '<i></i>').join('')}</div><div class="mflow"><i></i><i></i><i></i></div>
+          <div class="pool"><b>Pool</b><div class="tl" data-k="tl">${[['tx a', 1], ['tx b', 1], ['tx c', 0], ['tx d', 1], ['tx e', 0]].map(([t, ok]) => `<span class="${ok ? 'in' : 'out'}">${t}</span>`).join('')}</div></div></div>
+          <p>Miners only rent out hash power. A handful of pools decide what goes into the blocks.</p></div>
+        <div class="vside d" data-k="dec"><h4>Decentralised</h4>
+          <div class="diag"><div class="own-miners">${[0, 1, 2].map((i) => `<div class="om"><div class="nd">node<small>+ DATUM Gateway</small></div><div class="tl">${[['tx a', 1], ['tx b', i === 1 ? 0 : 1], ['tx c', i === 2 ? 0 : 1], ['tx d', 1]].map(([t, ok]) => `<span class="${ok ? 'in' : 'out'}">${t}</span>`).join('')}</div><i class="asicbar"></i></div>`).join('')}</div></div>
+          <p>Miners run their own full node and DATUM Gateway, and choose the transactions themselves.</p></div></div>`,
+      onStep(c, st) {
+        const cen = c.q('[data-k=cen]'), dec = c.q('[data-k=dec]'); cen.classList.toggle('act', st === 0); dec.classList.toggle('act', st === 1); cen.classList.toggle('dim', st === 1); dec.classList.toggle('dim', st === 0);
+        const grp = st === 0 ? cen : dec, spans = [...grp.querySelectorAll('.tl span')]; spans.forEach((s) => s.classList.remove('on')); seq(c, spans, 220, (s) => s.classList.add('on'), 500);
+        grp.querySelectorAll('.ms i, .asicbar').forEach((x) => x.classList.add('hash'));
+      } },
   ];
-
+  [0, 1, 3, 4].forEach((i) => { SCENES[i].stack = true; });
   const $ = (id) => document.getElementById(id);
-  const frame = $('lv-frame'), stage = $('lv-stage'), cap = $('lv-caption'), prog = $('lv-prog'), poster = $('lv-poster');
-  stage.innerHTML = SCENES.map((s, i) => `<div class="lv-scene" data-i="${i}"><div class="lv-h"><span class="n">${i + 1}</span><h3>${s.t}</h3></div><div class="lv-body${s.stack ? ' lv-stack' : ''}">${s.html}</div></div>`).join('');
-  const scenes = [...stage.querySelectorAll('.lv-scene')];
-  prog.innerHTML = SCENES.map((s, i) => `<button type="button" data-i="${i}" aria-label="Chapter ${i + 1}: ${s.t}" title="${i + 1} · ${s.t}"><i></i></button>`).join('');
-  // scale the 1280x720 stage to the card
-  const fit = () => { stage.style.transform = `scale(${frame.clientWidth / 1280})`; };
-  new ResizeObserver(fit).observe(frame); fit();
+  const list = $('lv-list');
+  list.insertAdjacentHTML('beforeend', SCENES.map((s, i) => `<article class="lv" data-i="${i}" aria-label="Video ${i + 1}: ${s.t}">
+    <div class="lv-frame"><div class="lv-stage" aria-hidden="true"><div class="lv-scene cur"><div class="lv-h"><span class="n">${i + 1}</span><h3>${s.t}</h3></div><div class="lv-body${s.stack ? ' lv-stack' : ''}">${s.html}</div></div></div>
+      <div class="lv-poster"><span class="lv-ch">Chapter ${i + 1}</span><h3>${s.t}</h3><p>${s.blurb}</p><button type="button" class="lv-play" aria-label="Play the video: ${s.t}"><svg viewBox="0 0 24 24"><path d="M6 4.5v15l13-7.5z"/></svg></button></div></div>
+    <div class="lv-caption" aria-live="off"></div>
+    <div class="lv-ctl"><button type="button" class="lv-bar-btn lv-pp" aria-label="Play"><svg viewBox="0 0 24 24"><path d="M6 4.5v15l13-7.5z"/></svg></button>
+      <div class="lv-prog" role="group" aria-label="Steps" style="--steps:${s.steps.length}">${s.steps.map((_, k) => `<button type="button" data-k="${k}" aria-label="Step ${k + 1}"><i></i></button>`).join('')}</div>
+      <button type="button" class="lv-bar-btn lv-snd" aria-label="Narration on" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button></div></article>`).join(''));
 
   // ----- the narrator: the viewer's own browser voice, an English female one when there is one -----
   const synth = window.speechSynthesis;
-  let voice = null, soundOn = true;
-  // the most natural English female voice on offer: neural / online / premium ones first, then well-known female voices
+  let voice = null, soundOn = true, active = null;
   const FEM = /(aria|jenny|sonia|libby|natasha|clara|michelle|emma|ava|allison|samantha|serena|zoe|susan|moira|tessa|karen|fiona|victoria|catherine|kate|zira|hazel|female|amelie)/i;
   const MALE = /(\bmale\b|daniel|alex\b|fred|david|mark|george|james|guy\b|ryan|thomas|oliver|christopher|eric|roger|steffan|liam|brian|andrew)/i;
   const score = (v) => {
@@ -4479,55 +4636,65 @@ window.__coins = COIN_LOGOS;
   }
   $('lv-vsel').addEventListener('change', (e) => { const v = synth.getVoices().find((x) => x.name === e.target.value); if (v) { voice = v; try { localStorage.setItem('lv-voice', v.name); } catch (er) { /* no storage */ } } });
   if (synth) { pickVoice(); synth.addEventListener?.('voiceschanged', pickVoice); }
-
-  let sc = 0, st = 0, playing = false, run = 0, timer = 0;
   const words = (s) => s.split(/\s+/).length;
-  function speak(text, myRun) {
-    return new Promise((res) => {
-      let done = false; const fin = () => { if (!done) { done = true; clearTimeout(timer); res(); } };
-      const wait = Math.max(3200, words(text) * 390);
-      if (soundOn && synth && voice) {
-        try {
-          synth.cancel();
-          const u = new SpeechSynthesisUtterance(text); u.voice = voice; u.lang = voice.lang; u.rate = .94; u.pitch = FEM.test(voice.name) ? 1 : 1.1;
-          u.onend = fin; u.onerror = fin; synth.speak(u);
-          timer = setTimeout(fin, wait + 9000); return;
-        } catch (e) { /* fall through to the timer */ }
-      }
-      timer = setTimeout(fin, wait);
-    });
-  }
-  function render() {
-    scenes.forEach((s, i) => s.classList.toggle('cur', i === sc));
-    const cur = scenes[sc];
-    cur.querySelectorAll('[data-r]').forEach((el) => { const [a, b] = el.dataset.r.split('-').map(Number); el.classList.toggle('on', st >= a && st <= b); });
-    cap.textContent = SCENES[sc].steps[st];
-    prog.querySelectorAll('button').forEach((b, i) => { b.firstChild.style.width = (i < sc ? 100 : i > sc ? 0 : ((st + 1) / SCENES[sc].steps.length) * 100) + '%'; });
-    if (sc === 6 && window.learnBuildMinis) window.learnBuildMinis();
-    if (sc === 3 && st === 0) tick();
-  }
-  let tk = 0;
-  function tick() { const el = $('lv-ticker'); const my = ++tk; const U = ['H/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s', 'ZH/s']; let v = 0; const f = () => { if (my !== tk || !el) return; v += 1; const u = Math.min(7, Math.floor(v / 5)); el.textContent = ((v % 5 + 1) * 190 % 1000 + 100) + ' ' + U[u]; if (v < 36) setTimeout(f, 90); else el.textContent = '1 ZH/s'; }; f(); }
-  const setIcon = () => { $('lv-pp-ico').innerHTML = playing ? '<path d="M6 4.5h4.2v15H6zm7.8 0H18v15h-4.2z"/>' : '<path d="M6 4.5v15l13-7.5z"/>'; $('lv-pp').setAttribute('aria-label', playing ? 'Pause' : 'Play'); };
-  async function loop() {
-    const my = ++run;
-    while (playing && my === run) {
-      render(); await speak(SCENES[sc].steps[st], my);
-      if (!playing || my !== run) return;
-      if (st < SCENES[sc].steps.length - 1) st++; else if (sc < SCENES.length - 1) { sc++; st = 0; } else { playing = false; setIcon(); poster.hidden = false; poster.querySelector('h3').textContent = 'Watch again'; sc = 0; st = 0; render(); return; }
+
+  const players = SCENES.map((def, idx) => {
+    const card = list.querySelector(`.lv[data-i="${idx}"]`), frame = card.querySelector('.lv-frame'), stage = card.querySelector('.lv-stage'), poster = card.querySelector('.lv-poster'), cap = card.querySelector('.lv-caption'), prog = card.querySelector('.lv-prog'), ico = card.querySelector('.lv-pp svg');
+    let st = 0, playing = false, run = 0, timer = 0, anims = [];
+    const fit = () => { stage.style.transform = `scale(${frame.clientWidth / 1280})`; };
+    new ResizeObserver(fit).observe(frame); fit();
+    const c = {
+      q: (s) => stage.querySelector(s), qa: (s) => [...stage.querySelectorAll(s)],
+      t: (fn, ms) => { const id = setTimeout(fn, ms); anims.push(() => clearTimeout(id)); },
+      loop: (fn, ms) => { let id = 0; const stop = () => clearInterval(id); id = setInterval(() => fn(stop), ms); anims.push(stop); },
+    };
+    const clearAnims = () => { anims.forEach((f) => f()); anims = []; };
+    function render(animate) {
+      clearAnims();
+      stage.querySelectorAll('[data-r]').forEach((el) => { const [a, b] = el.dataset.r.split('-').map(Number); el.classList.toggle('on', st >= a && st <= b); });
+      cap.textContent = animate || playing ? def.steps[st] : '';
+      prog.querySelectorAll('button').forEach((b, k) => { b.firstChild.style.width = (k < st ? 100 : k === st ? 100 : 0) + '%'; b.classList.toggle('cur', k === st); });
+      if (animate && def.onStep) def.onStep(c, st);
     }
-  }
-  function play() { poster.hidden = true; playing = true; setIcon(); loop(); }
-  function pause() { playing = false; run++; clearTimeout(timer); synth?.cancel(); setIcon(); }
-  function go(i) { run++; clearTimeout(timer); synth?.cancel(); sc = i; st = 0; poster.hidden = true; render(); playing = true; setIcon(); loop(); }
-  window.lvGo = (i) => { if (navigator.userActivation && !navigator.userActivation.hasBeenActive) { sc = i; st = 0; render(); cap.textContent = ''; } else go(i); };
-  $('lv-start').addEventListener('click', play);
-  $('lv-pp').addEventListener('click', () => (playing ? pause() : play()));
-  $('lv-snd').addEventListener('click', (e) => { soundOn = !soundOn; e.currentTarget.setAttribute('aria-pressed', String(soundOn)); e.currentTarget.style.opacity = soundOn ? 1 : .5; e.currentTarget.setAttribute('aria-label', soundOn ? 'Narration on' : 'Narration off'); if (!soundOn) synth?.cancel(); });
-  prog.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) go(+b.dataset.i); });
-  document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
-  addEventListener('hashchange', () => { if (playing && !/^#learn/.test(location.hash)) pause(); });
-  render(); cap.textContent = '';
+    const setIcon = () => { ico.innerHTML = playing ? '<path d="M6 4.5h4.2v15H6zm7.8 0H18v15h-4.2z"/>' : '<path d="M6 4.5v15l13-7.5z"/>'; card.querySelector('.lv-pp').setAttribute('aria-label', playing ? 'Pause' : 'Play'); };
+    function speak(text) {
+      return new Promise((res) => {
+        let done = false; const fin = () => { if (!done) { done = true; clearTimeout(timer); res(); } };
+        const wait = Math.max(5200, words(text) * 390);
+        if (soundOn && synth && voice) {
+          try {
+            synth.cancel();
+            const u = new SpeechSynthesisUtterance(text); u.voice = voice; u.lang = voice.lang; u.rate = .94; u.pitch = FEM.test(voice.name) ? 1 : 1.1;
+            const my = run; u.onend = () => { setTimeout(fin, Math.max(0, 5200 - (performance.now() - t0))); }; u.onerror = fin; const t0 = performance.now(); synth.speak(u);
+            timer = setTimeout(fin, wait + 9000); return;
+          } catch (e) { /* fall through to the timer */ }
+        }
+        timer = setTimeout(fin, wait);
+      });
+    }
+    async function loop() {
+      const my = ++run;
+      while (playing && my === run) {
+        render(true); await speak(def.steps[st]);
+        if (!playing || my !== run) return;
+        if (st < def.steps.length - 1) st++; else { finish(); return; }
+      }
+    }
+    function finish() { playing = false; setIcon(); poster.hidden = false; poster.querySelector('h3').textContent = 'Watch again'; st = 0; render(false); if (active === api) active = null; }
+    function play() { if (active && active !== api) active.pause(); active = api; poster.hidden = true; playing = true; setIcon(); loop(); }
+    function pause() { playing = false; run++; clearTimeout(timer); synth?.cancel(); clearAnims(); setIcon(); }
+    function go(k) { if (active && active !== api) active.pause(); active = api; run++; clearTimeout(timer); synth?.cancel(); st = k; poster.hidden = true; playing = true; setIcon(); loop(); }
+    const api = { pause, play, go, get playing() { return playing; }, preview(k) { if (active && active !== api) active.pause(); run++; clearTimeout(timer); st = k; poster.hidden = true; render(true); } };
+    card.querySelector('.lv-play').addEventListener('click', play);
+    card.querySelector('.lv-pp').addEventListener('click', () => (playing ? pause() : play()));
+    card.querySelector('.lv-snd').addEventListener('click', (e) => { soundOn = !soundOn; document.querySelectorAll('.lv-snd').forEach((b) => { b.setAttribute('aria-pressed', String(soundOn)); b.style.opacity = soundOn ? 1 : .5; b.setAttribute('aria-label', soundOn ? 'Narration on' : 'Narration off'); }); if (!soundOn) synth?.cancel(); });
+    prog.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) go(+b.dataset.k); });
+    render(false); cap.textContent = '';
+    return api;
+  });
+  window.lvPreview = (i, k) => players[i].preview(k);
+  document.addEventListener('visibilitychange', () => { if (document.hidden && active) active.pause(); });
+  addEventListener('hashchange', () => { if (active && !/^#learn/.test(location.hash)) active.pause(); });
 })();
 </script>
 <script>
