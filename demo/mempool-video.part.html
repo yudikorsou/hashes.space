@@ -228,13 +228,25 @@
   // ----- the narrator: the viewer's own browser voice, an English female one when there is one -----
   const synth = window.speechSynthesis;
   let voice = null, soundOn = true;
-  const FEMALE = /(samantha|karen|moira|tessa|serena|fiona|victoria|allison|ava|susan|zira|hazel|aria|jenny|libby|sonia|female|google uk english female|google us english|catherine|kate|amelie)/i;
-  const MALE = /(male\b|daniel|alex|fred|david|mark|george|james|guy|ryan|thomas|oliver)/i;
+  // the most natural English female voice on offer: neural / online / premium ones first, then well-known female voices
+  const FEM = /(aria|jenny|sonia|libby|natasha|clara|michelle|emma|ava|allison|samantha|serena|zoe|susan|moira|tessa|karen|fiona|victoria|catherine|kate|zira|hazel|female|amelie)/i;
+  const MALE = /(\bmale\b|daniel|alex\b|fred|david|mark|george|james|guy\b|ryan|thomas|oliver|christopher|eric|roger|steffan|liam|brian|andrew)/i;
+  const score = (v) => {
+    let s = 0; const n = v.name + ' ' + v.voiceURI;
+    if (!/^en([-_]|$)/i.test(v.lang)) return -99;
+    if (MALE.test(n) && !/female/i.test(n)) return -50;
+    if (/natural|neural|online|premium|enhanced|studio|wavenet/i.test(n)) s += 8;
+    if (FEM.test(n)) s += 6;
+    if (/^en[-_](US|GB)/i.test(v.lang)) s += 2; else if (/^en[-_](AU|IE|ZA|CA|IN)/i.test(v.lang)) s += 1;
+    if (/google/i.test(n) && /female/i.test(n)) s += 3;
+    if (/compact|espeak|robot|novelty|whisper|bad |good |bells|boing|cellos|organ|trinoids|zarvox/i.test(n)) s -= 20;
+    return s;
+  };
   function pickVoice() {
     if (!synth) return;
-    const vs = synth.getVoices().filter((v) => /^en([-_]|$)/i.test(v.lang));
-    voice = vs.find((v) => FEMALE.test(v.name) && !/\bmale\b/i.test(v.name) && /^en[-_](GB|US)/i.test(v.lang)) || vs.find((v) => FEMALE.test(v.name)) || vs.find((v) => !MALE.test(v.name)) || vs[0] || null;
-    $('lv-voice').textContent = voice ? `Narrated with your browser's voice: ${voice.name}` : 'No narration voice found in this browser, the captions carry the story.';
+    const vs = synth.getVoices().map((v) => [score(v), v]).filter((x) => x[0] > -50).sort((a, b) => b[0] - a[0]);
+    voice = vs.length ? vs[0][1] : null;
+    $('lv-voice').textContent = voice ? `Narrated by ${voice.name}, a voice from your browser` : 'No narration voice found in this browser, the captions carry the story.';
   }
   if (synth) { pickVoice(); synth.addEventListener?.('voiceschanged', pickVoice); }
 
@@ -247,7 +259,7 @@
       if (soundOn && synth && voice) {
         try {
           synth.cancel();
-          const u = new SpeechSynthesisUtterance(text); u.voice = voice; u.lang = voice.lang; u.rate = .96; u.pitch = /female|samantha|karen|moira|tessa|zira|hazel|aria|jenny/i.test(voice.name) ? 1 : 1.12;
+          const u = new SpeechSynthesisUtterance(text); u.voice = voice; u.lang = voice.lang; u.rate = .94; u.pitch = FEM.test(voice.name) ? 1 : 1.1;
           u.onend = fin; u.onerror = fin; synth.speak(u);
           timer = setTimeout(fin, wait + 9000); return;
         } catch (e) { /* fall through to the timer */ }
@@ -278,6 +290,7 @@
   function play() { poster.hidden = true; playing = true; setIcon(); loop(); }
   function pause() { playing = false; run++; clearTimeout(timer); synth?.cancel(); setIcon(); }
   function go(i) { run++; clearTimeout(timer); synth?.cancel(); sc = i; st = 0; poster.hidden = true; render(); playing = true; setIcon(); loop(); }
+  window.lvGo = (i) => { if (navigator.userActivation && !navigator.userActivation.hasBeenActive) { sc = i; st = 0; render(); cap.textContent = ''; } else go(i); };
   $('lv-start').addEventListener('click', play);
   $('lv-pp').addEventListener('click', () => (playing ? pause() : play()));
   $('lv-snd').addEventListener('click', (e) => { soundOn = !soundOn; e.currentTarget.setAttribute('aria-pressed', String(soundOn)); e.currentTarget.style.opacity = soundOn ? 1 : .5; e.currentTarget.setAttribute('aria-label', soundOn ? 'Narration on' : 'Narration off'); if (!soundOn) synth?.cancel(); });
