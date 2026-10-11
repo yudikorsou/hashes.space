@@ -49,6 +49,7 @@
   .calc-out dt { color: var(--muted); font: 500 12.5px/1.2 var(--sans); }
   .calc-out dd { margin: 6px 0 0; display: grid; gap: 3px; }
   .calc-out dd b { font: 500 22px/1.15 var(--mono); color: var(--text); text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); font-variant-numeric: tabular-nums; }
+  .m-calc .calc-out dd span { white-space: pre-line; }
   .calc-out dd span { color: var(--muted); font-size: 12px; white-space: normal; overflow-wrap: anywhere; min-width: 0; }
   .calc-out > div { min-width: 0; }
   .calc-note { margin: 0; color: var(--muted); font-size: 12.5px; text-align: center; max-width: 52ch; }
@@ -443,6 +444,14 @@
     const hrs = Math.max(1, Math.round(sec / 3600));
     return d < 1 ? `${hrs} hour${hrs === 1 ? '' : 's'}` : d < 60 ? `${fmt(Math.round(d))} days` : d < 730 ? `${fmt(Math.round(d / 30.4))} months` : `${fmt(Math.round(d / 365))} years`;
   }
+  function blocksText(x) { return x >= 100 ? fmt(Math.round(x)) : x >= 10 ? x.toFixed(1) : x >= 1 ? x.toFixed(2) : x >= 0.01 ? x.toFixed(3) : x >= 0.0001 ? x.toFixed(5) : x > 0 ? x.toExponential(1) : '0'; }
+  // P(exactly k blocks) for a mean of λ, worked in logarithms so large numbers of blocks do not overflow
+  function poissonPmf(k, lam) {
+    if (lam <= 0) return k === 0 ? 1 : 0;
+    let lnFact = 0;
+    if (k < 30) for (let i = 2; i <= k; i++) lnFact += Math.log(i); else lnFact = k * Math.log(k) - k + 0.5 * Math.log(2 * Math.PI * k) + 1 / (12 * k);
+    return Math.exp(-lam + k * Math.log(lam) - lnFact);
+  }
   function smallPct(f) { const v = f * 100; if (!v) return '0%'; if (v >= 0.1) return pct(f); const d = Math.min(14, 1 - Math.floor(Math.log10(v))); return v.toFixed(d) + '%'; }
   function renderCalc() {
     const m = mining; if (!m || !$('calc-form')) return;
@@ -450,15 +459,20 @@
     const perBlock = m.diff * (HASHES_PER_DIFFICULTY[netId] ?? 2 ** 32); // hashes needed for one block, on average
     const rate = perBlock > 0 ? h / perBlock : 0; // blocks per second
     // finding a block is random (a Poisson process): P(at least one block in t) = 1 − e^(−rate × t)
+    // the number of blocks found in a period is Poisson distributed with mean rate × t:
+    //   P(k blocks) = e^−λ λ^k / k!, so the most likely count is ⌊λ⌋, and P(at least one) = 1 − e^−λ
     CALC_PERIODS.forEach(([id, t]) => {
-      const p = -Math.expm1(-rate * t), dd = $(id);
-      dd.querySelector('b').textContent = h ? pct(p) : '–';
-      dd.querySelector('span').textContent = h ? oneIn(p) : '';
+      const lam = rate * t, p = -Math.expm1(-lam), dd = $(id), k = Math.floor(lam);
+      dd.querySelector('b').textContent = h ? blocksText(lam) : '–';
+      dd.querySelector('span').textContent = h
+        ? `blocks on average\nat least 1: ${pct(p)}${oneIn(p) ? ' (' + oneIn(p).replace('about ', '') + ')' : ''}`
+          + (lam >= 1 ? `\nmost likely ${fmt(k)}: ${pct(poissonPmf(k, lam))}` : '')
+        : '';
     });
     const share = m.hash ? h / m.hash : 0;
     $('calc-note').textContent = h
-      ? `Chance to find at least one block on ${network().chain} at a network difficulty of ${siShort(m.diff).replace(' ', '')}. That is ${smallPct(share)} of the global hashrate: on average one block every ${ageText(1 / rate)}.`
-      : 'Enter your hashrate to see your chance to find a block.';
+      ? `The number of blocks you can expect to find on ${network().chain} at a network difficulty of ${siShort(m.diff).replace(' ', '')}, and the chance of finding at least one. That is ${smallPct(share)} of the global hashrate: on average one block every ${ageText(1 / rate)}. Blocks are found at random, so the real number varies around the average.`
+      : 'Enter your hashrate to see how many blocks you can expect to find.';
   }
   $('calc-form').addEventListener('input', renderCalc);
 
