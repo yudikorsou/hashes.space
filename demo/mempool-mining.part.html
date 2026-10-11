@@ -24,7 +24,8 @@
   .calcpage .calchead h1 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
   .calcpage .calchead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
   .mcard.m-calc, .mcard.m-pcalc { grid-area: one; }
-  .mstats.calcpage.both { grid-template-areas: 'head' 'one' 'two' 'src'; }
+  .mstats.calcpage.both { grid-template-columns: repeat(2, minmax(0, 560px)); grid-template-areas: 'head head' 'one two' 'src src'; align-items: start; column-gap: 36px; }
+  @media (max-width: 1000px) { .mstats.calcpage.both { grid-template-columns: minmax(0, 640px); grid-template-areas: 'head' 'one' 'two' 'src'; } }
   .mstats.calcpage.both .mcard.m-pcalc { grid-area: two; }
   .poolspage .m-pools .calc-link { display: none; }   /* each calculator has a page of its own */
   .poolspage { max-width: 1180px; margin: 0 auto; padding: 28px 20px 40px; display: grid; gap: 18px; }
