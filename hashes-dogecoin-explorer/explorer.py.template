@@ -10,8 +10,9 @@ transactions and the mempool. Serves:
   /api/v1/blocks         the last blocks, in mempool.space's format (for hashes.space)
   /api/v1/fees/mempool-blocks   the mempool cut into blocks of 1 MB, best fee first
   /api/blocks/tip/height
-  /api/v1/mining/hashrate/1y    global hashrate (one point a day) and difficulty, from your node
-  /api/v1/mining/pools/1w       blocks per mining pool over the last week (10,080 blocks)
+  /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from your node (period: 24h, 14d, 1m, 6m, 1y)
+  /api/v1/mining/pools/<period>     blocks per mining pool over the period (a sample of the blocks for the long ones)
+  (1y and 1w are what older versions of the page ask for, and are still answered)
   /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
 
 Fees are in koinu per byte (1 DOGE = 100,000,000 koinu).
@@ -286,7 +287,10 @@ def mempool_json(b):
 
 DAY, WEEK, YEAR_DAYS = 1440, 10080, 365  # Dogecoin: a block a minute
 _pool_by_height = {}
-_mining = {"hashrate": None, "pools": None, "at": 0}
+_mining = {"hashrate": {}, "pools": {}, "at": 0}
+# the periods the page offers: blocks in the period, and one hashrate point per STEP blocks (a block a minute)
+RANGES = {"24h": (1440, 60), "14d": (20160, 360), "1m": (43200, 720), "6m": (259200, 1440), "1y": (525600, 1440)}
+SAMPLE = 2500   # a long period reads about this many blocks for its pool shares (an estimate), a short one reads them all
 
 
 def pool_from_header(header_hex):
@@ -328,6 +332,58 @@ def pools_last_week(tip):
             "blockCount": total, "lastEstimatedHashrate": rpc("getnetworkhashps", DAY)}
 
 
+def pools_range(tip, rng):
+    """the pool shares of one period: every block of a short one, an evenly spread sample of a long one (scaled up)"""
+    blocks = RANGES[rng][0]
+    first = max(1, tip - blocks + 1)
+    stride = max(1, blocks // SAMPLE)
+    heights = [h for h in range(first, tip + 1) if h % stride == 0]
+    todo = [h for h in heights if h not in _pool_by_height]
+    for i in range(0, len(todo), 250):
+        chunk = todo[i:i + 250]
+        pairs = [(h, bh) for h, bh in zip(chunk, rpc_batch([("getblockhash", [h]) for h in chunk])) if bh]
+        headers = rpc_batch([("getblockheader", [bh, False]) for _, bh in pairs])
+        for (h, bh), hx in zip(pairs, headers):
+            name = None
+            try:
+                name = pool_from_header(hx) if hx else None
+                if name is None:
+                    name = pool_name(parse_block(rpc("getblock", bh, False)))
+            except (ValueError, RpcError, KeyError, IndexError):
+                name = "Unknown"
+            _pool_by_height[h] = name
+    counts = {}
+    for h in heights:
+        if h in _pool_by_height:
+            counts[_pool_by_height[h]] = counts.get(_pool_by_height[h], 0) + 1
+    seen = sum(counts.values()) or 1
+    scale = (tip - first + 1) / seen          # 1 when every block was read
+    ranked = sorted(counts.items(), key=lambda kv: -kv[1])
+    return {"pools": [{"poolId": i + 1, "name": n, "slug": re.sub(r"[^a-z0-9]", "", n.lower()), "rank": i + 1, "blockCount": max(1, round(c * scale)), "emptyBlocks": 0}
+                      for i, (n, c) in enumerate(ranked)],
+            "blockCount": tip - first + 1, "sampled": stride > 1, "lastEstimatedHashrate": rpc("getnetworkhashps", DAY)}
+
+
+def hashrate_range(tip, rng):
+    blocks, step = RANGES[rng]
+    n = blocks // step
+    heights = [tip - d * step for d in range(n) if tip - d * step > step][::-1]
+    hashes = rpc_batch([("getblockhash", [h]) for h in heights])
+    headers = rpc_batch([("getblockheader", [bh]) for bh in hashes if bh])
+    rates = rpc_batch([("getnetworkhashps", [step, h]) for h in heights])
+    by_height = {hd["height"]: hd for hd in headers if hd}
+    points, diffs, prev = [], [], None
+    for h, rate in zip(heights, rates):
+        hd = by_height.get(h)
+        if not hd or rate is None:
+            continue
+        points.append({"timestamp": hd["time"], "avgHashrate": rate})
+        d = hd["difficulty"]
+        diffs.append({"time": hd["time"], "height": h, "difficulty": d, "adjustment": (d / prev) if prev else 1})
+        prev = d
+    return {"hashrates": points, "difficulty": diffs, "currentHashrate": rpc("getnetworkhashps", WEEK), "currentDifficulty": rpc("getdifficulty")}
+
+
 def hashrate_year(tip):
     heights = [tip - d * DAY for d in range(YEAR_DAYS) if tip - d * DAY > DAY][::-1]
     hashes = rpc_batch([("getblockhash", [h]) for h in heights])
@@ -351,9 +407,12 @@ def mining_stats():
     while True:
         try:
             tip = rpc("getblockcount")
-            _mining["pools"] = pools_last_week(tip)
-            _mining["hashrate"] = hashrate_year(tip)
+            _mining["pools"]["1w"] = pools_last_week(tip)
+            _mining["hashrate"]["1y"] = hashrate_year(tip)
             _mining["at"] = time.time()
+            for rng in RANGES:          # the other periods follow, one by one (the long ones read more blocks)
+                _mining["hashrate"][rng] = hashrate_range(tip, rng)
+                _mining["pools"][rng] = pools_range(tip, rng)
         except Exception as exc:  # noqa: BLE001
             log("mining stats: " + str(exc))
         time.sleep(600)
@@ -551,8 +610,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json([mempool_json(b) for b in last_blocks(10)], 10)
             if path == "/api/v1/fees/mempool-blocks":
                 return self.json(_state["mempool"] or mempool_blocks(), 5)
-            if path in ("/api/v1/mining/hashrate/1y", "/api/v1/mining/pools/1w"):
-                data = _mining["hashrate" if "hashrate" in path else "pools"]
+            m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(\w+)", path)
+            if m:
+                data = _mining[m.group(1)].get(m.group(2))
                 if data is None:
                     return self.send(503, json.dumps({"error": "Mining statistics are being computed from your node, try again in a minute"}), "application/json")
                 return self.json(data, 300)

@@ -6,8 +6,9 @@ its /api/... JSON). This small server stands in front of it on the app's port, h
 on to it unchanged, and adds the two endpoints the hashes.space Find Mempool page reads for its
 "Global hashrate" and "Mining pools" sections, in mempool.space's shape:
 
-  /api/v1/mining/hashrate/1y   hashrate and difficulty over the past year
-  /api/v1/mining/pools/1w      how last week's blocks were paid out
+  /api/v1/mining/hashrate/<period>   hashrate and difficulty over the period
+  /api/v1/mining/pools/<period>      how the period's blocks were paid out
+  (period: 24h, 14d, 1m, 6m or 1y; 1w is still answered for older versions of the page)
 
 so the page gets those graphs from the same Monero Explorer that streams the blocks
 (xmr.hashes.space), computed from the Monero Node app on this Umbrel.
@@ -142,108 +143,86 @@ def payouts_in(height):
     return max(1, len(miner.get("vout") or []))
 
 
-# ---------- the rolling week (pools) and the year (hashrate) ----------
+# ---------- the periods the page offers ----------
+# blocks in the period, and one hashrate point per STEP blocks (a block every 2 minutes). "1w" is what older
+# versions of the page ask for.
+RANGES = {"24h": (720, 30), "1w": (5040, 60), "14d": (10080, 180), "1m": (21600, 360), "6m": (129600, 1440), "1y": (262800, 1440)}
+SAMPLE = 2500   # a long period reads about this many blocks for its payout split (an estimate); a short one reads them all
 
 _lock = threading.Lock()
-_state = {"week": {}, "year": [], "tip": None, "info": None, "ready": False}
+_headers = {}    # height -> (timestamp, difficulty)
+_payouts = {}    # height -> how many outputs its coinbase pays
+_result = {"hashrate": {}, "pools": {}, "info": None}
 
 
-def refresh_week():
-    """Keep the last week of blocks: height -> (timestamp, difficulty, payouts)."""
-    info = rpc("get_info")
-    tip = int(info["height"]) - 1
-    start = max(1, tip - 7 * BLOCKS_PER_DAY)
-    with _lock:
-        known = dict(_state["week"])
-    headers = []
-    h = start
-    while h <= tip:                       # the node returns these 1000 at a time
-        end = min(tip, h + 999)
-        headers.extend(rpc("get_block_headers_range", {"start_height": h, "end_height": end})["headers"])
-        h = end + 1
-    fresh = {}
-    for hd in headers:
-        height = int(hd["height"])
-        if height in known:
-            fresh[height] = known[height]
-            continue
-        try:
-            outs = payouts_in(height)
-        except Exception as exc:          # one unreadable block must not sink the whole window
-            log("block " + str(height) + ": " + str(exc))
-            outs = 1
-        fresh[height] = (int(hd["timestamp"]), int(hd["difficulty"]), outs)
-    with _lock:
-        _state["week"], _state["tip"], _state["info"] = fresh, tip, info
+def header_at(height):
+    if height not in _headers:
+        hd = rpc("get_block_header_by_height", {"height": height})["block_header"]
+        _headers[height] = (int(hd["timestamp"]), int(hd["difficulty"]))
+    return _headers[height]
 
 
-def refresh_year():
-    """One block a day for the past year, for the hashrate and difficulty chart."""
-    info = rpc("get_info")
-    tip = int(info["height"]) - 1
+def hashrate_range(tip, info, rng):
+    blocks, step = RANGES[rng]
+    heights = [tip - d * step for d in range(blocks // step) if tip - d * step > 1][::-1]
     points = []
-    for days_ago in range(365, -1, -1):
-        height = tip - days_ago * BLOCKS_PER_DAY
-        if height < 1:
-            continue
+    for h in heights:
         try:
-            hd = rpc("get_block_header_by_height", {"height": height})["block_header"]
+            points.append(header_at(h))
         except Exception as exc:
-            log("header " + str(height) + ": " + str(exc))
-            continue
-        points.append((int(hd["timestamp"]), int(hd["difficulty"])))
-    with _lock:
-        _state["year"] = points
+            log("header " + str(h) + ": " + str(exc))
+    now = int(info["difficulty"])
+    return {"currentHashrate": now / BLOCK_SECONDS, "currentDifficulty": now,
+            "hashrates": [{"timestamp": t, "avgHashrate": d / BLOCK_SECONDS} for t, d in points],
+            "difficulty": [{"time": t, "difficulty": d} for t, d in points]}
+
+
+def pools_range(tip, rng):
+    """the payout split of one period: every block of a short one, an evenly spread sample of a long one (scaled up)"""
+    blocks = RANGES[rng][0]
+    first = max(1, tip - blocks + 1)
+    stride = max(1, blocks // SAMPLE)
+    heights = [h for h in range(first, tip + 1) if h % stride == 0]
+    for h in heights:
+        if h not in _payouts:
+            try:
+                _payouts[h] = payouts_in(h)
+            except Exception as exc:          # one unreadable block must not sink the whole period
+                log("block " + str(h) + ": " + str(exc))
+    seen = [_payouts[h] for h in heights if h in _payouts]
+    if not seen:
+        raise RuntimeError("no data yet")
+    scale = (tip - first + 1) / len(seen)     # 1 when every block was read
+    shared = sum(1 for o in seen if o > 1)
+    payouts = sum(o for o in seen if o > 1)
+    pools = []
+    if shared:
+        n = max(1, round(shared * scale))
+        pools.append({"name": "P2Pool", "blockCount": n,
+                      "miners": [{"name": str(round(payouts / shared)) + " miners paid per block", "blockCount": n}]})
+    single = len(seen) - shared
+    if single:
+        pools.append({"name": "Single payout (pool or solo miner)", "blockCount": max(1, round(single * scale))})
+    return {"blockCount": tip - first + 1, "sampled": stride > 1, "pools": pools}
 
 
 def worker():
     first = True
     while True:
         try:
-            refresh_week()
-            if first or int(time.time()) % DAY < 900:
-                refresh_year()
-            with _lock:
-                _state["ready"] = True
-            if first:
-                log("Monero mining statistics ready")
-                first = False
+            info = rpc("get_info")
+            tip = int(info["height"]) - 1
+            for rng in RANGES:                # the short periods first, so they are ready soonest
+                hr, pl = hashrate_range(tip, info, rng), pools_range(tip, rng)
+                with _lock:
+                    _result["hashrate"][rng], _result["pools"][rng] = hr, pl
+                    _result["info"] = info
+                if first and rng == "24h":
+                    log("Monero mining statistics ready (longer periods follow)")
+            first = False
         except Exception as exc:
             log("refresh: " + str(exc))
         time.sleep(600)
-
-
-# ---------- the statistics, in mempool.space's shape ----------
-
-def hashrate_1y():
-    with _lock:
-        year, week, info = list(_state["year"]), dict(_state["week"]), _state["info"]
-    if not info:
-        raise RuntimeError("no data yet")
-    hashrates = [{"timestamp": t, "avgHashrate": d / BLOCK_SECONDS} for t, d in year]
-    difficulty = [{"time": t, "difficulty": d} for t, d in year[::7]] or [{"time": t, "difficulty": d} for t, d in year]
-    now = int(info["difficulty"])
-    return {"currentHashrate": now / BLOCK_SECONDS, "currentDifficulty": now,
-            "hashrates": hashrates, "difficulty": difficulty}
-
-
-def pools_1w():
-    with _lock:
-        week = dict(_state["week"])
-    cutoff = time.time() - WEEK
-    blocks = [v for v in week.values() if v[0] >= cutoff]
-    if not blocks:
-        raise RuntimeError("no data yet")
-    shared = sum(1 for b in blocks if b[2] > 1)
-    payouts = sum(b[2] for b in blocks if b[2] > 1)
-    pools = []
-    if shared:
-        pools.append({"name": "P2Pool", "blockCount": shared,
-                      "miners": [{"name": str(round(payouts / shared)) + " miners paid per block", "blockCount": shared}]})
-    single = len(blocks) - shared
-    if single:
-        pools.append({"name": "Single payout (pool or solo miner)", "blockCount": single})
-    return {"blockCount": len(blocks), "pools": pools}
 
 
 # ---------- the web server ----------
@@ -271,14 +250,15 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def mining(self, path):
-        try:
-            if path == "/api/v1/mining/hashrate/1y":
-                return self.send_json(200, hashrate_1y(), 300)
-            if path == "/api/v1/mining/pools/1w":
-                return self.send_json(200, pools_1w(), 300)
-        except Exception as exc:
-            return self.send_json(503, {"error": str(exc)}, 0)
-        return self.send_json(404, {"error": "unknown endpoint"}, 0)
+        m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(\w+)", path)
+        if not m:
+            return self.send_json(404, {"error": "unknown endpoint"}, 0)
+        kind, rng = m.groups()
+        with _lock:
+            data = _result[kind].get(rng)
+        if data is None:
+            return self.send_json(503 if rng in RANGES else 404, {"error": "Mining statistics are being computed from your node, try again in a minute" if rng in RANGES else "unknown period"}, 0)
+        return self.send_json(200, data, 300)
 
     def forward(self):
         length = int(self.headers.get("Content-Length") or 0)
