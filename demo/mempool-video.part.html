@@ -144,6 +144,25 @@
   .lv-ch { font: 600 13px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--link); }
   .lv-prog button.cur::before { background: rgba(27, 216, 244, .35); }
   .lv-voicebar { width: 100%; }
+
+  /* what is a share */
+  .lv-sh { display: flex; gap: 30px; align-items: center; justify-content: center; width: 100%; }
+  .lv-sh-feed { width: 780px; display: grid; gap: 7px; align-content: start; min-height: 440px; } .lv-sh-feed.single { min-height: 0; width: 900px; }
+  .lv-sh-feed .sr { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; border-radius: 10px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 500 16px/1 var(--mono); color: var(--muted); }
+  .lv-sh-feed .sr code { white-space: nowrap; font: inherit; } .lv-sh-feed .sr em { font-style: normal; color: var(--matrix); }
+  .lv-sh-feed .sr span { flex: none; min-width: 84px; text-align: right; font: 600 14px/1 var(--mono); }
+  .lv-sh-feed .sr.share { border-color: rgba(60, 226, 107, .65); background: rgba(60, 226, 107, .12); color: var(--text); } .lv-sh-feed .sr.share span { color: var(--matrix); }
+  .lv-sh-feed .sr.block { border-color: var(--orange); background: rgba(247, 147, 26, .14); color: var(--text); opacity: 0; transition: opacity .5s; } .lv-sh-feed .sr.block.on { opacity: 1; box-shadow: 0 0 30px rgba(247, 147, 26, .35); } .lv-sh-feed .sr.block em, .lv-sh-feed .sr.block span { color: var(--orange); }
+  .lv-sh-side { width: 300px; flex: none; display: grid; gap: 22px; } .lv-sh-stat { display: grid; gap: 6px; padding: 14px 18px; border-radius: 16px; border: 1px solid var(--line); background: rgba(10, 12, 24, .55); }
+  .lv-sh-stat b { font: 700 28px/1 var(--mono); color: var(--link); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; } .lv-sh-stat b.red { color: #ff7a6e; } .lv-sh-stat b.grn { color: var(--matrix); } .lv-sh-stat small { font: 400 17px/1.3 var(--sans); color: var(--muted); }
+  .lv-sh-scale { display: flex; gap: 5px; } .lv-sh-scale i { width: 38px; height: 54px; display: grid; place-items: center; border-radius: 9px; border: 1px solid var(--line); background: rgba(10, 12, 24, .6); font: 600 24px/1 var(--mono); font-style: normal; color: rgba(158, 164, 188, .5); transition: all .25s; }
+  .lv-sh-scale i.g { color: var(--matrix); border-color: rgba(60, 226, 107, .7); background: rgba(60, 226, 107, .14); } .lv-sh-scale i.y { color: var(--orange); border-color: var(--orange); background: rgba(247, 147, 26, .16); }
+  .lv-sh-tags { display: flex; gap: 40px; } .lv-sh-tags .tg { padding: 12px 22px; border-radius: 14px; font: 600 26px/1.2 var(--sans); text-align: center; opacity: 0; transform: translateY(8px); transition: all .4s; border: 1px solid; } .lv-sh-tags .tg.on { opacity: 1; transform: none; } .lv-sh-tags .tg small { display: block; margin-top: 4px; font: 400 18px/1.2 var(--mono); }
+  .lv-sh-tags .g { color: var(--matrix); border-color: rgba(60, 226, 107, .6); background: rgba(60, 226, 107, .08); } .lv-sh-tags .y { color: var(--orange); border-color: var(--orange); background: rgba(247, 147, 26, .1); }
+  .lv-sh-miners { display: grid; gap: 16px; justify-items: center; width: 900px; } .lv-sh-miners .mr { display: grid; grid-template-columns: 200px 1fr 190px; align-items: center; gap: 18px; width: 900px; }
+  .lv-sh-miners .mr span { font: 600 24px/1.2 var(--sans); color: var(--text); } .lv-sh-miners .mr small { display: block; font: 400 17px/1.2 var(--mono); color: var(--muted); }
+  .lv-sh-miners .tr { height: 26px; border-radius: 8px; background: rgba(158, 164, 188, .18); overflow: hidden; } .lv-sh-miners .tr i { display: block; height: 100%; width: 0; border-radius: 8px; background: linear-gradient(90deg, #3ce26b, #1bd8f4); transition: width .25s linear; }
+  .lv-sh-miners .mr b { font: 600 20px/1 var(--mono); color: var(--matrix); font-variant-numeric: tabular-nums; }
   /* chrome */
   .lv-poster { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; padding: 20px; background: radial-gradient(ellipse 80% 75% at 50% 40%, rgba(70, 78, 140, .32), rgba(0, 0, 0, 0) 80%), var(--bg); }
   .lv-poster[hidden] { display: none; }
@@ -307,6 +326,70 @@
           c.t(() => { r.textContent = '{"id": 4, "result": true, "error": null}'; pkt.classList.add('back'); }, 5200);
         }
       } },
+    // 4 ----------------------------------------------------------------------------------------------
+    { t: 'Hashrate', blurb: 'Hashes per second, from kilo to zetta', steps: [
+      'Hashrate is the total computing power a proof-of-work network uses to process transactions and mine new blocks: how many hashes per second, all miners together, try.',
+      'The units step up in thousands: hashes per second, kilo, mega, giga, tera, peta, exa and zetta. Each unit is one thousand times the one before.',
+      'A home ASIC does a few hundred terahashes per second. The whole Bitcoin network does around one zettahash per second.',
+    ], html: `
+      <div class="lv-layer lv-el" data-r="0-0"><div class="lv-rain-wrap"><div class="lv-miners" data-k="miners">${Array.from({ length: 48 }, () => '<i></i>').join('')}</div><div class="lv-rain" data-k="rain"></div><div class="lv-rate"><div class="lv-big" data-k="ticker">0 H/s</div><div class="lv-note">hashes per second, all miners together</div></div></div></div>
+      <div class="lv-layer lv-el" data-r="1-1"><div class="lv-ladder2" data-k="ladder">${[['H/s', '1', ''], ['kH/s', '10³', 'thousand'], ['MH/s', '10⁶', 'million'], ['GH/s', '10⁹', 'billion'], ['TH/s', '10¹²', 'trillion'], ['PH/s', '10¹⁵', 'quadrillion'], ['EH/s', '10¹⁸', 'quintillion'], ['ZH/s', '10²¹', 'sextillion']].map(([u, e, w], i) => `<div class="rung" style="--i:${i}"><b>${u}</b><span>${e}</span><small>${w || 'one hash'}</small></div>`).join('')}</div>
+        <div class="lv-note" data-k="lnote">each unit = <b>1,000 ×</b> the one before</div></div>
+      <div class="lv-layer lv-el" data-r="2-2"><div class="lv-logbars"><div class="lb"><span>A home ASIC</span><div class="tr"><i data-w="55"></i><b>a few hundred TH/s</b></div></div><div class="lb"><span>The Bitcoin network</span><div class="tr"><i data-w="95"></i><b>around 1 ZH/s</b></div></div>
+        <div class="axis"><span style="left:0%">1 TH/s</span><span style="left:31.7%">1 PH/s</span><span style="left:63.3%">1 EH/s</span><span style="left:95%">1 ZH/s</span></div></div><div class="lv-note" data-k="eq">logarithmic scale: every tick is <b>1,000 ×</b> more. The network equals <b>millions of home ASICs</b>.</div></div>`,
+      onStep(c, st) {
+        if (st === 0) {
+          const rain = c.q('[data-k=rain]'), tk = c.q('[data-k=ticker]'), mi = c.qa('[data-k=miners] i'); const lines = Array.from({ length: 15 }, () => rhex(48)); let v = 0; const U = ['H/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s', 'ZH/s'];
+          c.loop(() => { lines.unshift(rhex(48)); lines.pop(); rain.innerHTML = lines.map((l, i) => `<div style="opacity:${1 - i / 17}">${i === 0 ? '<em>' + l + '</em>' : l}</div>`).join(''); mi.forEach((x) => x.classList.toggle('hi', Math.random() < .3)); }, 90);
+          c.loop((stop) => { v++; const u = Math.min(7, Math.floor(v / 5)); tk.textContent = ((v % 5 + 1) * 190 % 1000 + 100) + ' ' + U[u]; if (v >= 36) { tk.textContent = '1 ZH/s'; stop(); } }, 130);
+        }
+        if (st === 1) {
+          const r = c.qa('.rung'); r.forEach((x) => x.classList.remove('on')); seq(c, r, 520, (x, i) => { r.forEach((y) => y.classList.remove('cur')); x.classList.add('on', 'cur'); }, 300);
+        }
+        if (st === 2) { const bars = c.qa('.lv-logbars i'); bars.forEach((b) => b.style.setProperty('--w', '0%')); c.t(() => { bars[0].style.setProperty('--w', '26%'); }, 400); c.t(() => { bars[1].style.setProperty('--w', '95%'); }, 1800); }
+      } },
+    // what is a share ------------------------------------------------------------------------------
+    { t: 'What is a mining share?', blurb: 'The proof that you are really hashing', steps: [
+      'To find a block, a miner must keep hashing until one hash is below the network target: a hash that starts with a very long run of zeros. That is extremely rare, and a single miner can search for a very long time without a hit.',
+      'But a pool, or your DATUM Gateway, needs proof that you are really working. So it sets an easier target, the share target, and asks you to send in every hash that beats it.',
+      'That hash is a share: a valid proof of work with enough leading zeros, but not enough to be a block. A fast ASIC finds a share every few seconds, and a block almost never.',
+      'Counting shares shows how much work each miner does, which is how hashrate is measured and rewards are divided. And in the rare moment that a share is good enough to be a block, it is sent to the whole network.',
+    ], html: `
+      <div class="lv-layer lv-el" data-r="0-0"><div class="lv-sh"><div class="lv-sh-feed" data-k="feed0"></div><div class="lv-sh-side"><div class="lv-sh-stat"><b data-k="need0">19</b><small>leading zeros needed for a block</small></div><div class="lv-sh-stat"><b data-k="tries0">0</b><small>hashes tried</small></div><div class="lv-sh-stat"><b class="red" data-k="found0">0</b><small>blocks found</small></div></div></div></div>
+      <div class="lv-layer lv-el" data-r="1-1"><div class="lv-sh-scale" data-k="scale">${Array.from({ length: 24 }, (_, i) => `<i>${i + 1 > 0 ? '0' : ''}</i>`).join('')}</div>
+        <div class="lv-sh-tags"><div class="tg g" data-k="tg1">Share target<small>13 leading zeros</small></div><div class="tg y" data-k="tg2">Block target<small>19 leading zeros</small></div></div>
+        <div class="lv-note" data-k="sc-note">six more zeros is <b>16⁶ = 16,777,216 ×</b> harder than a share</div></div>
+      <div class="lv-layer lv-el" data-r="2-2"><div class="lv-sh"><div class="lv-sh-feed" data-k="feed2"></div><div class="lv-sh-side"><div class="lv-sh-stat"><b class="grn" data-k="shares2">0</b><small>shares sent to the pool</small></div><div class="lv-sh-stat"><b data-k="rate2">200 TH/s</b><small>one ASIC finds a share about every 20 seconds</small></div></div></div></div>
+      <div class="lv-layer lv-el" data-r="3-3"><div class="lv-sh-miners" data-k="miners3">${[['Miner A', '400 TH/s', 4], ['Miner B', '200 TH/s', 2], ['Miner C', '100 TH/s', 1]].map(([n, h, w]) => `<div class="mr" data-w="${w}"><span>${n}<small>${h}</small></span><div class="tr"><i></i></div><b>0</b></div>`).join('')}
+        <div class="lv-sh-feed single"><div class="sr block on" data-k="blk3"><code><em>0000000000000000000</em>1a7c3f09b2e6d48c15f7e2a9b0c34d6e81f25a9c7b3e0</code><span>BLOCK</span></div></div>
+        <div class="lv-note" data-k="n3">rewards follow the shares, a block goes to the network</div></div></div>`,
+      onStep(c, st) {
+        const mk = (feed, z, kind) => {
+          let h, zz; if (kind === 'share') { zz = 13; h = '0'.repeat(13) + rhex(51); } else { h = shaText(MSG + '/' + Math.floor(Math.random() * 1e9)); zz = h.match(/^0*/)[0].length; }
+          const el = document.createElement('div'); el.className = 'sr' + (kind === 'share' ? ' share' : ''); el.innerHTML = `<code>${zz ? '<em>' + h.slice(0, zz) + '</em>' : ''}${h.slice(zz)}</code><span>${kind === 'share' ? 'SHARE ✓' : zz + ' zero' + (zz === 1 ? '' : 's')}</span>`; feed.prepend(el); while (feed.children.length > 9) feed.lastChild.remove(); [...feed.children].forEach((r, i) => { r.style.opacity = r.classList.contains('share') ? 1 : 1 - i / 11; });
+        };
+        if (st === 0) {
+          const f = c.q('[data-k=feed0]'), tr = c.q('[data-k=tries0]'); f.innerHTML = ''; let n = 41e12; tr.textContent = fmt(n);
+          for (let i = 0; i < 9; i++) mk(f, 0, 'x');
+          c.loop(() => { mk(f, 0, 'x'); n += 1e11 + Math.floor(Math.random() * 9e10); tr.textContent = fmt(n); }, 150);
+        }
+        if (st === 1) {
+          const cells = c.qa('[data-k=scale] i'), t1 = c.q('[data-k=tg1]'), t2 = c.q('[data-k=tg2]'), nt = c.q('[data-k=sc-note]');
+          cells.forEach((x) => x.className = ''); t1.classList.remove('on'); t2.classList.remove('on'); nt.style.opacity = 0;
+          cells.forEach((x, i) => { if (i < 19) c.t(() => { x.className = i < 13 ? 'g' : 'y'; if (i === 12) t1.classList.add('on'); if (i === 18) { t2.classList.add('on'); c.t(() => { nt.style.opacity = 1; }, 500); } }, 300 + i * 110); });
+        }
+        if (st === 2) {
+          const f = c.q('[data-k=feed2]'), sh = c.q('[data-k=shares2]'); f.innerHTML = ''; let k = 0, n = 0; sh.textContent = '0';
+          for (let i = 0; i < 9; i++) mk(f, 0, 'x');
+          c.loop(() => { k++; if (k % 7 === 4) { mk(f, 13, 'share'); n++; sh.textContent = n; } else mk(f, 0, 'x'); }, 260);
+        }
+        if (st === 3) {
+          const rows = c.qa('[data-k=miners3] .mr'), blk = c.q('[data-k=blk3]'), nt = c.q('[data-k=n3]'); const cnt = rows.map(() => 0); blk.classList.remove('on'); nt.style.opacity = .5;
+          rows.forEach((r) => { r.querySelector('b').textContent = '0'; r.querySelector('i').style.width = '0%'; });
+          let t = 0; c.loop(() => { t++; rows.forEach((r, i) => { if (Math.random() < +r.dataset.w / 4 * .9) cnt[i]++; }); const mx = Math.max(...cnt, 1), tot = cnt.reduce((a, b) => a + b, 0) || 1; rows.forEach((r, i) => { r.querySelector('i').style.width = (cnt[i] / mx * 100) + '%'; r.querySelector('b').textContent = cnt[i] + ' shares · ' + Math.round(cnt[i] / tot * 100) + '%'; }); }, 200);
+          c.t(() => { blk.classList.add('on'); nt.style.opacity = 1; }, 4200);
+        }
+      } },
     // 3 ----------------------------------------------------------------------------------------------
     { t: 'Sending a share', blurb: 'From the block template to the pool', steps: [
       "Your mining software receives the work in hexadecimal, built from your node's block template, and converts it into raw binary bytes.",
@@ -335,28 +418,6 @@
           c.t(() => typeInto(c, j, '{"method": "mining.submit", "params": ["rig1.worker", "job_42", "00000002", "6521a0f4", "9f3b11c7"]}', 18), 300);
           c.t(() => p.classList.add('go'), 2700); c.t(() => ok.classList.add('on'), 4300);
         }
-      } },
-    // 4 ----------------------------------------------------------------------------------------------
-    { t: 'Hashrate', blurb: 'Hashes per second, from kilo to zetta', steps: [
-      'Hashrate is the total computing power a proof-of-work network uses to process transactions and mine new blocks: how many hashes per second, all miners together, try.',
-      'The units step up in thousands: hashes per second, kilo, mega, giga, tera, peta, exa and zetta. Each unit is one thousand times the one before.',
-      'A home ASIC does a few hundred terahashes per second. The whole Bitcoin network does around one zettahash per second.',
-    ], html: `
-      <div class="lv-layer lv-el" data-r="0-0"><div class="lv-rain-wrap"><div class="lv-miners" data-k="miners">${Array.from({ length: 48 }, () => '<i></i>').join('')}</div><div class="lv-rain" data-k="rain"></div><div class="lv-rate"><div class="lv-big" data-k="ticker">0 H/s</div><div class="lv-note">hashes per second, all miners together</div></div></div></div>
-      <div class="lv-layer lv-el" data-r="1-1"><div class="lv-ladder2" data-k="ladder">${[['H/s', '1', ''], ['kH/s', '10³', 'thousand'], ['MH/s', '10⁶', 'million'], ['GH/s', '10⁹', 'billion'], ['TH/s', '10¹²', 'trillion'], ['PH/s', '10¹⁵', 'quadrillion'], ['EH/s', '10¹⁸', 'quintillion'], ['ZH/s', '10²¹', 'sextillion']].map(([u, e, w], i) => `<div class="rung" style="--i:${i}"><b>${u}</b><span>${e}</span><small>${w || 'one hash'}</small></div>`).join('')}</div>
-        <div class="lv-note" data-k="lnote">each unit = <b>1,000 ×</b> the one before</div></div>
-      <div class="lv-layer lv-el" data-r="2-2"><div class="lv-logbars"><div class="lb"><span>A home ASIC</span><div class="tr"><i data-w="55"></i><b>a few hundred TH/s</b></div></div><div class="lb"><span>The Bitcoin network</span><div class="tr"><i data-w="95"></i><b>around 1 ZH/s</b></div></div>
-        <div class="axis"><span style="left:0%">1 TH/s</span><span style="left:31.7%">1 PH/s</span><span style="left:63.3%">1 EH/s</span><span style="left:95%">1 ZH/s</span></div></div><div class="lv-note" data-k="eq">logarithmic scale: every tick is <b>1,000 ×</b> more. The network equals <b>millions of home ASICs</b>.</div></div>`,
-      onStep(c, st) {
-        if (st === 0) {
-          const rain = c.q('[data-k=rain]'), tk = c.q('[data-k=ticker]'), mi = c.qa('[data-k=miners] i'); const lines = Array.from({ length: 15 }, () => rhex(48)); let v = 0; const U = ['H/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s', 'ZH/s'];
-          c.loop(() => { lines.unshift(rhex(48)); lines.pop(); rain.innerHTML = lines.map((l, i) => `<div style="opacity:${1 - i / 17}">${i === 0 ? '<em>' + l + '</em>' : l}</div>`).join(''); mi.forEach((x) => x.classList.toggle('hi', Math.random() < .3)); }, 90);
-          c.loop((stop) => { v++; const u = Math.min(7, Math.floor(v / 5)); tk.textContent = ((v % 5 + 1) * 190 % 1000 + 100) + ' ' + U[u]; if (v >= 36) { tk.textContent = '1 ZH/s'; stop(); } }, 130);
-        }
-        if (st === 1) {
-          const r = c.qa('.rung'); r.forEach((x) => x.classList.remove('on')); seq(c, r, 520, (x, i) => { r.forEach((y) => y.classList.remove('cur')); x.classList.add('on', 'cur'); }, 300);
-        }
-        if (st === 2) { const bars = c.qa('.lv-logbars i'); bars.forEach((b) => b.style.setProperty('--w', '0%')); c.t(() => { bars[0].style.setProperty('--w', '26%'); }, 400); c.t(() => { bars[1].style.setProperty('--w', '95%'); }, 1800); }
       } },
     // 5 ----------------------------------------------------------------------------------------------
     { t: 'Decentralised hashrate', blurb: 'Your node builds the block template', steps: [
@@ -395,7 +456,7 @@
         grp.querySelectorAll('.ms i, .asicbar').forEach((x) => x.classList.add('hash'));
       } },
   ];
-  [0, 1, 3, 4].forEach((i) => { SCENES[i].stack = true; });
+  ['Hashes', 'Generating hashes', 'Hashrate', 'What is a mining share?', 'Decentralised hashrate'].forEach((n) => { SCENES.find((x) => x.t === n).stack = true; });
   // every chapter ends with the narrator announcing the next one
   SCENES.forEach((s, i) => { s.steps[s.steps.length - 1] += i < SCENES.length - 1 ? ` Next up, chapter ${i + 2}: ${SCENES[i + 1].t}.` : ' That was the last chapter. Next, learn how to read the blocks, on the blocks page.'; });
   const $ = (id) => document.getElementById(id);
