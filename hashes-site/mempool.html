@@ -621,20 +621,12 @@
   @media (prefers-reduced-motion: reduce) { .block-wrap.datum .cube, .block-wrap.datum-verified .cube, .block-wrap.datum-central .cube { animation: none; filter: drop-shadow(0 0 6px rgba(var(--glow),.75)) drop-shadow(0 0 16px rgba(var(--glow),.35)); } }
   .net-id { display: inline-flex; align-items: center; gap: 10px; }
   .coin { width: 26px; height: 26px; flex: 0 0 auto; border-radius: 50%; }
-  /* How to read it: a popover next to the PoW picker */
-  .howto { position: relative; }
-  /* plain words next to the PoW picker; hover (or focus, or tap) shows the explanation */
-  .howto-btn { background: none; border: 0; padding: 6px 2px; color: var(--muted); font: 500 13px/1 var(--sans); cursor: help; text-decoration: underline dotted rgba(158,164,188,.6); text-underline-offset: 4px; }
-  .howto-btn:hover, .howto.open .howto-btn, .howto-btn:focus-visible { color: var(--text); }
-  .howto-btn:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; border-radius: 3px; }
-  .howto-pop { display: none; }
-  .howto:hover .howto-pop, .howto:focus-within .howto-pop, .howto.open .howto-pop { display: grid; }
-  .howto .howto-pop { position: absolute; left: calc(100% + 12px); top: -6px; z-index: 45; width: min(440px, calc(100vw - 32px)); padding: 14px 16px; background: rgba(16, 18, 34, .96); border: 1px solid var(--line-strong); border-radius: 12px; box-shadow: 0 14px 40px rgba(0,0,0,.5); gap: 8px; }
-  .howto-pop::before { content: ''; position: absolute; left: -6px; top: 20px; width: 10px; height: 10px; background: inherit; border-left: 1px solid var(--line-strong); border-bottom: 1px solid var(--line-strong); transform: rotate(45deg); }
-  .howto-pop::after { content: ''; position: absolute; left: -14px; top: 0; bottom: 0; width: 14px; }
-  .howto-pop p { margin: 0; font: 400 13px/1.55 var(--sans); color: var(--muted); }
-  .howto-pop b { color: var(--text); font-weight: 500; }
-  @media (max-width: 760px) { .howto-pop { left: 0; top: calc(100% + 10px); transform: none; } .howto-pop::before { left: 22px; top: -6px; transform: rotate(135deg); } }
+  /* How to read the blocks?: a plain link right beside the search bar, opens the Learn topic */
+  .howto-btn { color: var(--muted); font: 500 13px/1 var(--sans); text-decoration: none; padding: 6px 2px; white-space: nowrap; }
+  .howto-btn:hover, .howto-btn:focus-visible { color: var(--text); }
+  .howto-btn:focus-visible { outline: 1px solid var(--line-strong); outline-offset: 3px; border-radius: 3px; }
+  .netbar > .nb-side.right { justify-self: start; }
+  @media (max-width: 720px) { .netbar > .nb-side.right { justify-self: center; } }
   /* Find Mempool: only the blockchain */
   #miner-slot, .fleet-shares { display: none !important; }
 
@@ -796,6 +788,16 @@
   .vs h4 { margin: 0; font: 600 14px/1.2 var(--sans); }
   .vs .c h4 { color: #ff8a65; } .vs .d h4 { color: var(--matrix); }
   .vs p { font-size: 13.5px !important; line-height: 1.6 !important; }
+  /* reading the blocks: one card per proof-of-work, a glowing swatch per kind of block */
+  .glows { display: grid; gap: 14px; }
+  .glows > section { padding: 14px 16px; border-radius: 14px; background: rgba(10, 12, 24, 0.45); border: 1px solid var(--line); display: grid; gap: 10px; }
+  .glows h4 { margin: 0; font: 600 15px/1.2 var(--sans); color: var(--text); }
+  .glows h4 small { font: 500 12px/1 var(--mono); color: var(--muted-2, var(--muted)); margin-left: 6px; }
+  .glow-row { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .glow-row p { font-size: 13.5px !important; line-height: 1.6 !important; }
+  .gsw { width: 18px; height: 18px; margin-top: 2px; border-radius: 5px; background: var(--c); box-shadow: 0 0 10px 2px var(--c); }
+  .gsw.red { --c: rgba(255, 82, 70, .85); } .gsw.green { --c: rgba(52, 232, 120, .85); } .gsw.orange { --c: rgba(255, 150, 40, .9); }
+  .glow-row b.red { color: #ff7a6e; } .glow-row b.green { color: var(--matrix); } .glow-row b.orange { color: var(--orange); }
 
   /* Themes: an animated background behind the page, picked under "Themes" in the top bar.
      A theme with a background sets html.bg-theme: the page's bars and cards turn see-through. */
@@ -949,16 +951,7 @@
   </div>
   <div class="nb-side right">
     <button type="button" class="own-btn" id="own-btn" hidden>Connect node</button>
-  <div class="howto">
-    <button type="button" class="howto-btn" id="howto-btn" aria-describedby="howto-pop">How to read it</button>
-    <div class="howto-pop" id="howto-pop" role="tooltip">
-      <p>Pick a proof-of-work blockchain on the left: <b>Bitcoin</b> (SHA-256, from mempool.space), <b>Bitcoin BLAKE2b</b> (BLAKE2b, from mempool.guide), <b>Dogecoin</b> (Scrypt, from our own Dogecoin node) or <b>Monero</b> (RandomX, from our own Monero node).</p>
-      <p>On the left are the blocks waiting in the mempool, the next one first: transactions sorted by the fee they pay, filled up to a full block. On the right are the blocks that were just mined. When a miner finds a block, the first waiting block moves across the line and becomes the newest block in the chain.</p>
-      <p>The colour of a block shows its fees: the warmer, the more the transactions in it pay. An orange glow and <b>DATUM Compatible</b> mark blocks of a pool that accepts miners with their own node and DATUM Gateway: OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b. A green glow and <b>Decentralised</b> are only for DATUM Gateway verified solominers of 100% DATUM pools. A red glow and <b>Centralised</b> mark blocks of every other pool, which builds the block template for its miners.</p>
-      <p>On Monero a block never names its pool, so the glow comes from how its reward was paid: a block that pays every miner directly in the block itself is a <b>P2Pool</b> block (green glow, <b>Decentralised</b>); every other Monero block pays a single address and gets the red glow and <b>Centralised</b>.</p>
-      <p>Every mined <b>Dogecoin</b> block gets the red glow and <b>Centralised</b>.</p>
-    </div>
-  </div>
+  <a class="howto-btn" id="howto-btn" href="#learn-blocks">How to read the blocks?</a>
   </div>
 </section>
 <section class="strip" aria-label="Blockchain">
@@ -1071,6 +1064,7 @@
     <button type="button" role="tab" id="lt-4" aria-controls="lp-4" aria-selected="false" tabindex="-1"><span class="n">4</span>Hashrate</button>
     <button type="button" role="tab" id="lt-5" aria-controls="lp-5" aria-selected="false" tabindex="-1"><span class="n">5</span>Decentralised hashrate</button>
     <button type="button" role="tab" id="lt-6" aria-controls="lp-6" aria-selected="false" tabindex="-1"><span class="n">6</span>Centralised vs decentralised</button>
+    <button type="button" role="tab" id="lt-7" aria-controls="lp-7" aria-selected="false" tabindex="-1"><span class="n">7</span>How to read the blocks</button>
   </div>
   <div class="learn-panel" role="tabpanel" id="lp-1" aria-labelledby="lt-1">
     <h3>What are hashes?</h3>
@@ -1128,6 +1122,30 @@
               <p>Miners have sovereign control and visibility over which transactions are included or excluded. They run their own Bitcoin full node (such as Bitcoin Knots or Bitcoin Core) and a protocol like DATUM Gateway that talks directly to their mining hardware.</p></div>
           </div>
   </div>
+  <div class="learn-panel" role="tabpanel" id="lp-7" aria-labelledby="lt-7" hidden>
+    <h3>How to read the blocks</h3>
+    <p>The glow around a mined block tells you <b>who built its block template</b>, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay. Every proof-of-work chain has its own rules:</p>
+    <div class="glows">
+    <section><h4>Bitcoin<small>SHA-256 · mempool.space</small></h4>
+      <div class="glow-row"><span class="gsw orange" aria-hidden="true"></span><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>OCEAN</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
+      <div class="glow-row"><span class="gsw green" aria-hidden="true"></span><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
+      <div class="glow-row"><span class="gsw red" aria-hidden="true"></span><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
+    </section>
+    <section><h4>Bitcoin BLAKE2b<small>BLAKE2b · mempool.guide</small></h4>
+      <div class="glow-row"><span class="gsw orange" aria-hidden="true"></span><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>CONVOY</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
+      <div class="glow-row"><span class="gsw green" aria-hidden="true"></span><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
+      <div class="glow-row"><span class="gsw red" aria-hidden="true"></span><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
+    </section>
+    <section><h4>Monero<small>RandomX · our own Monero node</small></h4>
+      <p>A Monero block never names its pool, so the glow comes from how the block reward was paid.</p>
+      <div class="glow-row"><span class="gsw green" aria-hidden="true"></span><p><b class="green">Decentralised (green glow)</b> The block was mined on <b>P2Pool</b>. P2Pool is a decentralised pool: every miner runs their own Monero node and builds their own block, and the reward is paid straight to all the miners inside the block itself.</p></div>
+      <div class="glow-row"><span class="gsw red" aria-hidden="true"></span><p><b class="red">Centralised (red glow)</b> Every other Monero block, mined on a <b>regular mining pool</b>. The reward is paid to a single address, the pool, which builds the block template and pays its miners out afterwards.</p></div>
+    </section>
+    <section><h4>Dogecoin<small>Scrypt · our own Dogecoin node</small></h4>
+      <div class="glow-row"><span class="gsw red" aria-hidden="true"></span><p><b class="red">Centralised (red glow)</b> Every mined Dogecoin block gets the red glow, whichever pool tag it carries, because Dogecoin pools build the block templates for their miners. No Dogecoin block gets a green or orange glow.</p></div>
+    </section>
+    </div>
+  </div>
   <div class="learn-nav"><button type="button" id="learn-prev">← Previous</button><button type="button" id="learn-next">Next →</button></div>
 </section>
 <script>
@@ -1150,6 +1168,7 @@
     if (e.key === 'Home') { e.preventDefault(); show(0, true); } if (e.key === 'End') { e.preventDefault(); show(tabs.length - 1, true); }
   });
   prev.addEventListener('click', () => show(cur - 1)); next.addEventListener('click', () => show(cur + 1));
+  window.learnShow = show;
   show(0);
 })();
 </script>
@@ -3133,6 +3152,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const TIMEZONES = (() => { try { const z = Intl.supportedValuesOf('timeZone'); return ['UTC', ...z.filter((x) => x !== 'UTC')]; } catch { return ['UTC', 'Europe/Amsterdam', 'Europe/London', 'America/New_York', 'Asia/Shanghai', 'Asia/Tokyo']; } })();
 
   function showView(v) {
+    if (v === 'learn-blocks') { v = 'learn'; if (window.learnShow) window.learnShow(6); }
     view = ['calc', 'learn', 'pool'].includes(v) ? v : 'dashboard';
     ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
     $('chain-area').hidden = view === 'learn';            // the proof-of-work bar stands on the mempool and calculator pages
@@ -3923,15 +3943,6 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
 })();
 </script>
 
-<script>
-(() => {
-  // hover and keyboard focus show it with CSS; a tap (touch screens) pins it open, a tap elsewhere or Esc closes it
-  const wrap = document.querySelector('.howto'), b = document.getElementById('howto-btn');
-  b.addEventListener('click', () => wrap.classList.toggle('open'));
-  document.addEventListener('click', (e) => { if (!e.target.closest('.howto')) wrap.classList.remove('open'); });
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape') { wrap.classList.remove('open'); if (wrap.contains(document.activeElement)) document.activeElement.blur(); } });
-})();
-</script>
 
 <canvas id="theme-bg" aria-hidden="true"></canvas>
 <script>
