@@ -28,6 +28,9 @@
   @media (max-width: 900px) { .mcard.m-pools::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
   /* a chart's headline: the same voice as the page's own headings, not a link */
   .mcard .mtitle, .mcard .kpis dt { margin: 0; text-align: center; font: 600 17px/1.25 var(--display); letter-spacing: .01em; color: var(--text); text-transform: none; }
+  .mcard .mperiod { font-weight: 500; color: var(--muted); font-size: .82em; letter-spacing: 0; white-space: nowrap; }
+  .mcard .mperiod::before { content: '· '; }
+  .mcard .mperiod:empty { display: none; }
   .mcard .kpis dd { text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); }
   /* hashrate calculator: the chance to find a block yourself */
   .calc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; justify-items: center; margin: 0; width: 100%; min-width: 0; }
@@ -109,7 +112,7 @@
     <a class="calc-link" id="calc-link" href="#calc">Hashrate calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
     <dl class="kpis">
-      <div><dt id="ms-hash-title">Global hashrate (1m)</dt><dd id="ms-hash">–</dd></div>
+      <div><dt><span id="ms-hash-title">Global hashrate</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
     </dl>
     <p class="hrsub" id="ms-hash-sub"></p>
     <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
@@ -117,7 +120,7 @@
     <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
-    <h2 class="mtitle" id="pools-title">Hashrate mining pools</h2>
+    <h2 class="mtitle"><span id="pools-title">Hashrate mining pools</span> <span class="mperiod" id="pools-period"></span></h2>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 344" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <p class="pnote" id="ms-pools-note" hidden></p>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
@@ -201,6 +204,7 @@
   // a week on the explorers running on your own Umbrel, which compute the split themselves
   var POOLS_WINDOW = { sha256: '24h', blake2b: '24h', dogecoin: '1w', monero: '1w' };
   const windowLabel = (w) => w;
+  const WINDOW_NAME = { '24h': '24 hours', '1w': '1 week', '14d': '14 days', '1m': '1 month', '3m': '3 months', '6m': '6 months', '1y': '1 year' };
   const WINDOW_WORDS = { '24h': "the last day's blocks", '1w': "last week's blocks", '14d': "the last 14 days' blocks", '1m': "the last month's blocks", '3m': "the last 3 months' blocks", '6m': "the last 6 months' blocks", '1y': "the last year's blocks" };
   const windowBlocks = (w) => WINDOW_WORDS[w] ?? "last week's blocks";
   const windowSpoken = (w) => ({ '24h': 'the last 24 hours', '1w': 'the last week', '14d': 'the last 14 days', '1m': 'the last month', '3m': 'the last 3 months', '6m': 'the last 6 months', '1y': 'the last year' }[w] ?? 'the last week');
@@ -343,8 +347,10 @@
     const rv = rangeView(netId, range, m), info = RANGE_INFO[range];
     if (miningBy[netId].live && !rangeBy[netId + ':' + range]) loadRangeFor(netId, range);
     for (const b of document.querySelectorAll('#mrange button')) b.setAttribute('aria-pressed', String(b.dataset.range === range));
-    $('pools-title').textContent = `${POOLS_TITLE[netId] ?? 'Hashrate mining pools'} (${windowLabel(rv.window)})`;
-    $('ms-hash-title').textContent = `Global hashrate (${range})`;
+    // each headline carries the period its chart shows; the pools say so honestly when the source can't give the chosen one
+    $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
+    $('pools-period').textContent = WINDOW_NAME[rv.window] ?? rv.window;
+    $('ms-hash-period').textContent = info.label;
     $('ms-key-avg').textContent = `Hashrate (${info.avg[0]} average)`;
     $('ms-pie').setAttribute('aria-label', `Hashrate per mining pool, ${windowSpoken(rv.window)}`);
     const note = $('ms-pools-note'); note.hidden = false;
