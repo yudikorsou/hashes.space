@@ -1,0 +1,288 @@
+<!--CSS-->
+  /* Learn video: a 1280x720 animated stage, scaled to the card; chapters 1-7 follow the topics below it */
+  .lv { width: min(100%, 860px); display: grid; gap: 12px; }
+  .lv-frame { position: relative; aspect-ratio: 16 / 9; border-radius: 28px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(ellipse 80% 75% at 50% 35%, rgba(70, 78, 140, 0.30), rgba(70, 78, 140, 0) 78%), var(--bg); isolation: isolate; }
+  .lv-stage { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; transform-origin: 0 0; color: var(--text); }
+  .lv-scene { position: absolute; inset: 0; padding: 44px 64px 40px; display: none; grid-template-rows: auto minmax(0, 1fr); gap: 8px; }
+  .lv-scene.cur { display: grid; }
+  .lv-h { display: flex; align-items: center; gap: 16px; }
+  .lv-h .n { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; font: 600 20px/1 var(--mono); color: #0b0d17; background: var(--link); }
+  .lv-h h3 { margin: 0; font: 600 40px/1.15 var(--display); letter-spacing: .01em; color: var(--text); }
+  .lv-body { display: grid; align-content: center; justify-items: center; gap: 30px; min-height: 0; }
+  .lv-el { opacity: 0; transform: translateY(16px); transition: opacity .6s ease, transform .6s ease; }
+  .lv-el.on { opacity: 1; transform: none; }
+  .lv-stack { display: grid; justify-items: center; align-items: center; }
+  .lv-stack > * { grid-area: 1 / 1; }
+  .lv-row { display: flex; align-items: center; justify-content: center; gap: 22px; }
+  .lv-note { font: 400 26px/1.4 var(--sans); color: var(--muted); text-align: center; max-width: 960px; }
+  .lv-note b { color: var(--text); font-weight: 500; }
+  .lv-mono { font-family: var(--mono); }
+  .lv-arrow { color: var(--link); font: 600 40px/1 var(--mono); }
+  .lv-chip { padding: 14px 22px; border-radius: 16px; background: rgba(10, 12, 24, .62); border: 1px solid var(--line-strong); font: 500 24px/1.25 var(--sans); color: var(--text); text-align: center; }
+  .lv-chip small { display: block; margin-top: 6px; font: 400 19px/1.3 var(--sans); color: var(--muted); }
+  .lv-chip.g { border-color: rgba(60, 226, 107, .55); } .lv-chip.o { border-color: rgba(247, 147, 26, .6); } .lv-chip.r { border-color: rgba(255, 77, 77, .6); } .lv-chip.c { border-color: rgba(27, 216, 244, .55); }
+  /* scene 1 */
+  .lv-bits { width: 1100px; height: 150px; overflow: hidden; border-radius: 18px; border: 1px solid var(--line); background: rgba(10, 12, 24, .5); display: grid; align-content: space-around; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+  .lv-bits div { white-space: nowrap; font: 500 22px/1 var(--mono); letter-spacing: .5em; color: rgba(158, 164, 188, .55); animation: lv-slide 18s linear infinite; }
+  .lv-bits div:nth-child(2) { animation-direction: reverse; animation-duration: 24s; } .lv-bits div b { color: var(--link); font-weight: 600; }
+  @keyframes lv-slide { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  .lv-syms { display: flex; gap: 10px; }
+  .lv-syms span { width: 58px; height: 66px; display: grid; place-items: center; border-radius: 12px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 600 30px/1 var(--mono); color: var(--matrix); }
+  .lv-syms span:nth-child(n+11) { color: var(--orange); }
+  .lv-nibs { display: flex; gap: 14px; }
+  .lv-nibs span { display: grid; justify-items: center; gap: 8px; padding: 12px 18px; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); }
+  .lv-nibs code { font: 500 24px/1 var(--mono); color: var(--muted); letter-spacing: .08em; } .lv-nibs b { font: 700 38px/1 var(--mono); color: var(--matrix); }
+  .lv-hexline { padding: 22px 28px; border-radius: 18px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 500 25px/1.4 var(--mono); color: var(--text); letter-spacing: .02em; }
+  .lv-hexline em { font-style: normal; color: var(--matrix); }
+  /* scene 2 */
+  .lv-fn { position: relative; padding: 22px 30px; border-radius: 20px; border: 1px solid rgba(27, 216, 244, .55); background: rgba(27, 216, 244, .08); font: 600 28px/1.2 var(--sans); box-shadow: 0 0 40px rgba(27, 216, 244, .18); }
+  .lv-data { display: grid; gap: 8px; width: 190px; } .lv-data i { height: 12px; border-radius: 6px; background: linear-gradient(90deg, var(--muted), rgba(158, 164, 188, .2)); } .lv-data i:nth-child(1) { width: 100%; } .lv-data i:nth-child(2) { width: 62%; } .lv-data i:nth-child(3) { width: 84%; } .lv-data i:nth-child(4) { width: 40%; }
+  .lv-ops { display: flex; gap: 22px; }
+  .lv-ops div { display: grid; gap: 10px; justify-items: center; padding: 18px 26px; border-radius: 18px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 500 26px/1 var(--mono); }
+  .lv-ops b { color: var(--link); font: 700 28px/1 var(--sans); } .lv-ops span { color: var(--muted); } .lv-ops u { text-decoration: none; color: var(--matrix); }
+  .lv-bytes { display: grid; grid-template-columns: repeat(16, 1fr); gap: 7px; width: 1000px; }
+  .lv-bytes span { padding: 11px 0; text-align: center; border-radius: 9px; background: rgba(10, 12, 24, .65); border: 1px solid var(--line); font: 600 21px/1 var(--mono); color: var(--matrix); }
+  .lv-json { padding: 24px 30px; border-radius: 18px; background: rgba(10, 12, 24, .7); border: 1px solid var(--line-strong); font: 500 25px/1.5 var(--mono); color: var(--text); max-width: 1000px; overflow-wrap: anywhere; } .lv-json i { font-style: normal; color: var(--link); } .lv-json s { text-decoration: none; color: var(--matrix); }
+  /* scene 3 */
+  .lv-flow { display: flex; align-items: flex-start; justify-content: center; gap: 6px; }
+  .lv-flow .step { display: grid; justify-items: center; gap: 12px; width: 178px; flex: none; }
+  .lv-flow .lv-tag { font: 500 21px/1.3 var(--mono); color: var(--link); text-align: center; min-height: 56px; }
+  .lv-flow .lv-chip { width: 100%; padding: 18px 10px; }
+  .lv-flow .lv-arrow { margin-top: 26px; }
+  /* scene 4 */
+  .lv-big { font: 700 96px/1 var(--mono); color: var(--matrix); text-shadow: 0 0 30px rgba(60, 226, 107, .35); font-variant-numeric: tabular-nums; }
+  .lv-ladder { display: flex; gap: 10px; }
+  .lv-ladder span { display: grid; justify-items: center; gap: 8px; min-width: 112px; padding: 16px 10px; border-radius: 14px; background: rgba(10, 12, 24, .6); border: 1px solid var(--line); font: 500 20px/1 var(--mono); color: var(--muted); }
+  .lv-ladder b { font: 700 28px/1 var(--mono); color: var(--orange); }
+  .lv-bars { display: grid; gap: 22px; width: 1000px; }
+  .lv-bar { display: grid; grid-template-columns: 270px 1fr; gap: 20px; align-items: center; font: 500 24px/1.3 var(--sans); color: var(--muted); }
+  .lv-bar > span:last-child { display: flex; align-items: center; gap: 16px; white-space: nowrap; }
+  .lv-bar i { flex: none; display: block; height: 30px; border-radius: 8px; width: 0; background: linear-gradient(90deg, #9339f4, #105fb0); transition: width 1.6s cubic-bezier(.2, .8, .2, 1); } .lv-bar b { color: var(--text); font-weight: 600; }
+  .lv-el.on .lv-bar i { width: var(--w); }
+  /* scene 5 and 6 */
+  .lv-cards { display: grid; grid-template-columns: repeat(2, 1fr); gap: 28px; width: 1100px; }
+  .lv-card { display: grid; gap: 16px; align-content: start; padding: 26px 30px; border-radius: 22px; background: rgba(10, 12, 24, .55); border: 1px solid var(--line); font: 400 24px/1.5 var(--sans); color: var(--muted); }
+  .lv-card h4 { margin: 0; font: 600 32px/1.2 var(--display); } .lv-card.c h4 { color: #ff8a65; } .lv-card.d h4 { color: var(--matrix); }
+  .lv-card.c { border-color: rgba(255, 77, 77, .4); box-shadow: 0 0 40px rgba(255, 77, 77, .1); } .lv-card.d { border-color: rgba(60, 226, 107, .4); box-shadow: 0 0 40px rgba(60, 226, 107, .1); }
+  .lv-dots { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; min-height: 66px; } .lv-dots i { width: 18px; height: 18px; border-radius: 50%; background: var(--muted); opacity: .7; } .lv-dots .pool { width: 120px; height: 46px; border-radius: 12px; background: rgba(255, 77, 77, .22); border: 1px solid rgba(255, 77, 77, .7); font: 600 20px/46px var(--sans); text-align: center; color: #ff8a65; font-style: normal; opacity: 1; }
+  .lv-dots .own { width: 34px; height: 34px; border-radius: 9px; background: rgba(60, 226, 107, .18); border: 1px solid rgba(60, 226, 107, .7); opacity: 1; }
+  /* scene 7 */
+  .lv-blocks { display: flex; gap: 44px; align-items: flex-start; justify-content: center; }
+  .lv-blocks > div { display: grid; gap: 14px; justify-items: center; width: 330px; text-align: center; font: 500 23px/1.35 var(--sans); color: var(--muted); }
+  .lv-blocks .mini .above { min-height: 0; }
+  .lv-blocks > div b { font-weight: 600; } .lv-blocks .g b { color: var(--matrix); } .lv-blocks .o b { color: var(--orange); } .lv-blocks .r b { color: #ff7a6e; }
+  .lv-chain { font: 600 22px/1 var(--mono); letter-spacing: .08em; text-transform: uppercase; color: var(--link); }
+  /* chrome */
+  .lv-poster { position: absolute; inset: 0; z-index: 4; display: grid; place-content: center; justify-items: center; gap: 14px; text-align: center; padding: 20px; background: radial-gradient(ellipse 80% 75% at 50% 40%, rgba(70, 78, 140, .32), rgba(0, 0, 0, 0) 80%), var(--bg); }
+  .lv-poster[hidden] { display: none; }
+  .lv-poster h3 { margin: 0; font: 600 clamp(20px, 4.2vw, 36px)/1.15 var(--display); color: var(--text); } .lv-poster p { margin: 0; font: 400 clamp(12px, 1.8vw, 16px)/1.5 var(--sans); color: var(--muted); }
+  .lv-play { width: clamp(54px, 10vw, 84px); aspect-ratio: 1; border-radius: 50%; border: 1px solid rgba(27, 216, 244, .7); background: rgba(27, 216, 244, .14); color: var(--link); display: grid; place-items: center; cursor: pointer; box-shadow: 0 0 40px rgba(27, 216, 244, .25); transition: transform .15s, background .15s; }
+  .lv-play:hover { transform: scale(1.06); background: rgba(27, 216, 244, .24); } .lv-play svg { width: 42%; height: 42%; fill: currentColor; margin-left: 6%; }
+  .lv-play:focus-visible, .lv-bar-btn:focus-visible, .lv-chaps button:focus-visible { outline: 2px solid var(--link); outline-offset: 3px; }
+  .lv-caption { min-height: 3.2em; display: grid; align-items: center; text-align: center; color: var(--text); font: 400 16px/1.55 var(--sans); padding: 0 8px; text-wrap: balance; }
+  .lv-ctl { display: flex; align-items: center; gap: 12px; }
+  .lv-bar-btn { flex: none; display: inline-grid; place-items: center; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-strong); background: rgba(10, 12, 24, .5); color: var(--text); cursor: pointer; padding: 0; }
+  .lv-bar-btn:hover { border-color: var(--link); color: var(--link); } .lv-bar-btn svg { width: 16px; height: 16px; fill: currentColor; }
+  .lv-prog { flex: 1; display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; min-width: 0; }
+  .lv-prog button { height: 22px; padding: 0; border: 0; background: none; cursor: pointer; position: relative; }
+  .lv-prog button::before { content: ''; position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 3px; background: rgba(158, 164, 188, .25); }
+  .lv-prog button i { position: absolute; left: 0; top: 9px; height: 4px; border-radius: 3px; background: var(--link); width: 0; transition: width .4s linear; }
+  .lv-prog button:hover::before { background: rgba(158, 164, 188, .45); }
+  .lv-voice { font: 400 12.5px/1.4 var(--sans); color: var(--muted); text-align: center; }
+  .lv-chaps { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
+  .lv-chaps button { background: none; border: 0; padding: 4px 2px; color: var(--muted); font: 500 12.5px/1 var(--sans); cursor: pointer; } .lv-chaps button:hover, .lv-chaps button.on { color: var(--text); } .lv-chaps button.on { text-decoration: underline; text-decoration-color: var(--link); text-underline-offset: 5px; }
+  @media (prefers-reduced-motion: reduce) { .lv-bits div { animation: none; } .lv-el { transition: opacity .2s; transform: none; } }
+<!--HTML-->
+<section class="lv" id="learn-video" aria-label="Video: from bits to blocks">
+  <div class="lv-frame" id="lv-frame">
+    <div class="lv-stage" id="lv-stage" aria-hidden="true"></div>
+    <div class="lv-poster" id="lv-poster">
+      <h3>From bits to blocks</h3>
+      <p>7 short chapters with narration: hashes, shares, hashrate and how to read the blocks</p>
+      <button type="button" class="lv-play" id="lv-start" aria-label="Play the video"><svg viewBox="0 0 24 24"><path d="M6 4.5v15l13-7.5z"/></svg></button>
+    </div>
+  </div>
+  <div class="lv-caption" id="lv-caption" aria-live="off"></div>
+  <div class="lv-ctl">
+    <button type="button" class="lv-bar-btn" id="lv-pp" aria-label="Play"><svg viewBox="0 0 24 24" id="lv-pp-ico"><path d="M6 4.5v15l13-7.5z"/></svg></button>
+    <div class="lv-prog" id="lv-prog" role="group" aria-label="Chapters"></div>
+    <button type="button" class="lv-bar-btn" id="lv-snd" aria-label="Narration on" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button>
+  </div>
+  <div class="lv-voice" id="lv-voice"></div>
+</section>
+<!--JS-->
+(() => {
+  const H = '0000000000000000000' + '1a7c3f09b2e6d48c15f7e2a9b0c34d6e81f25a9c7b3e0';
+  const bitsRow = (n, seed) => { let s = ''; for (let i = 0; i < n; i++) { seed = (seed * 1103515245 + 12345) & 0x7fffffff; const b = (seed >> 8) & 1; s += b ? '<b>1</b>' : '0'; } return s; };
+  const mini = (net, kind, pool) => `<div class="mini" data-net="${net}" data-kind="${kind}" data-pool="${pool}"></div>`;
+  // each step: say (spoken), cap (caption, default = say), r: ranges are on the elements (data-r="from-to")
+  const SCENES = [
+    { t: 'Hashes', steps: [
+      'A hash is a collection of bits, zeros and ones, inside a computer. But it is shown to humans as a fixed-length string of letters and numbers.',
+      'Reading a long sequence of zeros and ones is hard for people. So computers translate groups of bits into a text format called hexadecimal encoding.',
+      'Hexadecimal uses sixteen symbols: the numbers zero to nine, and the letters A to F. That makes a hash far easier to read than the two hundred fifty-six or five hundred twelve bits behind it.',
+      'Every group of four bits is called a nibble, and every nibble turns into a single letter or number in hexadecimal.',
+      'A 256-bit block hash is sixty-four hex characters, sixty-four times four bits. The leading zeros are what miners search for.',
+    ], stack: true, html: `<div style="display:grid;gap:28px;justify-items:center"><div class="lv-bits lv-el" data-r="0-1"><div>${bitsRow(120, 7)}</div><div>${bitsRow(120, 99)}</div><div>${bitsRow(120, 1234)}</div></div>
+      <div class="lv-stack" style="min-height:130px"><div class="lv-hexline lv-el" data-r="0-0">${H.slice(0, 32)}<br>${H.slice(32)}</div>
+      <div class="lv-chip c lv-el" data-r="1-1">hexadecimal encoding<small>groups of bits become text</small></div></div></div>
+      <div class="lv-syms lv-el" data-r="2-2">${'0123456789ABCDEF'.split('').map((c) => `<span>${c}</span>`).join('')}</div>
+      <div class="lv-nibs lv-el" data-r="3-3"><span><code>0000</code><b>0</b></span><span><code>0001</code><b>1</b></span><span><code>1001</code><b>9</b></span><span><code>1010</code><b>A</b></span><span><code>1100</code><b>C</b></span><span><code>1111</code><b>F</b></span></div>
+      <div style="display:grid;gap:24px;justify-items:center"><div class="lv-hexline lv-el" data-r="4-4"><em>${H.slice(0, 19)}</em>${H.slice(19)}</div>
+      <div class="lv-note lv-el" data-r="4-4">256 bits = <b>64 hex characters</b> (64 × 4 bits)</div></div>` },
+    { t: 'Generating hashes', steps: [
+      'A hash is generated by passing data of any size through a mathematical algorithm called a hash function.',
+      'A miner using SHA-256, the function of Bitcoin, processes data in blocks of 512 bits, and outputs a hash of exactly 256 bits.',
+      'A miner using BLAKE2b, on Bitcoin BLAKE2b, hashes a restructured 164-byte block header. Every 8 bits make a byte, so that is 1,312 bits of input, while the hash it outputs is still exactly 256 bits.',
+      'The microscopic transistors on a mining chip perform bitwise operations, like AND, XOR and bit-shifting, directly on these streams of bits, billions of times per second.',
+      'When your mining software talks to the hashing hardware, the bits are grouped into bytes: a 256-bit hash travels over the PCIe bus, or another interface, as a 32-byte array.',
+      'When your miner finds a valid share in a pool, the software turns the bits into a hexadecimal string. One hex character is exactly one nibble, so a 256-bit hash travels as a readable 64-character text string.',
+      'Most miners speak the Stratum protocol, to a pool or to their own DATUM Gateway, which packs these hex strings into standard JSON-RPC text messages sent over TCP.',
+    ], html: `<div class="lv-row lv-el" data-r="0-2"><div class="lv-data"><i></i><i></i><i></i><i></i></div><span class="lv-arrow">→</span><div class="lv-fn">hash function</div><span class="lv-arrow">→</span><div class="lv-chip g lv-mono">256 bits</div></div>
+      <div class="lv-stack" style="min-height:270px">
+        <div class="lv-row lv-el" data-r="1-1"><div class="lv-chip c">SHA-256<small>Bitcoin</small></div><div class="lv-chip">512 bits in<small>per block of data</small></div><span class="lv-arrow">→</span><div class="lv-chip g">256 bits out</div></div>
+        <div class="lv-row lv-el" data-r="2-2"><div class="lv-chip c">BLAKE2b<small>Bitcoin BLAKE2b</small></div><div class="lv-chip">164 bytes = 1,312 bits in<small>8 bits per byte</small></div><span class="lv-arrow">→</span><div class="lv-chip g">256 bits out</div></div>
+        <div class="lv-ops lv-el" data-r="3-3"><div><b>AND</b><span>1100</span><span>1010</span><u>1000</u></div><div><b>XOR</b><span>1100</span><span>1010</span><u>0110</u></div><div><b>SHIFT</b><span>1100</span><span>&lt;&lt; 1</span><u>1000</u></div><div style="border:0;background:none;font:500 24px/1.4 var(--sans);color:var(--muted)">billions of times<br>per second</div></div>
+        <div class="lv-el" data-r="4-4" style="display:grid;gap:16px;justify-items:center"><div class="lv-bytes">${H.match(/../g).map((x) => `<span>${x}</span>`).join('')}</div><div class="lv-note"><b>32-byte array</b> over the PCIe bus</div></div>
+        <div class="lv-el" data-r="5-5" style="display:grid;gap:16px;justify-items:center"><div class="lv-nibs"><span><code>0001</code><b>1</b></span><span><code>1010</code><b>a</b></span><span><code>0111</code><b>7</b></span><span><code>1100</code><b>c</b></span></div><div class="lv-hexline" style="font-size:22px">${H}</div><div class="lv-note">1 hex character = 1 nibble → <b>64 characters</b></div></div>
+        <div class="lv-el" data-r="6-6" style="display:grid;gap:16px;justify-items:center"><div class="lv-json"><i>{"id"</i>: 4, <i>"method"</i>: <s>"mining.submit"</s>, <i>"params"</i>: [ <s>"worker"</s>, <s>"job"</s>, <s>"…"</s>, <s>"nonce"</s> ]<i>}</i></div><div class="lv-row"><div class="lv-chip c">Stratum<small>to a pool or your DATUM Gateway</small></div><div class="lv-chip">JSON-RPC over TCP</div></div></div>
+      </div>` },
+    { t: 'Sending a share', steps: [
+      "Your mining software receives the work in hexadecimal, built from your node's block template, and converts it into raw binary bytes.",
+      'The raw bytes are fed into the ASIC hashing boards over an internal serial bus.',
+      'The ASIC hashes the bytes and returns a 32-bit nonce, four bytes, when it finds a share.',
+      'The software sends that share back as hex text in a Stratum message, to the pool or through your DATUM Gateway.',
+    ], html: `<div class="lv-flow">
+        <div class="step lv-el" data-r="0-9"><div class="lv-chip c">Node<small>block template</small></div><div class="lv-tag">hex</div></div>
+        <span class="lv-arrow lv-el" data-r="0-9">→</span>
+        <div class="step lv-el" data-r="0-9"><div class="lv-chip">Mining software<small>hex → binary bytes</small></div><div class="lv-tag">raw bytes</div></div>
+        <span class="lv-arrow lv-el" data-r="1-9">→</span>
+        <div class="step lv-el" data-r="1-9"><div class="lv-chip o">ASIC boards<small>hash the bytes</small></div><div class="lv-tag">serial bus</div></div>
+        <span class="lv-arrow lv-el" data-r="2-9">→</span>
+        <div class="step lv-el" data-r="2-9"><div class="lv-chip g">Share found<small>32-bit nonce</small></div><div class="lv-tag">4 bytes</div></div>
+        <span class="lv-arrow lv-el" data-r="3-9">→</span>
+        <div class="step lv-el" data-r="3-9"><div class="lv-chip c">Pool or DATUM Gateway<small>Stratum message</small></div><div class="lv-tag">hex text</div></div>
+      </div>` },
+    { t: 'Hashrate', steps: [
+      'Hashrate is the total computing power a proof-of-work network uses to process transactions and mine new blocks: how many hashes per second, all miners together, try.',
+      'The units step up in thousands: hashes per second, kilo, mega, giga, tera, peta, exa and zetta. Each unit is one thousand times the one before.',
+      'A home ASIC does a few hundred terahashes per second. The whole Bitcoin network does around one zettahash per second.',
+    ], stack: true, html: `<div style="display:grid;gap:18px;justify-items:center"><div class="lv-big lv-el" data-r="0-0" id="lv-ticker">0 H/s</div>
+      <div class="lv-note lv-el" data-r="0-0">hashes per second, all miners together</div></div>
+      <div style="display:grid;gap:24px;justify-items:center"><div class="lv-ladder lv-el" data-r="1-1"><span><b>H/s</b>1</span><span><b>kH/s</b>10³</span><span><b>MH/s</b>10⁶</span><span><b>GH/s</b>10⁹</span><span><b>TH/s</b>10¹²</span><span><b>PH/s</b>10¹⁵</span><span><b>EH/s</b>10¹⁸</span><span><b>ZH/s</b>10²¹</span></div>
+      <div class="lv-note lv-el" data-r="1-1">each unit = <b>1,000 ×</b> the one before</div></div>
+      <div class="lv-bars lv-el" data-r="2-2"><div class="lv-bar"><span>A home ASIC</span><span><i style="--w:6%"></i><b>a few hundred TH/s</b></span></div><div class="lv-bar"><span>The Bitcoin network</span><span><i style="--w:96%"></i><b>around 1 ZH/s</b></span></div><div class="lv-note" style="font-size:20px">not to scale: the network is millions of times bigger</div></div>` },
+    { t: 'Decentralised hashrate', steps: [
+      'Decentralised hashrate is the computing power a proof-of-work network uses to process transactions and mine new blocks with locally constructed block templates.',
+      'Every miner decides what goes into the block they work on. Your node builds the block template, DATUM Gateway hands out the work, and your miners hash it.',
+    ], html: `<div class="lv-flow">
+        <div class="step lv-el" data-r="0-9"><div class="lv-chip g">Your node<small>builds the block template</small></div></div>
+        <span class="lv-arrow lv-el" data-r="1-9">→</span>
+        <div class="step lv-el" data-r="1-9"><div class="lv-chip c">DATUM Gateway<small>hands out the work</small></div></div>
+        <span class="lv-arrow lv-el" data-r="1-9">→</span>
+        <div class="step lv-el" data-r="1-9"><div class="lv-chip o">Your miners<small>hash it</small></div></div>
+      </div>
+      <div class="lv-note lv-el" data-r="1-1">every miner decides what goes into their own block</div>` },
+    { t: 'Centralised vs decentralised', steps: [
+      "Centralised: miners have little to no visibility or control over which transactions are included or excluded. They merely rent out raw hash power, and a handful of large mining pools decide the contents of most of the network's blocks.",
+      'Decentralised: miners have sovereign control and visibility over which transactions are included or excluded. They run their own Bitcoin full node, such as Bitcoin Knots or Bitcoin Core, and a protocol like DATUM Gateway that talks directly to their mining hardware.',
+    ], html: `<div class="lv-cards">
+        <div class="lv-card c lv-el" data-r="0-9"><h4>Centralised</h4><div class="lv-dots">${'<i></i>'.repeat(14)}<i class="pool">pool</i></div>Miners only rent out hash power. A handful of pools decide what goes into the blocks.</div>
+        <div class="lv-card d lv-el" data-r="1-9"><h4>Decentralised</h4><div class="lv-dots">${'<i class="own"></i>'.repeat(5)}</div>Miners run their own full node and DATUM Gateway, and choose the transactions themselves.</div>
+      </div>` },
+    { t: 'How to read the blocks', steps: [
+      'The glow around a mined block tells you who built its block template, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay.',
+      'On Bitcoin and Bitcoin BLAKE2b, a green glow and Decentralised are only for blocks found by DATUM Gateway verified solominers of pools that are one hundred percent DATUM. The miner built the block template on their own node.',
+      'An orange glow and DATUM Compatible mean a pool that lets its miners build their own templates with their own node and DATUM Gateway: OCEAN on Bitcoin, CONVOY on Bitcoin BLAKE2b. The pool gives miners the choice.',
+      'A red glow and Centralised are for every other pool. The pool builds the block template, so the pool decides which transactions go in, and its miners only rent out hash power.',
+      'On Monero a block never names its pool, so the glow comes from how the reward was paid. A P2Pool block pays every miner directly inside the block: green, Decentralised. Every other Monero block pays a single address, the pool: red, Centralised.',
+      'Every mined Dogecoin block gets the red glow and Centralised, because Dogecoin pools build the block templates for their miners.',
+    ], stack: true, html: `<div style="display:grid;gap:34px;justify-items:center"><div class="lv-note lv-el" data-r="0-0" style="font-size:30px">The <b>glow</b> shows <b>who built the block template</b>.<br>The <b>colour</b> of the block shows the fees.</div>
+      <div class="lv-row lv-el" data-r="0-0" style="gap:40px"><div class="lv-chip g">green<small>Decentralised</small></div><div class="lv-chip o">orange<small>DATUM Compatible</small></div><div class="lv-chip r">red<small>Centralised</small></div></div></div>
+      <div style="display:grid;gap:22px;justify-items:center"><div class="lv-chain lv-el" data-r="1-3">Bitcoin · Bitcoin BLAKE2b</div>
+      <div class="lv-blocks lv-el" data-r="1-3">
+        <div class="g lv-el" data-r="1-9">${mini('sha256', 'verified', 'Solo miner')}<span><b>Decentralised</b><br>DATUM verified solominer</span></div>
+        <div class="o lv-el" data-r="2-9">${mini('sha256', 'compatible', 'OCEAN')}<span><b>DATUM Compatible</b><br>OCEAN · CONVOY</span></div>
+        <div class="r lv-el" data-r="3-9">${mini('sha256', 'central', 'Any other pool')}<span><b>Centralised</b><br>the pool builds the template</span></div>
+      </div></div>
+      <div style="display:grid;gap:22px;justify-items:center"><div class="lv-chain lv-el" data-r="4-4">Monero</div>
+      <div class="lv-blocks lv-el" data-r="4-4">
+        <div class="g">${mini('monero', 'verified', 'P2Pool')}<span><b>Decentralised</b><br>P2Pool pays every miner in the block</span></div>
+        <div class="r">${mini('monero', 'central', '')}<span><b>Centralised</b><br>one address: a regular pool</span></div>
+      </div></div>
+      <div style="display:grid;gap:22px;justify-items:center"><div class="lv-chain lv-el" data-r="5-5">Dogecoin</div>
+      <div class="lv-blocks lv-el" data-r="5-5">
+        <div class="r">${mini('dogecoin', 'central', 'Any pool')}<span><b>Centralised</b><br>every mined block</span></div>
+      </div></div>` },
+  ];
+
+  const $ = (id) => document.getElementById(id);
+  const frame = $('lv-frame'), stage = $('lv-stage'), cap = $('lv-caption'), prog = $('lv-prog'), poster = $('lv-poster');
+  stage.innerHTML = SCENES.map((s, i) => `<div class="lv-scene" data-i="${i}"><div class="lv-h"><span class="n">${i + 1}</span><h3>${s.t}</h3></div><div class="lv-body${s.stack ? ' lv-stack' : ''}">${s.html}</div></div>`).join('');
+  const scenes = [...stage.querySelectorAll('.lv-scene')];
+  prog.innerHTML = SCENES.map((s, i) => `<button type="button" data-i="${i}" aria-label="Chapter ${i + 1}: ${s.t}" title="${i + 1} · ${s.t}"><i></i></button>`).join('');
+  // scale the 1280x720 stage to the card
+  const fit = () => { stage.style.transform = `scale(${frame.clientWidth / 1280})`; };
+  new ResizeObserver(fit).observe(frame); fit();
+
+  // ----- the narrator: the viewer's own browser voice, an English female one when there is one -----
+  const synth = window.speechSynthesis;
+  let voice = null, soundOn = true;
+  const FEMALE = /(samantha|karen|moira|tessa|serena|fiona|victoria|allison|ava|susan|zira|hazel|aria|jenny|libby|sonia|female|google uk english female|google us english|catherine|kate|amelie)/i;
+  const MALE = /(male\b|daniel|alex|fred|david|mark|george|james|guy|ryan|thomas|oliver)/i;
+  function pickVoice() {
+    if (!synth) return;
+    const vs = synth.getVoices().filter((v) => /^en([-_]|$)/i.test(v.lang));
+    voice = vs.find((v) => FEMALE.test(v.name) && !/\bmale\b/i.test(v.name) && /^en[-_](GB|US)/i.test(v.lang)) || vs.find((v) => FEMALE.test(v.name)) || vs.find((v) => !MALE.test(v.name)) || vs[0] || null;
+    $('lv-voice').textContent = voice ? `Narrated with your browser's voice: ${voice.name}` : 'No narration voice found in this browser, the captions carry the story.';
+  }
+  if (synth) { pickVoice(); synth.addEventListener?.('voiceschanged', pickVoice); }
+
+  let sc = 0, st = 0, playing = false, run = 0, timer = 0;
+  const words = (s) => s.split(/\s+/).length;
+  function speak(text, myRun) {
+    return new Promise((res) => {
+      let done = false; const fin = () => { if (!done) { done = true; clearTimeout(timer); res(); } };
+      const wait = Math.max(3200, words(text) * 390);
+      if (soundOn && synth && voice) {
+        try {
+          synth.cancel();
+          const u = new SpeechSynthesisUtterance(text); u.voice = voice; u.lang = voice.lang; u.rate = .96; u.pitch = /female|samantha|karen|moira|tessa|zira|hazel|aria|jenny/i.test(voice.name) ? 1 : 1.12;
+          u.onend = fin; u.onerror = fin; synth.speak(u);
+          timer = setTimeout(fin, wait + 9000); return;
+        } catch (e) { /* fall through to the timer */ }
+      }
+      timer = setTimeout(fin, wait);
+    });
+  }
+  function render() {
+    scenes.forEach((s, i) => s.classList.toggle('cur', i === sc));
+    const cur = scenes[sc];
+    cur.querySelectorAll('[data-r]').forEach((el) => { const [a, b] = el.dataset.r.split('-').map(Number); el.classList.toggle('on', st >= a && st <= b); });
+    cap.textContent = SCENES[sc].steps[st];
+    prog.querySelectorAll('button').forEach((b, i) => { b.firstChild.style.width = (i < sc ? 100 : i > sc ? 0 : ((st + 1) / SCENES[sc].steps.length) * 100) + '%'; });
+    if (sc === 6 && window.learnBuildMinis) window.learnBuildMinis();
+    if (sc === 3 && st === 0) tick();
+  }
+  let tk = 0;
+  function tick() { const el = $('lv-ticker'); const my = ++tk; const U = ['H/s', 'kH/s', 'MH/s', 'GH/s', 'TH/s', 'PH/s', 'EH/s', 'ZH/s']; let v = 0; const f = () => { if (my !== tk || !el) return; v += 1; const u = Math.min(7, Math.floor(v / 5)); el.textContent = ((v % 5 + 1) * 190 % 1000 + 100) + ' ' + U[u]; if (v < 36) setTimeout(f, 90); else el.textContent = '1 ZH/s'; }; f(); }
+  const setIcon = () => { $('lv-pp-ico').innerHTML = playing ? '<path d="M6 4.5h4.2v15H6zm7.8 0H18v15h-4.2z"/>' : '<path d="M6 4.5v15l13-7.5z"/>'; $('lv-pp').setAttribute('aria-label', playing ? 'Pause' : 'Play'); };
+  async function loop() {
+    const my = ++run;
+    while (playing && my === run) {
+      render(); await speak(SCENES[sc].steps[st], my);
+      if (!playing || my !== run) return;
+      if (st < SCENES[sc].steps.length - 1) st++; else if (sc < SCENES.length - 1) { sc++; st = 0; } else { playing = false; setIcon(); poster.hidden = false; poster.querySelector('h3').textContent = 'Watch again'; sc = 0; st = 0; render(); return; }
+    }
+  }
+  function play() { poster.hidden = true; playing = true; setIcon(); loop(); }
+  function pause() { playing = false; run++; clearTimeout(timer); synth?.cancel(); setIcon(); }
+  function go(i) { run++; clearTimeout(timer); synth?.cancel(); sc = i; st = 0; poster.hidden = true; render(); playing = true; setIcon(); loop(); }
+  $('lv-start').addEventListener('click', play);
+  $('lv-pp').addEventListener('click', () => (playing ? pause() : play()));
+  $('lv-snd').addEventListener('click', (e) => { soundOn = !soundOn; e.currentTarget.setAttribute('aria-pressed', String(soundOn)); e.currentTarget.style.opacity = soundOn ? 1 : .5; e.currentTarget.setAttribute('aria-label', soundOn ? 'Narration on' : 'Narration off'); if (!soundOn) synth?.cancel(); });
+  prog.addEventListener('click', (e) => { const b = e.target.closest('button'); if (b) go(+b.dataset.i); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden && playing) pause(); });
+  addEventListener('hashchange', () => { if (playing && !/^#learn/.test(location.hash)) pause(); });
+  render(); cap.textContent = '';
+})();
