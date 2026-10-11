@@ -1112,10 +1112,13 @@
   const DATUM_POOLS = { sha256: ['OCEAN'], blake2b: ['CONVOY'] };
   const DATUM_VERIFIED = { sha256: [], blake2b: [] };
   const DATUM_TITLE = { verified: 'Decentralised: mined by a DATUM Gateway verified solominer of a 100% DATUM pool', compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway', centralised: 'Centralised: mined by a pool that builds the block template for its miners' };
+  const DOGE_TITLE = { centralised: 'Centralised: Dogecoin blocks are mined by pools that build the block template for their miners' };
   const XMR_TITLE = { verified: 'Decentralised: a P2Pool block, which pays every miner of the pool directly in the block itself', centralised: 'Centralised: not a P2Pool block; the reward goes to a single address (a pool or a solo miner)' };
   const DATUM_BADGE = { verified: '<span class="datum-badge verified">✓ Decentralised</span>', compatible: '<span class="datum-badge">◆ DATUM Compatible</span>', centralised: '<span class="datum-badge central">Centralised</span>' };
   const datumLabel = (b) => {
     // Monero: P2Pool blocks (many payouts in one coinbase) are Decentralised (green), every other block Centralised (red)
+    // Dogecoin: every mined block is Centralised (red), whatever pool tag it carries
+    if (netId === 'dogecoin') return 'centralised';
     if (netId === 'monero') return b.p2pool === undefined ? null : b.p2pool ? 'verified' : 'centralised';
     const p = (b.pool ?? '').trim().toLowerCase(), has = (l) => (l?.[netId] ?? []).some((d) => d.toLowerCase() === p);
     // every other pool on a Bitcoin chain is Centralised (red); solo miners and blocks mempool can't name are no pool
@@ -1152,7 +1155,7 @@
     mineEl.innerHTML = c.blocks.map((b, i) => {
       const tag = live && url ? `a href="${url}${b.hash}" target="_blank" rel="noopener"` : 'div';
       const datum = datumLabel(b);
-      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? ' ' + ({ verified: 'datum-verified', compatible: 'datum', centralised: 'datum-central' })[datum] : ''}"${datum ? ` title="${(netId === 'monero' && XMR_TITLE[datum]) || DATUM_TITLE[datum]}"` : ''}>
+      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? ' ' + ({ verified: 'datum-verified', compatible: 'datum', centralised: 'datum-central' })[datum] : ''}"${datum ? ` title="${(netId === 'monero' && XMR_TITLE[datum]) || (netId === 'dogecoin' && DOGE_TITLE[datum]) || DATUM_TITLE[datum]}"` : ''}>
       <div class="above height"><b>${fmt(b.height)}</b></div>${cube(b, true)}<div class="below">${esc(b.pool ?? '')}${datum ? DATUM_BADGE[datum] : ''}</div></${tag.split(' ')[0]}>`;
     }).join('');
     mineEl.scrollLeft = keep;
