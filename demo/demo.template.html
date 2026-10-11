@@ -1112,8 +1112,11 @@
   const DATUM_POOLS = { sha256: ['OCEAN'], blake2b: ['CONVOY'] };
   const DATUM_VERIFIED = { sha256: [], blake2b: [] };
   const DATUM_TITLE = { verified: 'Decentralised: mined by a DATUM Gateway verified solominer of a 100% DATUM pool', compatible: 'DATUM Compatible: mined by a pool that accepts miners with their own node and DATUM Gateway', centralised: 'Centralised: mined by a pool that builds the block template for its miners' };
+  const XMR_TITLE = { verified: 'Decentralised: a P2Pool block, which pays every miner of the pool directly in the block itself', centralised: 'Centralised: not a P2Pool block; the reward goes to a single address (a pool or a solo miner)' };
   const DATUM_BADGE = { verified: '<span class="datum-badge verified">✓ Decentralised</span>', compatible: '<span class="datum-badge">◆ DATUM Compatible</span>', centralised: '<span class="datum-badge central">Centralised</span>' };
   const datumLabel = (b) => {
+    // Monero: P2Pool blocks (many payouts in one coinbase) are Decentralised (green), every other block Centralised (red)
+    if (netId === 'monero') return b.p2pool === undefined ? null : b.p2pool ? 'verified' : 'centralised';
     const p = (b.pool ?? '').trim().toLowerCase(), has = (l) => (l?.[netId] ?? []).some((d) => d.toLowerCase() === p);
     // every other pool on a Bitcoin chain is Centralised (red); solo miners and blocks mempool can't name are no pool
     return !p ? null : has(DATUM_VERIFIED) ? 'verified' : has(DATUM_POOLS) ? 'compatible' : netId in DATUM_POOLS && !/\bsolo|solominer|\bdatum\b|^unknown$/i.test(p) ? 'centralised' : null;
@@ -1149,7 +1152,7 @@
     mineEl.innerHTML = c.blocks.map((b, i) => {
       const tag = live && url ? `a href="${url}${b.hash}" target="_blank" rel="noopener"` : 'div';
       const datum = datumLabel(b);
-      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? ' ' + ({ verified: 'datum-verified', compatible: 'datum', centralised: 'datum-central' })[datum] : ''}"${datum ? ` title="${DATUM_TITLE[datum]}"` : ''}>
+      return `<${tag} class="block-wrap ${animateFirst && i === 0 ? 'enter' : ''}${datum ? ' ' + ({ verified: 'datum-verified', compatible: 'datum', centralised: 'datum-central' })[datum] : ''}"${datum ? ` title="${(netId === 'monero' && XMR_TITLE[datum]) || DATUM_TITLE[datum]}"` : ''}>
       <div class="above height"><b>${fmt(b.height)}</b></div>${cube(b, true)}<div class="below">${esc(b.pool ?? '')}${datum ? DATUM_BADGE[datum] : ''}</div></${tag.split(' ')[0]}>`;
     }).join('');
     mineEl.scrollLeft = keep;
@@ -1186,6 +1189,7 @@
     }
     return null;
   }
+  const xmrCoinbase = {};   // coinbase tx hash -> true when it pays several miners (a P2Pool block)
   async function connectXmr(id) {
     const c = chains[id]; c.connecting = true;
     const base = await pickXmrExplorer();
@@ -1200,8 +1204,18 @@
     const poll = async () => {
       try {
         const [{ blocks }, pool] = await Promise.all([get('/transactions?page=0&limit=8'), get('/mempool?limit=2000').catch(() => ({ txs: [] }))]);
-        const mapped = blocks.map((b) => { const txs = (b.txs ?? []).filter((t) => !t.coinbase), r = txs.map(rate);
-          return { height: b.height, hash: b.hash, timestamp: b.timestamp, txCount: txs.length, size: b.size, weight: Math.min(4e6, b.size / XMR_MEDIAN * 4e6), medianFee: pct(r)[1] ?? 0, feeRange: pct(r), pool: '' }; });
+        // a block never names its pool, but P2Pool pays every one of its miners in the block's own coinbase: a coinbase with
+        // more than one output is a P2Pool block, a single payout is any other pool or a solo miner (looked up once per block)
+        const p2pool = async (b) => {
+          const cb = (b.txs ?? []).find((t) => t.coinbase); if (!cb) return undefined;
+          if (!(cb.tx_hash in xmrCoinbase)) {
+            try { const t = await get('/transaction/' + cb.tx_hash), outs = t.outputs ?? t.vout; xmrCoinbase[cb.tx_hash] = Array.isArray(outs) ? outs.length > 1 : undefined; } catch { return undefined; }
+          }
+          return xmrCoinbase[cb.tx_hash];
+        };
+        const kinds = await Promise.all(blocks.map(p2pool));
+        const mapped = blocks.map((b, i) => { const txs = (b.txs ?? []).filter((t) => !t.coinbase), r = txs.map(rate);
+          return { height: b.height, hash: b.hash, timestamp: b.timestamp, txCount: txs.length, size: b.size, weight: Math.min(4e6, b.size / XMR_MEDIAN * 4e6), medianFee: pct(r)[1] ?? 0, feeRange: pct(r), pool: kinds[i] ? 'P2Pool' : '', p2pool: kinds[i] }; });
         const isNew = c.live && mapped[0]?.height > c.tipHeight;
         c.blocks = mapped; c.tipHeight = mapped[0]?.height ?? c.tipHeight;
         const txs = (pool.txs ?? []).sort((a, b) => rate(b) - rate(a)), proj = [];

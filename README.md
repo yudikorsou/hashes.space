@@ -390,6 +390,7 @@ Mined blocks of pools that work with [DATUM Gateway](https://github.com/OCEAN-xy
 - **Decentralised** (green glow, called `verified` in the code): only DATUM Gateway verified solominers of 100% DATUM pools, listed per network in `networks.json` with `"datumVerified"` (pool or miner names as mempool shows them). None are listed yet.
 
 - **Centralised** (red glow): every other pool on the Bitcoin chains, where the pool builds the block template for its miners. Solo miners and blocks mempool can't name get no tag.
+- **Monero** has no pool names, so its glow comes from the block's coinbase: a block that pays more than one output (P2Pool pays every miner of the pool in the block itself) is **Decentralised** (green), every other block pays one address and is **Centralised** (red). The Find Mempool page reads each new block's coinbase from the Monero Explorer (`/api/transaction/<hash>`).
 
 Monero blocks get none of these.
 
