@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.2.0"
+version: "1.3.0"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -33,6 +33,11 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The site now keeps itself up to date: it fetches the newest Find Mempool page from GitHub every hour (every
+  5 minutes while GitHub cannot be reached), tells browsers to always check for a newer page, and restarts
+  itself whenever it stops, so nobody has to refresh or restart the app.
+
+
   The Bitcoin BLAKE2b and SHA-256 hashrate and mining pool charts now also load through this app, so a
   browser that refuses mempool.guide's answer (two CORS headers) still gets live statistics for every period.
 

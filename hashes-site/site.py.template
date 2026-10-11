@@ -37,8 +37,9 @@ BUNDLED = os.environ.get("SITE_DIR", "/site")        # the copy that came with t
 SITE = os.environ.get("PAGES_DIR", "/tmp/pages")     # what is served: the newest copy of each page
 
 # Umbrel only refreshes an app's templates when it updates, never its other files, so the pages
-# are fetched from the repository at startup and once a day. The bundled copy is the fallback,
-# and stays in use whenever the repository cannot be reached.
+# are fetched from the repository at startup and then every hour (every 5 minutes while the
+# repository cannot be reached). The bundled copy is the fallback until a fetch succeeds, and stays
+# in use whenever the repository cannot be reached, so the site keeps serving, with no restarts.
 PAGES = {
     "index.html": "https://raw.githubusercontent.com/yudikorsou/hashes.space/main/demo/mempool.html",
     "demo.html": "https://raw.githubusercontent.com/yudikorsou/hashes.space/main/demo/hashes-space-live-demo.html",
@@ -60,7 +61,9 @@ def log(*a):
 
 
 def refresh_pages():
-    """Keep the served pages up to date with the repository; never replace a good page with junk."""
+    """Keep the served pages up to date with the repository; never replace a good page with junk.
+    Returns True when every page was fetched."""
+    ok = True
     os.makedirs(SITE, exist_ok=True)
     for name, url in PAGES.items():
         target = os.path.join(SITE, name)
@@ -73,18 +76,30 @@ def refresh_pages():
                 page = r.read()
             if len(page) < 50000 or b"<title" not in page[:4000]:
                 raise RuntimeError("that does not look like the page")
-            with open(target + ".new", "wb") as f:
-                f.write(page)
-            os.replace(target + ".new", target)
-            log("fetched " + name + " (" + str(len(page)) + " bytes)")
+            try:
+                with open(target, "rb") as f:
+                    same = f.read() == page
+            except OSError:
+                same = False
+            if not same:
+                with open(target + ".new", "wb") as f:
+                    f.write(page)
+                os.replace(target + ".new", target)
+                log("fetched " + name + " (" + str(len(page)) + " bytes)")
         except Exception as exc:
-            log("keeping the bundled " + name + ": " + str(exc))
+            ok = False
+            log("keeping the current " + name + ": " + str(exc))
+    return ok
 
 
 def pages_worker():
     while True:
-        refresh_pages()
-        time.sleep(DAY)
+        try:
+            ok = refresh_pages()
+        except Exception as exc:              # nothing may ever stop this loop
+            ok = False
+            log("refresh pages: " + str(exc))
+        time.sleep(3600 if ok else 300)
 
 
 # ---------- the Monero node ----------
@@ -322,6 +337,10 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 
     def end_headers(self):
         self.send_header("Access-Control-Allow-Origin", "*")
+        if not self.path.startswith("/api/"):
+            # visitors always ask again (a cheap 304 when nothing changed), so a new page reaches them
+            # without anyone refreshing the app or the browser cache
+            self.send_header("Cache-Control", "no-cache")
         super().end_headers()
 
     def send_json(self, obj, seconds):
