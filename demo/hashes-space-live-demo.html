@@ -1633,7 +1633,15 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     return c;
   };
   const chains = { sha256: mkChain(estimateTip(), BTC_POOLS), scrypt: { ...mkChain(estimateLtcTip(), LTC_POOLS), minutes: 2.5 }, blake2b: mkChain(estimateTip(), B2_POOLS), dogecoin: mkDogeChain(estimateDogeTip()), monero: mkXmrChain(estimateXmrTip()) };
-  const projFor = (c) => (c.xmr ? mkXmrProjected() : c.doge ? mkDogeProjected() : mkProjected());
+  // Dogecoin and Monero rarely have more than a block or two waiting in their mempool, but, as on the Bitcoin chains,
+  // the next six blocks are shown: the ones the mempool fills come first, the rest are still empty (no transactions yet).
+  function padProjected(proj, c) {
+    if (!c.xmr && !c.doge) return proj;
+    const fee = c.xmr ? XMR_BASE_FEE : 1;
+    while (proj.length < 6) proj.push({ index: proj.length, nTx: 0, vsize: 0, bytes: 0, medianFee: fee, feeRange: [fee, fee] });
+    return proj;
+  }
+  const projFor = (c) => (c.xmr ? padProjected(mkXmrProjected(), c) : c.doge ? padProjected(mkDogeProjected(), c) : mkProjected());
   let netId = 'blake2b';
   const chain = () => chains[netId];
   const network = () => NETWORKS.find((n) => n.id === netId);
@@ -1860,7 +1868,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
         const flush = () => { const r = cur.map(rate); proj.push({ index: proj.length, nTx: cur.length, vsize: bytes / XMR_MEDIAN * 1e6, bytes, medianFee: pct(r)[1] ?? 0, feeRange: pct(r) }); cur = []; bytes = 0; };
         for (const t of txs) { if (proj.length >= 6) break; if (bytes + t.tx_size > XMR_MEDIAN && cur.length) flush(); cur.push(t); bytes += t.tx_size; }
         if (proj.length < 6) flush();
-        c.projected = proj; c.live = true; c.connecting = false;
+        c.projected = padProjected(proj, c); c.live = true; c.connecting = false;
         if (id === netId) { if (isNew) sharesThisBlock = 0; renderProjected(); renderMined(isNew); }
       } catch {
         c.connecting = false; if (id === netId) renderMined(false);
@@ -1905,8 +1913,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
         newBlock = true;
       }
       if (Array.isArray(msg['mempool-blocks'])) {
-        c.projected = msg['mempool-blocks'].slice(0, 6).map((b, index) => ({ index, nTx: b.nTx, vsize: c.doge ? b.blockSize : b.blockVSize, bytes: c.doge ? b.blockSize : undefined, medianFee: b.medianFee,
-          feeRange: b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee], totalFees: b.totalFees }));
+        c.projected = padProjected(msg['mempool-blocks'].slice(0, 6).map((b, index) => ({ index, nTx: b.nTx, vsize: c.doge ? b.blockSize : b.blockVSize, bytes: c.doge ? b.blockSize : undefined, medianFee: b.medianFee,
+          feeRange: b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee], totalFees: b.totalFees })), c);
       }
       if (!c.live && c.blocks.length && c.projected.length) { c.live = true; c.connecting = false; clearTimeout(giveUp); }
       if (!c.live || id !== netId) return;
