@@ -1,39 +1,5 @@
 <!--CSS-->
-  /* Bitcoin hashrate by country: a spinning globe (reached from "View more »" under the Bitcoin hashrate chart) */
-  .globe-page { display: grid; gap: 22px; padding: 28px 16px 40px; max-width: 1180px; margin: 0 auto; }
-  .globe-page[hidden] { display: none !important; }
-  .globe-head { text-align: center; max-width: 62ch; margin: 0 auto; display: grid; gap: 8px; justify-items: center; }
-  .globe-head h1 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
-  .globe-head p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
-  .globe-body { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 28px; align-items: center; }
-  .globe-fig { margin: 0; position: relative; }
-  #globe-canvas { display: block; width: min(100%, 600px); aspect-ratio: 1; margin: 0 auto; cursor: grab; touch-action: pan-y; }
-  #globe-canvas:active { cursor: grabbing; }
-  .globe-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
-  .globe-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 14px; padding: 8px 12px; border-radius: 14px; cursor: pointer; transition: background .15s; }
-  .globe-list li:hover, .globe-list li:focus-visible { background: rgba(120, 130, 210, .12); outline: none; }
-  .globe-list li.off { cursor: default; opacity: .7; }
-  .globe-list .gn { font: 600 14px/1.3 var(--sans); color: var(--text); }
-  .globe-list .gv { font: 500 13px/1.3 var(--mono); color: var(--text); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .globe-list .gv small { color: var(--muted); font: inherit; }
-  .globe-list .gbar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: rgba(120, 130, 210, .14); overflow: hidden; }
-  .globe-list .gbar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f7931a, #ffc46b); }
-  .globe-note { margin: 0 auto; max-width: 78ch; text-align: center; color: var(--muted); font: 400 12.5px/1.6 var(--sans); }
-  .globe-note a { color: var(--link); }
-  @media (max-width: 860px) { .globe-body { grid-template-columns: minmax(0, 1fr); } }
 <!--HTML-->
-<section class="globe-page" id="globe-page" aria-labelledby="globe-title" hidden>
-  <header class="globe-head">
-    <h1 id="globe-title">Bitcoin hashrate by country</h1>
-    <p>An estimate of where the Bitcoin network's hashrate comes from, on a globe you can drag. Pick a country in the list to turn the globe to it.</p>
-    <a class="back-link" href="#dashboard"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 6h-7M5.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Return to Mempool</a>
-  </header>
-  <div class="globe-body">
-    <figure class="globe-fig"><canvas id="globe-canvas" role="img" aria-label="A spinning globe showing the countries that mine Bitcoin, with the estimated hashrate of each"></canvas></figure>
-    <ol class="globe-list" id="globe-list"></ol>
-  </div>
-  <p class="globe-note" id="globe-note"></p>
-</section>
 <!--JS-->
 (function () {
   // Country outlines: Natural Earth based, public domain (johan/world.geo.json), outer rings only, 0.1° steps
@@ -85,7 +51,9 @@
     dpr = Math.min(2, window.devicePixelRatio || 1);
     if (size !== w) { size = w; canvas.width = Math.round(w * dpr); canvas.height = Math.round(w * dpr); }
   }
-  new ResizeObserver(fit).observe(canvas);
+  new ResizeObserver(() => { fit(); if (!running) draw(); }).observe(canvas);
+  let shown = false;
+  new IntersectionObserver((es) => { shown = es[es.length - 1].isIntersecting; run(shown); }).observe(canvas);
 
   // 18.4 EH/s, 411 EH/s
   function hs(v) {
@@ -102,7 +70,7 @@
     document.getElementById('globe-list').innerHTML = rows.map(([id, name, share]) => `<li${id ? ` data-id="${id}" tabindex="0"` : ' class="off"'}>
       <span class="gn">${name}</span><span class="gv">${hash ? hs(hash * share / 100) + ' <small>· ' : '<small>'}${pctText(share)}</small></span>
       <span class="gbar"><i style="width:${(share / max * 100).toFixed(1)}%"></i></span></li>`).join('');
-    document.getElementById('globe-note').innerHTML = 'Bitcoin does not record where a miner is, so nobody can measure this exactly: these are estimates, the midpoints of the ranges published for mid-2026 (for example in <a href="https://www.spark.money/research/bitcoin-hashrate-geographic-redistribution-2026" target="_blank" rel="noopener">this overview</a>, which brings together Cambridge, Hashrate Index, Reuters and CryptoQuant figures). Published estimates differ by 5 to 10 percentage points. The hashrate of a country is its estimated share of the network hashrate of ' + (hash ? hs(hash) : 'the network') + '.';
+    document.getElementById('globe-note').innerHTML = 'Bitcoin does not record where a miner is, so this cannot be measured exactly: estimates: the midpoints of the ranges published for mid-2026 (for example in <a href="https://www.spark.money/research/bitcoin-hashrate-geographic-redistribution-2026" target="_blank" rel="noopener">this overview</a>). Sources differ by 5 to 10 percentage points.';
   }
   window.globeSet = (h) => { if (h && h !== hash) { hash = h; buildList(); } else if (!document.getElementById('globe-list').children.length) buildList(); };
   document.getElementById('globe-list').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (li) focusOn(li.dataset.id); });
@@ -205,8 +173,7 @@
     if (on && !running && !document.hidden) { running = true; last = performance.now(); raf = requestAnimationFrame(frame); }
     else if (!on && running) { running = false; cancelAnimationFrame(raf); }
   }
-  window.globeRun = run;
-  document.addEventListener('visibilitychange', () => { if (document.hidden) run(false); else if (!document.getElementById('globe-page').hidden) run(true); });
+  document.addEventListener('visibilitychange', () => { if (document.hidden) run(false); else if (shown) run(true); });
 
   // drag to turn it
   let px = 0, py = 0;

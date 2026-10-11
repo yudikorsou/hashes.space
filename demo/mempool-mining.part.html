@@ -1,8 +1,8 @@
 <!--CSS-->
   /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
-  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hrh poolsh' 'range range' 'hr pools' 'src src'; align-items: stretch; gap: 20px; row-gap: 14px; }
+  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hrh poolsh' 'hr pools' 'src src'; align-items: stretch; gap: 20px; row-gap: 14px; }
   /* the period for both charts: a row of pills, the chosen one filled */
-  .mrange { grid-area: range; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .mrange { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
   .mrange button { padding: 7px 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--muted); font: 500 12.5px/1 var(--sans); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
   .mrange button:hover { border-color: var(--muted); color: var(--text); }
   .mrange button[aria-pressed="true"] { background: var(--surface); border-color: var(--muted); color: var(--text); }
@@ -10,16 +10,33 @@
   .mhead { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 18px 0; min-width: 0; align-self: start; }
   .mhead .kpis { width: 100%; }
   .m-hr-head { grid-area: hrh; } .m-pools-head { grid-area: poolsh; }
-  .mcard.m-hr { grid-area: hr; } .mcard.m-pools { grid-area: pools; } .msource { grid-area: src; }
+  .mcard.m-hr { grid-area: hr; } .mcard.m-pools { grid-area: pools; } .mcard.m-globe { grid-area: globe; } .m-globe-head { grid-area: globeh; }
+  .mstats.has-globe { grid-template-areas: 'hrh globeh' 'hr globe' 'poolsh poolsh' 'pools pools' 'src src'; }
+  .mstats.has-globe .mcard.m-pools { width: 100%; max-width: 760px; justify-self: center; }
+  .mstats.has-globe .mcard.m-pools::before { display: none; }
+  .mstats.has-globe .m-pools-head { margin-top: 24px; }
+  .mcard.m-globe::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
+  .m-globe-head[hidden] { display: none !important; } .msource { grid-area: src; }
   /* the calculators have a page to themselves */
   .mstats.calcpage { grid-template-areas: 'head' 'one' 'src'; grid-template-columns: minmax(0, 640px); justify-content: center; padding-top: 28px; }
   .calcpage .calchead { grid-area: head; text-align: center; max-width: 60ch; margin: 0 auto; display: grid; gap: 8px; }
   .calcpage .calchead h1 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
   .calcpage .calchead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
   .mcard.m-calc, .mcard.m-pcalc { grid-area: one; }   /* each calculator has a page of its own */
+  .poolspage { max-width: 1180px; margin: 0 auto; padding: 28px 20px 40px; display: grid; gap: 18px; }
+  .poolspage[hidden] { display: none !important; }
+  .poolspage .calchead { text-align: center; max-width: 60ch; margin: 0 auto; display: grid; gap: 8px; }
+  .poolspage .calchead h1 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
+  .poolspage .mcard.m-pools { max-width: 760px; width: 100%; margin: 0 auto; }
+  .poolspage .mcard.m-pools::before { display: none; }
+  .poolspage .m-pools .more { display: none; }
+  .poolspage .m-pools .calc-link { position: static; align-self: center; }
+  .mrange { align-self: center; }
   .calc-link[hidden] { display: none !important; }
   @media (max-width: 900px) {
-    .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'range' 'hr' 'poolsh' 'pools' 'src'; }
+    .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'poolsh' 'pools' 'src'; }
+    .mstats.has-globe { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'globeh' 'globe' 'poolsh' 'pools' 'src'; }
+    .mcard.m-globe::before { display: none; }
   }
   .mstats[hidden], .mcard[hidden] { display: none !important; }
   /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
@@ -106,6 +123,21 @@
   .pool-empty { grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
   @media (max-width: 520px) { .poolhead h1 { font-size: 23px; } .pool-blocks { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
   @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mstats .kpis dd { font-size: 17px; } .mstats .mtitle, .mstats .kpis dt { font-size: 15.5px; } }
+  /* Bitcoin hashrate by country: a spinning globe under the pools chart */
+  .mcard.m-globe { align-items: center; justify-content: center; gap: 12px; }
+  #globe-canvas { display: block; width: min(100%, 520px); aspect-ratio: 1; margin: 0 auto; cursor: grab; touch-action: pan-y; }
+  #globe-canvas:active { cursor: grabbing; }
+  .globe-list { display: none; }
+  .globe-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 14px; padding: 7px 12px; border-radius: 14px; cursor: pointer; transition: background .15s; }
+  .globe-list li:hover, .globe-list li:focus-visible { background: rgba(120, 130, 210, .12); outline: none; }
+  .globe-list li.off { cursor: default; opacity: .7; }
+  .globe-list .gn { font: 600 13.5px/1.3 var(--sans); color: var(--text); }
+  .globe-list .gv { font: 500 12.5px/1.3 var(--mono); color: var(--text); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .globe-list .gv small { color: var(--muted); font: inherit; }
+  .globe-list .gbar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: rgba(120, 130, 210, .14); overflow: hidden; }
+  .globe-list .gbar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f7931a, #ffc46b); }
+  .globe-note { margin: 0; max-width: 60ch; text-align: center; color: var(--muted); font: 400 12px/1.55 var(--sans); }
+  .globe-note a { color: var(--link); }
 <!--HTML-->
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <header class="mhead m-hr-head">
@@ -113,16 +145,19 @@
       <div><dt><span id="ms-hash-title">Global hashrate</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
     </dl>
   </header>
+  <header class="mhead m-globe-head" id="gl-head" hidden>
+    <h2 class="mtitle" id="gl-title">Bitcoin hashrate by country</h2>
+  </header>
   <header class="mhead m-pools-head">
     <h2 class="mtitle"><span id="pools-title">Hashrate mining pools</span> <span class="mperiod" id="pools-period"></span></h2>
   </header>
-  <div class="mrange" id="mrange" role="group" aria-label="Period shown in both charts">
-    <button type="button" data-range="14d">14 days</button><button type="button" data-range="1m">1 month</button><button type="button" data-range="6m">6 months</button><button type="button" data-range="1y">1 year</button>
-  </div>
   <article class="mcard m-hr" aria-labelledby="hr-title">
     <a class="calc-link" id="calc-link" href="#calc">Hashrate calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate and difficulty</h2>
     <p class="hrsub" id="ms-hash-sub"></p>
+    <div class="mrange" id="mrange" role="group" aria-label="Period shown in the hashrate chart">
+    <button type="button" data-range="14d">14 days</button><button type="button" data-range="1m">1 month</button><button type="button" data-range="6m">6 months</button><button type="button" data-range="1y">1 year</button>
+    </div>
     <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
     <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i><span id="ms-key-avg">Hashrate (7-day average)</span></li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
     <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
@@ -131,9 +166,23 @@
     <a class="calc-link" id="pcalc-link" href="#poolcalc" hidden>Mining pool calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 344" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <p class="pnote" id="ms-pools-note" hidden></p>
-    <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
+    <a class="more" id="ms-more-pools" href="#pools">View more »</a>
+  </article>
+  <article class="mcard m-globe" id="gl-wrap" aria-labelledby="gl-title" hidden>
+    <canvas id="globe-canvas" role="img" aria-label="A spinning globe showing the countries that mine Bitcoin, with the estimated hashrate of each"></canvas>
+    <ol class="globe-list" id="globe-list"></ol>
+    <p class="globe-note" id="globe-note"></p>
   </article>
   <p class="msource" id="ms-source"></p>
+</section>
+
+<!-- Hashrate mining pools: its own page, reached from "View more" in the pools section -->
+<section class="poolspage" id="pools-page" aria-labelledby="poolspage-title" hidden>
+  <header class="calchead">
+    <h1 id="poolspage-title">Hashrate mining pools</h1>
+    <a class="back-link" href="#dashboard"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 6h-7M5.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Return to Mempool</a>
+  </header>
+  <div id="pools-slot"></div>
 </section>
 
 <!-- a mining pool's page, reached by searching its name in the bar above -->
@@ -284,6 +333,7 @@
   // ---- the period of the two charts: 24 hours, 14 days, 1 month, 6 months or a year ----
   // mempool sites serve 24h, 1m, 6m and 1y (14 days is cut from the month's hashrate; its pool shares are the month's),
   // the explorers on your Umbrel serve every period themselves (older versions only the week and the year: the page then cuts what it has)
+  var POOLS_RANGE = { sha256: '1m', blake2b: '1m', dogecoin: '14d', monero: '14d' };
   var RANGE_INFO = {
     '24h': { sec: 86400, label: '24 hours', ago: '24 hours ago', avg: ['3-hour', 3 * 3600] },
     '14d': { sec: 14 * 86400, label: '14 days', ago: '14 days ago', avg: ['2-day', 2 * 86400] },
@@ -354,7 +404,6 @@
   // a period that only came in part (a source still computing it) is asked for again every so often
   setInterval(() => { const got = rangeBy[netId + ':' + range]; if (got && got.partial && Date.now() > got.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('#mrange button'); if (b) setRange(b.dataset.range); });
-  setInterval(() => { if (typeof view !== 'undefined' && view === 'globe') renderMiningStats(); }, 1500);
   const onCalcPage = () => typeof view !== 'undefined' && (view === 'calc' || view === 'poolcalc');
   // the charts belong to the mempool page; the Learn page carries no chain of its own
   const onMempoolPage = () => typeof view === 'undefined' || view === 'dashboard';
@@ -388,36 +437,41 @@
         : m ? `Difficulty from a snapshot of ${site}/mining (${site} is not reachable from this page)` : '';
     }
     $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
-    { const g = typeof view !== 'undefined' && view === 'globe', gp = $('globe-page'); // Bitcoin hashrate by country
-      if (gp) { gp.hidden = !g; if (window.globeRun) window.globeRun(g); if (g && window.globeSet) window.globeSet((miningBy.sha256 || {}).hash || 0); } }
+    const onPools = typeof view !== 'undefined' && view === 'pools', art = document.querySelector('.m-pools'), slot = $('pools-slot');
+    $('pools-page').hidden = !onPools;                   // the pools section moves onto its own page and back
+    if (art.parentNode !== (onPools ? slot : sec)) { if (onPools) slot.appendChild(art); else sec.insertBefore(art, $('ms-source')); }
+    { const gl = netId === 'sha256' && !!m; $('gl-wrap').hidden = !gl; $('gl-head').hidden = !gl; sec.classList.toggle('has-globe', gl); }   // Bitcoin hashrate by country, next to the global hashrate
+    if (netId === 'sha256' && window.globeSet) window.globeSet((miningBy.sha256 || {}).hash || 0);
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
     $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
-    if (netId === 'sha256') { $('ms-more-hr').href = '#globe'; $('ms-more-hr').removeAttribute('target'); } else $('ms-more-hr').target = '_blank';
-    $('ms-more-pools').href = MINING_MORE[netId] ?? `https://${site}/mining/pools`;
     setUnits('calc-unit'); setUnits('pcalc-unit');
     // the two charts follow the period chosen above; the calculators and pool pages keep working from the base data
     const rv = rangeView(netId, range, m), info = RANGE_INFO[range];
+    const pr = POOLS_RANGE[netId] ?? '14d', rp = rangeView(netId, pr, m), pinfo = RANGE_INFO[pr];   // the pools do not follow the picker
+    { const got = rangeBy[netId + ':' + pr]; if (pr !== range && miningBy[netId].live && (!got || (got.partial && Date.now() > got.retry))) loadRangeFor(netId, pr); }
     { const got = rangeBy[netId + ':' + range]; if (miningBy[netId].live && (!got || (got.partial && Date.now() > got.retry))) loadRangeFor(netId, range); }
     for (const b of document.querySelectorAll('#mrange button')) b.setAttribute('aria-pressed', String(b.dataset.range === range));
     // each headline carries the period its chart shows; the pools say so honestly when the source can't give the chosen one
     $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
-    $('pools-period').textContent = WINDOW_NAME[rv.window] ?? rv.window;
+    $('pools-period').textContent = WINDOW_NAME[rp.window] ?? rp.window;
     $('ms-hash-period').textContent = info.label;
     $('ms-key-avg').textContent = `Hashrate (${info.avg[0]} average)`;
-    $('ms-pie').setAttribute('aria-label', `Hashrate per mining pool, ${windowSpoken(rv.window)}`);
+    $('ms-pie').setAttribute('aria-label', `Hashrate per mining pool, ${windowSpoken(rp.window)}`);
+    $('poolspage-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
     const note = $('ms-pools-note'); note.hidden = false;
     note.textContent = (POOLS_NOTE[netId] ? POOLS_NOTE[netId] + ' ' : '')
-      + `Each pool's hashrate is an estimate: its share of the blocks found in ${windowSpoken(rv.window)} times the chain's average hashrate.`
-      + (rv.window !== range ? ` ${windowSpoken(rv.window).replace(/^the /, 'The ')} is the nearest period this source offers for ${info.label}.` : '')
-      + (rv.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '')
-      + (rv.summed ? ' The 14 days are summed from the daily hashrate of each pool.' : '');
+      + `Each pool's hashrate is an estimate: its share of the blocks found in ${windowSpoken(rp.window)} times the chain's average hashrate.`
+      + (rp.window !== pr ? ` ${windowSpoken(rp.window).replace(/^the /, 'The ')} is the nearest period this source offers for ${pinfo.label}.` : '')
+      + (rp.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '')
+      + (rp.summed ? ' The 14 days are summed from the daily hashrate of each pool.' : '');
     $('ms-hash').textContent = si(rv.avg || m.hash, 1) + 'H/s';   // the average over the chosen period
     $('ms-hash-sub').textContent = hashrateThen(rv, info, range);
     $('ms-source').textContent = m.live
       ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
-    if (!sec.hidden) { drawPie(rv); drawChart(rv, range); }
+    if (!sec.hidden || onPools) drawPie(rp);
+    if (!sec.hidden) drawChart(rv, range);
     renderCalc(); fillPools(); renderPoolCalc();
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
