@@ -901,6 +901,7 @@
   .lv-prog button::before { content: ''; position: absolute; left: 0; right: 0; top: 9px; height: 4px; border-radius: 3px; background: rgba(158, 164, 188, .25); }
   .lv-prog button i { position: absolute; left: 0; top: 9px; height: 4px; border-radius: 3px; background: var(--link); width: 0; transition: width .4s linear; }
   .lv-prog button:hover::before { background: rgba(158, 164, 188, .45); }
+  .lv-voice select { max-width: 60%; margin-left: 6px; padding: 4px 8px; border-radius: 8px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--text); font: 400 12.5px/1.2 var(--sans); }
   .lv-voice { font: 400 12.5px/1.4 var(--sans); color: var(--muted); text-align: center; }
   .lv-chaps { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; }
   .lv-chaps button { background: none; border: 0; padding: 4px 2px; color: var(--muted); font: 500 12.5px/1 var(--sans); cursor: pointer; } .lv-chaps button:hover, .lv-chaps button.on { color: var(--text); } .lv-chaps button.on { text-decoration: underline; text-decoration-color: var(--link); text-underline-offset: 5px; }
@@ -1180,7 +1181,7 @@
     <div class="lv-prog" id="lv-prog" role="group" aria-label="Chapters"></div>
     <button type="button" class="lv-bar-btn" id="lv-snd" aria-label="Narration on" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 4V5L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></button>
   </div>
-  <div class="lv-voice" id="lv-voice"></div>
+  <div class="lv-voice"><span id="lv-vlabel"></span> <select id="lv-vsel" aria-label="Narrator voice"></select></div>
 </section>
   <section class="learn-blocks" id="learn-blocks" aria-labelledby="lb-title">
     <h3 id="lb-title">How to read the blocks</h3>
@@ -4229,6 +4230,7 @@ window.__coins = COIN_LOGOS;
     let s = 0; const n = v.name + ' ' + v.voiceURI;
     if (!/^en([-_]|$)/i.test(v.lang)) return -99;
     if (MALE.test(n) && !/female/i.test(n)) return -50;
+    if (/\beva\b/i.test(v.name)) s += 30;
     if (/natural|neural|online|premium|enhanced|studio|wavenet/i.test(n)) s += 8;
     if (FEM.test(n)) s += 6;
     if (/^en[-_](US|GB)/i.test(v.lang)) s += 2; else if (/^en[-_](AU|IE|ZA|CA|IN)/i.test(v.lang)) s += 1;
@@ -4239,9 +4241,13 @@ window.__coins = COIN_LOGOS;
   function pickVoice() {
     if (!synth) return;
     const vs = synth.getVoices().map((v) => [score(v), v]).filter((x) => x[0] > -50).sort((a, b) => b[0] - a[0]);
-    voice = vs.length ? vs[0][1] : null;
-    $('lv-voice').textContent = voice ? `Narrated by ${voice.name}, a voice from your browser` : 'No narration voice found in this browser, the captions carry the story.';
+    let saved = ''; try { saved = localStorage.getItem('lv-voice') || ''; } catch (e) { /* no storage */ }
+    voice = (saved && vs.map((x) => x[1]).find((v) => v.name === saved)) || (vs.length ? vs[0][1] : null);
+    const sel = $('lv-vsel');
+    sel.innerHTML = vs.slice(0, 14).map((x) => `<option value="${x[1].name.replace(/"/g, '')}"${x[1] === voice ? ' selected' : ''}>${x[1].name}</option>`).join('');
+    sel.hidden = !vs.length; $('lv-vlabel').textContent = voice ? 'Narrator' : 'No narration voice found in this browser, the captions carry the story.';
   }
+  $('lv-vsel').addEventListener('change', (e) => { const v = synth.getVoices().find((x) => x.name === e.target.value); if (v) { voice = v; try { localStorage.setItem('lv-voice', v.name); } catch (er) { /* no storage */ } } });
   if (synth) { pickVoice(); synth.addEventListener?.('voiceschanged', pickVoice); }
 
   let sc = 0, st = 0, playing = false, run = 0, timer = 0;
