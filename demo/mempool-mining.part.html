@@ -1,12 +1,15 @@
 <!--CSS-->
   /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
-  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'range range' 'hr pools' 'src src'; align-items: stretch; gap: 20px; }
+  .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hrh poolsh' 'range range' 'hr pools' 'src src'; align-items: stretch; gap: 20px; row-gap: 14px; }
   /* the period for both charts: a row of pills, the chosen one filled */
   .mrange { grid-area: range; display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
   .mrange button { padding: 7px 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--muted); font: 500 12.5px/1 var(--sans); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
   .mrange button:hover { border-color: var(--muted); color: var(--text); }
   .mrange button[aria-pressed="true"] { background: var(--surface); border-color: var(--muted); color: var(--text); }
   .mrange button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .mhead { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 18px 0; min-width: 0; align-self: start; }
+  .mhead .kpis { width: 100%; }
+  .m-hr-head { grid-area: hrh; } .m-pools-head { grid-area: poolsh; }
   .mcard.m-hr { grid-area: hr; } .mcard.m-pools { grid-area: pools; } .msource { grid-area: src; }
   /* the calculators have a page to themselves */
   .mstats.calcpage { grid-template-areas: 'head head' 'calc pcalc' 'src src'; padding-top: 28px; }
@@ -15,7 +18,7 @@
   .calcpage .calchead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
   .mcard.m-calc { grid-area: calc; } .mcard.m-pcalc { grid-area: pcalc; }
   @media (max-width: 900px) {
-    .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'range' 'hr' 'pools' 'src'; }
+    .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'range' 'hr' 'poolsh' 'pools' 'src'; }
     .mstats.calcpage { grid-template-areas: 'head' 'calc' 'pcalc' 'src'; }
   }
   .mstats[hidden], .mcard[hidden] { display: none !important; }
@@ -27,11 +30,11 @@
   .mcard.m-calc::before { content: ''; position: absolute; left: 15%; right: 15%; top: -10px; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); }
   @media (max-width: 900px) { .mcard.m-pools::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
   /* a chart's headline: the same voice as the page's own headings, not a link */
-  .mcard .mtitle, .mcard .kpis dt { margin: 0; text-align: center; font: 600 17px/1.25 var(--display); letter-spacing: .01em; color: var(--text); text-transform: none; }
-  .mcard .mperiod { font-weight: 500; color: var(--muted); font-size: .82em; letter-spacing: 0; white-space: nowrap; }
-  .mcard .mperiod::before { content: '· '; }
-  .mcard .mperiod:empty { display: none; }
-  .mcard .kpis dd { text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); }
+  .mstats .mtitle, .mstats .kpis dt { margin: 0; text-align: center; font: 600 17px/1.25 var(--display); letter-spacing: .01em; color: var(--text); text-transform: none; }
+  .mstats .mperiod { font-weight: 500; color: var(--muted); font-size: .82em; letter-spacing: 0; white-space: nowrap; }
+  .mstats .mperiod::before { content: '· '; }
+  .mstats .mperiod:empty { display: none; }
+  .mstats .kpis dd { text-shadow: 0 0 18px rgba(140, 160, 255, 0.25); }
   /* hashrate calculator: the chance to find a block yourself */
   .calc { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; justify-items: center; margin: 0; width: 100%; min-width: 0; }
   .calc-in { display: inline-flex; align-items: stretch; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, 0.5); overflow: hidden; }
@@ -52,8 +55,8 @@
   .calc-note { margin: 0; color: var(--muted); font-size: 12.5px; text-align: center; max-width: 52ch; }
   @media (max-width: 520px) { .calc-out dd b { font-size: 16px; } .calc-out dd span { font-size: 11px; } }
   .mcard .plot { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 10px; min-height: 0; }
-  .mcard .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
-  .mcard .kpis dt { font-size: 17px; }
+  .mstats .kpis { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 8px; text-align: center; margin: 0; }
+  .mstats .kpis dt { font-size: 17px; }
   /* the way to the calculators: a pill in the section's bottom-left corner, level with "View more »" (below it on narrower cards) */
   .mcard .calc-link { position: absolute; bottom: 14px; left: 18px; z-index: 2; display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 500 12.5px/1 var(--sans); text-decoration: none; white-space: nowrap; transition: border-color .15s, background .15s; }
   .mcard .calc-link svg { width: 11px; height: 11px; flex: none; color: var(--muted); transition: transform .15s, color .15s; }
@@ -68,7 +71,7 @@
   .back-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   @media (max-width: 1239px) { .mcard .calc-link { position: static; order: 99; align-self: flex-start; } }   /* the corner is only free of "View more »" when the card is wide */
   .mcard .hrsub { margin: 4px 0 0; text-align: center; color: var(--muted); font: 400 12px/1.35 var(--sans); }
-  .mcard .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
+  .mstats .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
   .mcard svg { width: 100%; height: auto; display: block; overflow: visible; }
   .mcard svg text { font-family: var(--sans); }
   .mcard .more { align-self: center; color: var(--link); text-decoration: none; font: 500 14px/1 var(--sans); padding: 6px 8px; }
@@ -102,25 +105,29 @@
   .pb .datum-badge { margin-top: 4px; }
   .pool-empty { grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
   @media (max-width: 520px) { .poolhead h1 { font-size: 23px; } .pool-blocks { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
-  @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mcard .kpis dd { font-size: 17px; } .mcard .mtitle, .mcard .kpis dt { font-size: 15.5px; } }
+  @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mstats .kpis dd { font-size: 17px; } .mstats .mtitle, .mstats .kpis dt { font-size: 15.5px; } }
 <!--HTML-->
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
+  <header class="mhead m-hr-head">
+    <dl class="kpis">
+      <div><dt><span id="ms-hash-title">Global hashrate</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
+    </dl>
+  </header>
+  <header class="mhead m-pools-head">
+    <h2 class="mtitle"><span id="pools-title">Hashrate mining pools</span> <span class="mperiod" id="pools-period"></span></h2>
+  </header>
   <div class="mrange" id="mrange" role="group" aria-label="Period shown in both charts">
     <button type="button" data-range="24h">24 hours</button><button type="button" data-range="14d">14 days</button><button type="button" data-range="1m">1 month</button><button type="button" data-range="6m">6 months</button><button type="button" data-range="1y">1 year</button>
   </div>
   <article class="mcard m-hr" aria-labelledby="hr-title">
     <a class="calc-link" id="calc-link" href="#calc">Hashrate calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-    <h2 class="sr-only" id="hr-title">Hashrate and difficulty, last year</h2>
-    <dl class="kpis">
-      <div><dt><span id="ms-hash-title">Global hashrate</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
-    </dl>
+    <h2 class="sr-only" id="hr-title">Hashrate and difficulty</h2>
     <p class="hrsub" id="ms-hash-sub"></p>
     <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
     <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i><span id="ms-key-avg">Hashrate (7-day average)</span></li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
     <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
-    <h2 class="mtitle"><span id="pools-title">Hashrate mining pools</span> <span class="mperiod" id="pools-period"></span></h2>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 344" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <p class="pnote" id="ms-pools-note" hidden></p>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
