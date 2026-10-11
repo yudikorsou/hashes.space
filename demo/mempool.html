@@ -3645,7 +3645,7 @@ window.__coins = COIN_LOGOS;
       // the pool half of the sentence only where a DATUM pool with TIDES payouts is on offer for the chain
       $('calc-context').textContent = m
         ? (P2POOLS[netId]
-          ? 'Calculate how much hashrate you need to mine a Monero block or the XMR you can earn mining on the P2Pool main or nano sidechain.'
+          ? 'Calculate how much hashrate you need to mine a Monero block or the XMR you can earn mining on the P2Pool main, mini or nano sidechain.'
           : DATUM_TIDES_POOLS[netId]
           ? 'Calculate how much hashrate you need to mine a block or the amount of coins you can mine in a DATUM mining pool with Tides payouts.'
           : `Calculate how much hashrate you need to mine a block on ${network().chain}.`)
@@ -3744,6 +3744,7 @@ window.__coins = COIN_LOGOS;
   var P2POOLS = {
     monero: [
       { id: 'main', name: 'P2Pool Main', url: 'https://p2pool.observer', sideMH: 400, blurb: 'the main sidechain' },
+      { id: 'mini', name: 'P2Pool Mini', url: 'https://mini.p2pool.observer', sideMH: 40, blurb: 'the mini sidechain' },
       { id: 'nano', name: 'P2Pool Nano', url: 'https://nano.p2pool.observer', sideMH: 5, blurb: 'the nano sidechain, for small miners' } ],
   };
   var XMR_TAIL_REWARD = 0.6, P2POOL_MIN_PAYOUT = 0.0006; // tail emission per block (fees come on top); the smallest output a Monero block pays a P2Pool miner
