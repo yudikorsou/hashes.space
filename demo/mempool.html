@@ -643,22 +643,19 @@
   .m-hr-head { grid-area: hrh; } .m-pools-head { grid-area: poolsh; }
   .mcard.m-hr { grid-area: hr; } .mcard.m-pools { grid-area: pools; } .msource { grid-area: src; }
   /* the calculators have a page to themselves */
-  .mstats.calcpage { grid-template-areas: 'head head' 'calc pcalc' 'src src'; padding-top: 28px; }
+  .mstats.calcpage { grid-template-areas: 'head' 'one' 'src'; grid-template-columns: minmax(0, 640px); justify-content: center; padding-top: 28px; }
   .calcpage .calchead { grid-area: head; text-align: center; max-width: 60ch; margin: 0 auto; display: grid; gap: 8px; }
   .calcpage .calchead h1 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
   .calcpage .calchead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
-  .mcard.m-calc { grid-area: calc; } .mcard.m-pcalc { grid-area: pcalc; }
+  .mcard.m-calc, .mcard.m-pcalc { grid-area: one; }   /* each calculator has a page of its own */
+  .calc-link[hidden] { display: none !important; }
   @media (max-width: 900px) {
     .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'range' 'hr' 'poolsh' 'pools' 'src'; }
-    .mstats.calcpage { grid-template-areas: 'head' 'calc' 'pcalc' 'src'; }
   }
   .mstats[hidden], .mcard[hidden] { display: none !important; }
   /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
   .mcard { position: relative; background: radial-gradient(ellipse 70% 60% at 50% 45%, rgba(70, 78, 140, 0.16), rgba(70, 78, 140, 0) 72%); border: 0; border-radius: 40px; padding: 18px 18px 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
   .mcard.m-pools::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
-  .mcard.m-pcalc::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
-  @media (max-width: 900px) { .mcard.m-pcalc::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
-  .mcard.m-calc::before { content: ''; position: absolute; left: 15%; right: 15%; top: -10px; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); }
   @media (max-width: 900px) { .mcard.m-pools::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
   /* a chart's headline: the same voice as the page's own headings, not a link */
   .mstats .mtitle, .mstats .kpis dt { margin: 0; text-align: center; font: 600 17px/1.25 var(--display); letter-spacing: .01em; color: var(--text); text-transform: none; }
@@ -1097,6 +1094,7 @@
     <a class="more" id="ms-more-hr" href="https://mempool.guide/graphs/mining/hashrate-difficulty" target="_blank" rel="noopener">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
+    <a class="calc-link" id="pcalc-link" href="#poolcalc" hidden>Mining pool calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 344" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <p class="pnote" id="ms-pools-note" hidden></p>
     <a class="more" id="ms-more-pools" href="https://mempool.guide/mining/pools" target="_blank" rel="noopener">View more »</a>
@@ -3231,7 +3229,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
 
   function showView(v) {
     const toBlocks = v === 'learn-blocks'; if (toBlocks) v = 'learn';
-    view = ['calc', 'learn', 'pool'].includes(v) ? v : 'dashboard';
+    view = ['calc', 'poolcalc', 'learn', 'pool'].includes(v) ? v : 'dashboard';
     ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
     $('chain-area').hidden = view === 'learn';            // the proof-of-work bar stands on the mempool and calculator pages
     document.querySelector('.strip').hidden = view !== 'dashboard';
@@ -3646,7 +3644,7 @@ window.__coins = COIN_LOGOS;
   // a period that only came in part (a source still computing it) is asked for again every so often
   setInterval(() => { const got = rangeBy[netId + ':' + range]; if (got && got.partial && Date.now() > got.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('#mrange button'); if (b) setRange(b.dataset.range); });
-  const onCalcPage = () => typeof view !== 'undefined' && view === 'calc';
+  const onCalcPage = () => typeof view !== 'undefined' && (view === 'calc' || view === 'poolcalc');
   // the charts belong to the mempool page; the Learn page carries no chain of its own
   const onMempoolPage = () => typeof view === 'undefined' || view === 'dashboard';
   function renderMiningStats() {
@@ -3658,22 +3656,27 @@ window.__coins = COIN_LOGOS;
     page.hidden = !calc;
     if (calc) {
       // the calculators work from the network's difficulty, so they wait for it like the charts do
-      page.querySelector('.m-calc').hidden = !m;
-      page.querySelector('.m-pcalc').hidden = !m || !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
+      const poolPage = view === 'poolcalc', hasPool = !!(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
+      page.querySelector('.m-calc').hidden = !m || poolPage;
+      page.querySelector('.m-pcalc').hidden = !m || !poolPage || !hasPool;
+      $('calcpage-title').textContent = poolPage ? 'Mining pool calculator' : 'Calculate hashrate';
       $('pcalc-title').textContent = P2POOLS[netId] ? 'P2Pool calculator' : 'DATUM pool calculator';
       $('pcalc-side-row').hidden = !P2POOLS[netId];
       // the pool half of the sentence only where a DATUM pool with TIDES payouts is on offer for the chain
       $('calc-context').textContent = m
-        ? (P2POOLS[netId]
-          ? 'Calculate how much hashrate you need to mine a Monero block or the XMR you can earn mining on the P2Pool main, mini or nano sidechain.'
-          : DATUM_TIDES_POOLS[netId]
-          ? 'Calculate how much hashrate you need to mine a block or the amount of coins you can mine in a DATUM mining pool with Tides payouts.'
+        ? (poolPage
+          ? (P2POOLS[netId]
+            ? 'Calculate the XMR you can earn mining on the P2Pool main, mini or nano sidechain with your hashrate.'
+            : DATUM_TIDES_POOLS[netId]
+            ? 'Calculate the amount of coins you can mine in a DATUM mining pool with Tides payouts.'
+            : `There is no mining pool calculator for ${network().chain} yet.`)
           : `Calculate how much hashrate you need to mine a block on ${network().chain}.`)
         : `Waiting for the difficulty of ${network().chain} from ${site ?? network().source}. Pick another proof-of-work network above, or try again in a moment.`;
       $('calc-source').textContent = m && m.live
         ? `Difficulty live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
         : m ? `Difficulty from a snapshot of ${site}/mining (${site} is not reachable from this page)` : '';
     }
+    $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
     $('ms-more-hr').href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`;
