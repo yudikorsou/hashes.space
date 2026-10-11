@@ -42,6 +42,8 @@
   .calc-in input { width: 9ch; background: none; border: 0; color: var(--text); font: 500 20px/1 var(--mono); padding: 10px 6px 10px 18px; text-align: right; outline: none; -moz-appearance: textfield; }
   .calc-in input::-webkit-outer-spin-button, .calc-in input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
   .calc-in select { background: none; border: 0; border-left: 1px solid var(--line); color: var(--link); font: 600 14px/1 var(--sans); padding: 0 14px 0 12px; cursor: pointer; outline: none; }
+  .calc-in .calc-lbl { align-self: center; padding: 0 4px 0 18px; color: var(--muted); font: 500 12.5px/1 var(--sans); white-space: nowrap; }
+  .side-row .calc-in input { width: 8ch; padding-left: 10px; font-size: 16px; }
   .calc-in select option { background: #151829; color: var(--text); }
   .calc-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
   .calc-in { max-width: 100%; }
@@ -180,6 +182,12 @@
         <label class="calc-in" for="pcalc-hash"><span class="sr-only">Your hashrate</span>
           <input id="pcalc-hash" type="number" inputmode="decimal" min="0" step="any" value="100" aria-describedby="pcalc-note">
           <select id="pcalc-unit" aria-label="Unit"><option value="1e9">GH/s</option><option value="1e12" selected>TH/s</option><option value="1e15">PH/s</option></select>
+        </label>
+      </div>
+      <div class="calc-row side-row" id="pcalc-side-row" hidden>
+        <label class="calc-in" for="pcalc-side"><span class="calc-lbl">Sidechain hashrate</span>
+          <input id="pcalc-side" type="number" inputmode="decimal" min="0" step="any" value="400" aria-describedby="pcalc-note">
+          <select id="pcalc-sunit" aria-label="Sidechain hashrate unit"><option value="1e3">kH/s</option><option value="1e6" selected>MH/s</option><option value="1e9">GH/s</option></select>
         </label>
       </div>
       <dl class="calc-out" aria-live="polite">
@@ -348,10 +356,14 @@
     if (calc) {
       // the calculators work from the network's difficulty, so they wait for it like the charts do
       page.querySelector('.m-calc').hidden = !m;
-      page.querySelector('.m-pcalc').hidden = !m || !DATUM_TIDES_POOLS[netId];
+      page.querySelector('.m-pcalc').hidden = !m || !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
+      $('pcalc-title').textContent = P2POOLS[netId] ? 'P2Pool calculator' : 'DATUM pool calculator';
+      $('pcalc-side-row').hidden = !P2POOLS[netId];
       // the pool half of the sentence only where a DATUM pool with TIDES payouts is on offer for the chain
       $('calc-context').textContent = m
-        ? (DATUM_TIDES_POOLS[netId]
+        ? (P2POOLS[netId]
+          ? 'Calculate how much hashrate you need to mine a Monero block or the XMR you can earn mining on the P2Pool main or nano sidechain.'
+          : DATUM_TIDES_POOLS[netId]
           ? 'Calculate how much hashrate you need to mine a block or the amount of coins you can mine in a DATUM mining pool with Tides payouts.'
           : `Calculate how much hashrate you need to mine a block on ${network().chain}.`)
         : `Waiting for the difficulty of ${network().chain} from ${site ?? network().source}. Pick another proof-of-work network above, or try again in a moment.`;
@@ -443,12 +455,23 @@
     sha256: [{ name: 'OCEAN', url: 'https://ocean.xyz', fee: 0.01, feeNote: '1% for DATUM Gateway miners; 2% on OCEAN\'s own templates', window: 8, threshold: 0.01048576, subsidy: 3.125, ticker: 'BTC' }],
     blake2b: [{ name: 'CONVOY', url: 'https://convoy.xyz', fee: 0.01, feeNote: '1% for DATUM Gateway miners; 2% when you fail over to its node', window: 8, threshold: 0.01048576, subsidy: 3.125, ticker: 'BTCB2' }],
   };
+  // P2Pool (Monero): a decentralised pool with no fee and no custodian. Every miner is paid in the Monero block itself
+  // (PPLNS over the sidechain's share window), so the XMR you earn is your share of the Monero network's rewards, whichever
+  // sidechain you mine on. The sidechain's own hashrate only decides how often a block pays you; a Monero block pays at least 0.0006 XMR per miner.
+  var P2POOLS = {
+    monero: [
+      { id: 'main', name: 'P2Pool Main', url: 'https://p2pool.observer', sideMH: 400, blurb: 'the main sidechain' },
+      { id: 'nano', name: 'P2Pool Nano', url: 'https://nano.p2pool.observer', sideMH: 5, blurb: 'the nano sidechain, for small miners' } ],
+  };
+  var XMR_TAIL_REWARD = 0.6, P2POOL_MIN_PAYOUT = 0.0006; // tail emission per block (fees come on top); the smallest output a Monero block pays a P2Pool miner
+  var sideMH = {}; // per sidechain: the sidechain hashrate (MH/s) the visitor set
   var poolPick = {}; // per network: the pool picked
   function fillPools() {
     const sel = $('pcalc-pool'), m = mining; if (!m) return;
-    const list = (DATUM_TIDES_POOLS[netId] ?? []).map((cfg) => ({ cfg, stat: m.pools.find((p) => p.name.toLowerCase() === cfg.name.toLowerCase()) }));
+    const p2 = P2POOLS[netId];
+    const list = p2 ? p2.map((cfg) => ({ cfg })) : (DATUM_TIDES_POOLS[netId] ?? []).map((cfg) => ({ cfg, stat: m.pools.find((p) => p.name.toLowerCase() === cfg.name.toLowerCase()) }));
     const want = poolPick[netId] ?? sel.value;
-    const opts = [['', 'Choose a DATUM pool…'], ...list.map(({ cfg, stat }) => [cfg.name, `${cfg.name} · TIDES · ${(cfg.fee * 100).toFixed(cfg.fee * 100 % 1 ? 1 : 0)}% fee`])];
+    const opts = [['', p2 ? 'Choose a P2Pool sidechain…' : 'Choose a DATUM pool…'], ...list.map(({ cfg }) => [cfg.name, p2 ? `${cfg.name} · 0% fee` : `${cfg.name} · TIDES · ${(cfg.fee * 100).toFixed(cfg.fee * 100 % 1 ? 1 : 0)}% fee`])];
     const key = netId + ':' + opts.map((o) => o[1]).join('|');
     if (sel.dataset.key !== key) {
       sel.replaceChildren(...opts.map(([v, t]) => { const o = document.createElement('option'); o.value = v; o.textContent = t; if (!v) o.disabled = true; return o; }));
@@ -464,8 +487,40 @@
   // 1.2345 / 0.012345 / 0.00004794: up to 8 decimals (1 sat), 4 significant digits
   const coinAmount = (x) => (x <= 0 ? '0' : x >= 1 ? fmt(x, 4) : x.toFixed(Math.min(8, 3 - Math.floor(Math.log10(x)))));
   const coins = (x, t) => `${x >= 1 ? fmt(x, 3) : x >= 0.001 ? fmt(x, 5) : fmt(Math.round(x * 1e8))} ${x >= 0.001 ? t : 'sats'}`;
+  // P2Pool: your part of every Monero block the sidechain finds, from your hashrate against the sidechain's
+  function renderP2Pool() {
+    const m = mining, cfg = P2POOLS.monero.find((c) => c.name === $('pcalc-pool').value);
+    const set = (id, big, small) => { const dd = $(id); dd.querySelector('b').textContent = big; dd.querySelector('span').textContent = small; };
+    if (!cfg) {
+      CALC_PERIODS.forEach(([id]) => set('p' + id, '–', ''));
+      $('pcalc-note').textContent = 'Choose the P2Pool sidechain you mine on, then enter your hashrate. P2Pool has no fee: its miners are paid directly in the Monero block, from your own node and wallet.';
+      return;
+    }
+    // the sidechain hashrate field follows the sidechain picked; what the visitor typed is kept per sidechain
+    const sideEl = $('pcalc-side'), unitEl = $('pcalc-sunit');
+    if (sideEl.dataset.cfg !== cfg.id) {
+      sideEl.dataset.cfg = cfg.id; unitEl.value = '1e6';
+      sideEl.value = sideMH[cfg.id] ?? cfg.sideMH;
+    } else sideMH[cfg.id] = Number(sideEl.value) * Number(unitEl.value) / 1e6;
+    const h = Math.max(0, Number($('pcalc-hash').value) || 0) * Number($('pcalc-unit').value);
+    const side = Math.max(0, (Number(sideEl.value) || 0) * Number(unitEl.value));
+    const total = side + h, diff = m.diff * (HASHES_PER_DIFFICULTY.monero ?? 1);
+    const netRate = diff > 0 ? h / diff : 0;              // Monero blocks per second your hashrate is worth
+    const sideRate = diff > 0 ? total / diff : 0;          // Monero blocks per second the sidechain finds, you included
+    const yours = total ? h / total : 0;                   // your part of each block it finds
+    const perBlock = yours * XMR_TAIL_REWARD;              // XMR you receive each time it finds one
+    CALC_PERIODS.forEach(([id, t]) => set('p' + id, h ? coinAmount(netRate * t * XMR_TAIL_REWARD) : '–', h ? `XMR · ${cfg.name.replace('P2Pool ', '')} finds ≈ ${fmt(Math.round(sideRate * t))} block${Math.round(sideRate * t) === 1 ? '' : 's'}` : ''));
+    const minHash = total * P2POOL_MIN_PAYOUT / XMR_TAIL_REWARD;
+    const gap = sideRate > 0 ? 1 / sideRate : 0;
+    $('pcalc-note').textContent = `The XMR you earn on average mining on ${cfg.blurb} of P2Pool: no pool fee, paid in the Monero block itself (block reward of ${XMR_TAIL_REWARD} XMR; transaction fees come on top). `
+      + (h ? `${cfg.name} finds a Monero block about every ${gap < 3600 ? `${Math.max(1, Math.round(gap / 60))} minute${Math.round(gap / 60) === 1 ? '' : 's'}` : ageText(gap)} and you get about ${smallPct(yours)} of each (${coinAmount(perBlock)} XMR). `
+        + (perBlock >= P2POOL_MIN_PAYOUT ? 'That is above the smallest payout P2Pool makes, so it pays you in every block it finds. '
+          : `That is below the smallest payout of ${P2POOL_MIN_PAYOUT} XMR, so you are paid in lumps rather than every block (you need about ${si(minHash, 1).replace(/\.0+(?= )/, '')}H/s for a payout in every block). `) : 'Enter your hashrate to see what you earn. ')
+      + `The sidechain's hashrate is an estimate you can change: see the live figure at ${cfg.url.replace('https://', '')}.`;
+  }
   function renderPoolCalc() {
     const m = mining; if (!m || !$('pcalc-form')) return;
+    if (P2POOLS[netId]) return renderP2Pool();
     const cfg = (DATUM_TIDES_POOLS[netId] ?? []).find((c) => c.name === $('pcalc-pool').value);
     const stat = cfg && m.pools.find((p) => p.name.toLowerCase() === cfg.name.toLowerCase());
     const h = Math.max(0, Number($('pcalc-hash').value) || 0) * Number($('pcalc-unit').value);
