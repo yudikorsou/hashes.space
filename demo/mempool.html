@@ -1164,6 +1164,15 @@
     <h2 id="learn-title">Learn</h2>
     <p>From bits to blocks</p>
   </div>
+  <section class="learn-blocks" id="learn-blocks" aria-labelledby="lb-title">
+    <h3 id="lb-title">How to read the blocks</h3>
+    <p>The glow around a mined block tells you <b>who built its block template</b>, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay. Every proof-of-work chain has its own rules:</p>
+    <div class="glows">
+    <section><h4>Bitcoin<small>SHA-256 · mempool.space</small></h4>
+      <div class="glow-row"><div class="mini" data-net="sha256" data-kind="verified" data-pool="Solo miner" aria-hidden="true"></div><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
+      <div class="glow-row"><div class="mini" data-net="sha256" data-kind="compatible" data-pool="OCEAN" aria-hidden="true"></div><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>OCEAN</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
+      <div class="glow-row"><div class="mini" data-net="sha256" data-kind="central" data-pool="Any other pool" aria-hidden="true"></div><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
+    </section>
 
 <section class="lv" id="learn-video" aria-label="Video: from bits to blocks">
   <div class="lv-frame" id="lv-frame">
@@ -3194,7 +3203,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     $('chain-area').hidden = view === 'learn';            // the proof-of-work bar stands on the mempool and calculator pages
     document.querySelector('.strip').hidden = view !== 'dashboard';
     document.querySelector('.learn').hidden = view !== 'learn';
-    if (view === 'learn') { if (window.learnBuildMinis) window.learnBuildMinis(); if (typeof toBlocks !== 'undefined' && toBlocks) setTimeout(() => { if (window.lvGo) window.lvGo(6); }, 60); }
+    if (view === 'learn') { if (window.learnBuildMinis) window.learnBuildMinis(); if (typeof toBlocks !== 'undefined' && toBlocks) setTimeout(() => document.getElementById('learn-blocks').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); }
     for (const [t, v] of [['tab-dashboard', 'dashboard'], ['tab-calc', 'calc'], ['tab-learn', 'learn']]) $(t).classList.toggle('on', view === v);
     $('tab-dashboard').classList.toggle('on', view === 'dashboard' || view === 'pool');
     if (typeof renderMiningStats === 'function') renderMiningStats();
