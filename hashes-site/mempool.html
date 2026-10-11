@@ -828,6 +828,7 @@
   .vs p { font-size: 13.5px !important; line-height: 1.6 !important; }
   /* reading the blocks: one card per proof-of-work, a glowing swatch per kind of block */
   .learn-blocks { width: min(100%, 860px); margin-top: 28px; padding: 30px 30px 20px; border-top: 1px solid var(--line); display: grid; gap: 16px; scroll-margin-top: 20px; }
+  .blocks-page .learn-blocks { margin-top: 0; border-top: 0; padding-top: 6px; }
   .learn-blocks h3 { margin: 0; text-align: center; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); text-wrap: balance; }
   .learn-blocks > p { margin: 0 auto; max-width: 62ch; text-align: center; color: var(--muted); font: 400 14.5px/1.7 var(--sans); }
   .learn-blocks > p b { color: var(--text); font-weight: 500; }
@@ -1099,7 +1100,7 @@
   </div>
   <div class="nb-side right">
     <button type="button" class="own-btn" id="own-btn" hidden>Connect node</button>
-  <a class="howto-btn" id="howto-btn" href="#learn-blocks">How to read the blocks?</a>
+  <a class="howto-btn" id="howto-btn" href="#blocks">How to read the blocks?</a>
   </div>
 </section>
 <section class="strip" aria-label="Blockchain">
@@ -1247,6 +1248,11 @@
   </div>
   <div class="lv-voice"><span id="lv-vlabel"></span> <select id="lv-vsel" aria-label="Narrator voice"></select></div>
 </section>
+
+</section>
+<!-- How to read the blocks: a page of its own, reached from the link beside the search bar -->
+<section class="learn blocks-page" id="blocks-page" hidden>
+  <a class="back-link" href="#dashboard"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 6h-7M5.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Return to Mempool</a>
   <section class="learn-blocks" id="learn-blocks" aria-labelledby="lb-title">
     <h3 id="lb-title">How to read the blocks</h3>
     <p>The glow around a mined block tells you <b>who built its block template</b>, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay. Every proof-of-work chain has its own rules:</p>
@@ -1285,7 +1291,7 @@
   const BADGE = { verified: '<span class="datum-badge verified">✓ Decentralised</span>', compatible: '<span class="datum-badge">◆ DATUM Compatible</span>', central: '<span class="datum-badge central">Centralised</span>' };
   const CLS = { verified: ' datum-verified', compatible: ' datum', central: ' datum-central' };
   function build() {
-    document.querySelectorAll('#learn .mini').forEach((el) => {
+    document.querySelectorAll('.learn .mini').forEach((el) => {
       const d = DATA[el.dataset.net], k = el.dataset.kind, coin = (window.__coins || {})[el.dataset.net];
       el.classList.add(k);
       el.innerHTML = `<div class="block-wrap${CLS[k]}"><div class="above height"><b>${d.h}</b></div>
@@ -3285,13 +3291,14 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const TIMEZONES = (() => { try { const z = Intl.supportedValuesOf('timeZone'); return ['UTC', ...z.filter((x) => x !== 'UTC')]; } catch { return ['UTC', 'Europe/Amsterdam', 'Europe/London', 'America/New_York', 'Asia/Shanghai', 'Asia/Tokyo']; } })();
 
   function showView(v) {
-    const toBlocks = v === 'learn-blocks'; if (toBlocks) v = 'learn';
-    view = ['calc', 'poolcalc', 'pools', 'learn', 'pool'].includes(v) ? v : 'dashboard';
+    if (v === 'learn-blocks') v = 'blocks';
+    view = ['calc', 'poolcalc', 'pools', 'blocks', 'learn', 'pool'].includes(v) ? v : 'dashboard';
     ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
-    $('chain-area').hidden = view === 'learn';            // the proof-of-work bar stands on the mempool and calculator pages
+    $('chain-area').hidden = view === 'learn' || view === 'blocks';            // the proof-of-work bar stands on the mempool and calculator pages
     document.querySelector('.strip').hidden = view !== 'dashboard';
-    document.querySelector('.learn').hidden = view !== 'learn';
-    if (view === 'learn') { if (window.learnBuildMinis) window.learnBuildMinis(); if (typeof toBlocks !== 'undefined' && toBlocks) setTimeout(() => document.getElementById('learn-blocks').scrollIntoView({ behavior: 'smooth', block: 'start' }), 60); }
+    document.getElementById('learn').hidden = view !== 'learn';
+    document.getElementById('blocks-page').hidden = view !== 'blocks';
+    if (view === 'learn' || view === 'blocks') { if (window.learnBuildMinis) window.learnBuildMinis(); window.scrollTo(0, 0); }
     for (const [t, v] of [['tab-dashboard', 'dashboard'], ['tab-calc', 'calc'], ['tab-learn', 'learn']]) $(t).classList.toggle('on', view === v);
     $('tab-dashboard').classList.toggle('on', view === 'dashboard' || view === 'pool');
     if (typeof renderMiningStats === 'function') renderMiningStats();

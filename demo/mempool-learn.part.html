@@ -51,6 +51,7 @@
   .vs p { font-size: 13.5px !important; line-height: 1.6 !important; }
   /* reading the blocks: one card per proof-of-work, a glowing swatch per kind of block */
   .learn-blocks { width: min(100%, 860px); margin-top: 28px; padding: 30px 30px 20px; border-top: 1px solid var(--line); display: grid; gap: 16px; scroll-margin-top: 20px; }
+  .blocks-page .learn-blocks { margin-top: 0; border-top: 0; padding-top: 6px; }
   .learn-blocks h3 { margin: 0; text-align: center; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); text-wrap: balance; }
   .learn-blocks > p { margin: 0 auto; max-width: 62ch; text-align: center; color: var(--muted); font: 400 14.5px/1.7 var(--sans); }
   .learn-blocks > p b { color: var(--text); font-weight: 500; }
@@ -78,6 +79,11 @@
     <h2 id="learn-title">Academy</h2>
     <p>From bits to blocks</p>
   </div>
+  <!--VIDEO-->
+</section>
+<!-- How to read the blocks: a page of its own, reached from the link beside the search bar -->
+<section class="learn blocks-page" id="blocks-page" hidden>
+  <a class="back-link" href="#dashboard"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 6h-7M5.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Return to Mempool</a>
   <section class="learn-blocks" id="learn-blocks" aria-labelledby="lb-title">
     <h3 id="lb-title">How to read the blocks</h3>
     <p>The glow around a mined block tells you <b>who built its block template</b>, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay. Every proof-of-work chain has its own rules:</p>
@@ -116,7 +122,7 @@
   const BADGE = { verified: '<span class="datum-badge verified">✓ Decentralised</span>', compatible: '<span class="datum-badge">◆ DATUM Compatible</span>', central: '<span class="datum-badge central">Centralised</span>' };
   const CLS = { verified: ' datum-verified', compatible: ' datum', central: ' datum-central' };
   function build() {
-    document.querySelectorAll('#learn .mini').forEach((el) => {
+    document.querySelectorAll('.learn .mini').forEach((el) => {
       const d = DATA[el.dataset.net], k = el.dataset.kind, coin = (window.__coins || {})[el.dataset.net];
       el.classList.add(k);
       el.innerHTML = `<div class="block-wrap${CLS[k]}"><div class="above height"><b>${d.h}</b></div>
