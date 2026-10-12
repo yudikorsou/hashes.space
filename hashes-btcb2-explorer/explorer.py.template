@@ -794,6 +794,8 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{c
 .legend,.donut ul{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}.legend i,.donut li i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}.legend b,.donut b{color:var(--text);font-weight:600}
 .donut{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.donut svg{width:140px;height:140px;color:var(--text)}.donut ul{flex-direction:column;margin:0}
 .hb{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;margin:6px 0;font-size:12.5px}.hl{color:var(--muted)}.ht{height:12px;background:#0b0d17;border-radius:6px;overflow:hidden;border:1px solid var(--line)}.ht i{display:block;height:100%}.hv{font-family:ui-monospace,Menlo,monospace;font-size:12px}
+.animbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:10px}.animbar button{padding:7px 14px}.animbar select{background:#0b0d17;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px}.animbar input[type=range]{flex:1;min-width:140px;accent-color:var(--gold)}
+#anim-svg{width:100%;height:auto;display:block}summary{cursor:pointer;color:var(--muted);font-weight:600}details table{margin-top:10px}
 .err{color:#ff6b6b}.ok{color:#3ce26b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 """.replace("ACCENT", CFG["accent"])
 
@@ -996,6 +998,102 @@ def svg_rate_range(pc):
     return "<div class=chart><h2>Fee rates paid (sat/vB, log scale)</h2><svg viewBox='0 0 520 100' role=img aria-label='Fee rate range'>" + g + box + "</svg></div>"
 
 
+ANIM_MAX = 2500           # transactions of a block that the animation holds
+ANIM_JS = r"""(function(){
+var D=__DATA__, T=D.txs, N=T.length, NS="http://www.w3.org/2000/svg";
+var svg=document.getElementById("anim-svg"), reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+function mk(n,a,p){var e=document.createElementNS(NS,n);for(var k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e}
+function clamp(x){return x<0?0:x>1?1:x}function ease(t){return t*t*(3-2*t)}
+var BX=880,BY=44,BW=220,BH=230, size=Math.max(2.4,Math.floor(Math.sqrt(BW*BH/N)*10)/10), cols=Math.max(1,Math.floor(BW/size)), rows=Math.ceil(N/cols);
+mk("rect",{x:BX-6,y:BY-6,width:cols*size+12,height:rows*size+12,rx:8,fill:"#0b0d17",stroke:"#454d68"});
+mk("text",{x:BX-6,y:BY-16,fill:"#f7931a","font-size":14,"font-weight":600}).textContent="Block "+D.height;
+var cells=[];for(var i=0;i<N;i++)cells.push(mk("rect",{x:BX+(i%cols)*size,y:BY+Math.floor(i/cols)*size,width:Math.max(1.4,size-0.7),height:Math.max(1.4,size-0.7),rx:1,fill:"#232640"}));
+var cap=mk("text",{x:BX-6,y:BY+rows*size+30,fill:"#9ea4bc","font-size":12});
+var ff=mk("text",{x:420,y:CY+4,"text-anchor":"middle",fill:"#9ea4bc","font-size":14,opacity:0});ff.textContent="Fast-forwarding: slow down to see each transaction";
+var det=mk("g",{});
+function chip(x,w){var r=mk("rect",{x:x,y:0,width:w,height:52,rx:8,fill:"#1d1f31",stroke:"#2d3348"},det),a=mk("text",{x:x+10,y:0,fill:"#1bd8f4","font-size":12.5,"font-family":"ui-monospace,Menlo,monospace"},det),b=mk("text",{x:x+10,y:0,fill:"#ffffff","font-size":12},det),l=mk("line",{stroke:"#9ea4bc","stroke-width":1.6},det);return{r:r,a:a,b:b,l:l,x:x,w:w}}
+var ins=[chip(0,290),chip(0,290),chip(0,290)], outs=[chip(560,290),chip(560,290),chip(560,290)];
+var NX=330,NW=200,NY=112,NH=76,CY=150;
+var node=mk("rect",{x:NX,y:NY,width:NW,height:NH,rx:12,fill:"#1d1f31",stroke:"#f7931a","stroke-width":2},det);
+var n1=mk("text",{x:NX+NW/2,y:CY-6,"text-anchor":"middle",fill:"#fff","font-size":13,"font-family":"ui-monospace,Menlo,monospace"},det);
+var n2=mk("text",{x:NX+NW/2,y:CY+14,"text-anchor":"middle",fill:"#9ea4bc","font-size":12},det);
+var th=mk("text",{x:0,y:20,fill:"#9ea4bc","font-size":12.5,"font-weight":600},det);th.textContent="SENDING";
+var th2=mk("text",{x:560,y:20,fill:"#9ea4bc","font-size":12.5,"font-weight":600},det);th2.textContent="RECEIVING";
+var fly=mk("rect",{x:0,y:0,width:16,height:16,rx:3,fill:"#f7931a",opacity:0},det);
+var ys=[44,104,164], band=["#4a5263","#9ea4bc","#1bd8f4","#3ce26b","#f2b53c","#f7931a"];
+function col(t){if(t.cb)return "#ffffff";var r=t.r;return r<2?band[0]:r<5?band[1]:r<10?band[2]:r<20?band[3]:r<50?band[4]:band[5]}
+function lines(c,list,y,extra){c.r.setAttribute("y",y);c.a.setAttribute("y",y+21);c.b.setAttribute("y",y+40);c.a.textContent=list[0];c.b.textContent=list[1]}
+function reveal(c,s,side,y,more){c.r.setAttribute("opacity",s);c.a.setAttribute("opacity",s);c.b.setAttribute("opacity",s);
+ var off=(side<0?-40:40)*(1-ease(s));c.r.setAttribute("transform","translate("+off+" 0)");c.a.setAttribute("transform","translate("+off+" 0)");c.b.setAttribute("transform","translate("+off+" 0)");}
+function line(c,side,y,s){var x1=side<0?c.x+c.w:NX+NW, x2=side<0?NX:c.x, y1=side<0?y+26:CY, y2=side<0?CY:y+26, len=Math.hypot(x2-x1,y2-y1);
+ c.l.setAttribute("x1",x1);c.l.setAttribute("y1",y1);c.l.setAttribute("x2",x2);c.l.setAttribute("y2",y2);c.l.setAttribute("stroke-dasharray",len);c.l.setAttribute("stroke-dashoffset",len*(1-s));c.l.setAttribute("opacity",s>0?1:0)}
+var pos=0,playing=false,speed=3,filled=0,last=0,shown=-1;
+var btn=document.getElementById("anim-play"),sel=document.getElementById("anim-speed"),rng=document.getElementById("anim-seek"),lab=document.getElementById("anim-label"),lnk=document.getElementById("anim-link");
+rng.max=N-1;
+function render(){
+ var i=Math.min(N-1,Math.floor(pos)),p=pos-i,t=T[i];
+ if(filled>i){for(var k=i;k<filled;k++)cells[k].setAttribute("fill","#232640")}else{for(var k=filled;k<i;k++)cells[k].setAttribute("fill",col(T[k]))}
+ filled=i;cells[i].setAttribute("fill",p>=0.97?col(t):"#232640");
+ var fast=playing&&speed>10;det.setAttribute("opacity",fast?0:1);ff.setAttribute("opacity",fast?1:0);
+ cap.textContent="{:,} of {:,} transactions in the block".replace("{:,} of {:,}",(i+1)+" of "+N);
+ if(shown!==i){shown=i;rng.value=i;lab.textContent="Transaction "+(i+1).toLocaleString()+" of "+N.toLocaleString()+(D.total>N?" (first "+N.toLocaleString()+" of "+D.total.toLocaleString()+")":"");lnk.textContent=t.id.slice(0,18)+"…";lnk.href="/tx/"+t.idf+"?b="+D.hash}
+ if(fast)return;
+ var fade=1-clamp((p-0.72)/0.2);
+ for(var j=0;j<3;j++){var c=ins[j],e=t.ins[j],y=ys[j];if(!e){reveal(c,0);c.l.setAttribute("opacity",0);continue}
+  lines(c,e,y);var a=0.02+0.08*j,s=clamp((p-a)/0.22);reveal(c,s*fade);line(c,-1,y,clamp((p-a-0.1)/0.22)*(fade>0.02?1:0))}
+ var ns=clamp((p-0.3)/0.12);node.setAttribute("opacity",ns*Math.max(fade,0.25));n1.setAttribute("opacity",ns);n2.setAttribute("opacity",ns);
+ n1.textContent=t.id.slice(0,18)+"…";n2.textContent=t.nin+" in → "+t.nout+" out · "+(t.cb?"coinbase":t.r+" sat/vB")+" · "+t.vs+" vB";
+ for(var j=0;j<3;j++){var c=outs[j],e=t.outs[j],y=ys[j];if(!e){reveal(c,0);c.l.setAttribute("opacity",0);continue}
+  lines(c,e,y);var a=0.46+0.08*j,s=clamp((p-a)/0.22);reveal(c,s*fade);line(c,1,y,s*(fade>0.02?1:0))}
+ var q=clamp((p-0.74)/0.26);
+ if(q>0&&q<1){var e2=ease(q),cx=BX+(i%cols)*size,cy=BY+Math.floor(i/cols)*size,sz=16+(Math.max(1.4,size-0.7)-16)*e2;
+  fly.setAttribute("x",NX+NW/2-8+(cx-(NX+NW/2-8))*e2);fly.setAttribute("y",CY-8+(cy-(CY-8))*e2);fly.setAttribute("width",sz);fly.setAttribute("height",sz);fly.setAttribute("fill",col(t));fly.setAttribute("opacity",1)}else fly.setAttribute("opacity",0);
+}
+function tick(now){var dt=now-last;last=now;if(playing){pos+=dt/(1400/speed);if(pos>=N-0.001){pos=N-0.001;playing=false;btn.textContent="Replay"}render()}requestAnimationFrame(tick)}
+btn.onclick=function(){if(playing){playing=false;btn.textContent="Play";render();return}if(pos>=N-0.01)pos=0;playing=true;btn.textContent="Pause"};
+sel.onchange=function(){speed=+sel.value};
+rng.oninput=function(){pos=+rng.value;render()};
+render();requestAnimationFrame(function(n){last=n;tick(n)});
+if(!reduce){var started=false,go=function(){if(!started){started=true;playing=true;btn.textContent="Pause"}};
+ if("IntersectionObserver" in window){new IntersectionObserver(function(es){if(es[0].isIntersecting)go()},{threshold:0.4}).observe(svg)}else go()}
+})();
+"""
+
+
+def short_addr(a):
+    return a if len(a) <= 22 else a[:11] + "…" + a[-6:]
+
+
+def block_animation(b, h):
+    """each transaction of the block as an animation: the coins it spends (sending) and the outputs it creates (receiving), flying into the block"""
+    txs = b["tx"]
+    data = []
+    for t in txs[:ANIM_MAX]:
+        cb = "coinbase" in t["vin"][0]
+        ins = []
+        for i in t["vin"][:3]:
+            if "coinbase" in i:
+                ins.append(["Coinbase", "newly created coins"])
+                continue
+            po = i.get("prevout") or {}
+            who = short_addr(po.get("scriptPubKey", {}).get("address") or "")
+            ins.append([i["txid"][:8] + "…:" + str(i["vout"]), (who + " · " if who else "") + (btc(round(float(po["value"]) * 1e8)) if "value" in po else "")])
+        if len(t["vin"]) > 3:
+            ins[2] = ["+" + str(len(t["vin"]) - 2) + " more inputs", ""]
+        outs = [[short_addr(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")), btc(round(float(o["value"]) * 1e8))] for o in t["vout"][:3]]
+        if len(t["vout"]) > 3:
+            outs[2] = ["+" + str(len(t["vout"]) - 2) + " more outputs", ""]
+        rate = round(float(t["fee"]) * 1e8 / t["vsize"], 1) if "fee" in t and t.get("vsize") else 0
+        data.append({"id": t["txid"], "idf": t["txid"], "cb": cb, "nin": len(t["vin"]), "nout": len(t["vout"]), "vs": t.get("vsize", 0), "r": rate, "ins": ins, "outs": outs})
+    blob = json.dumps({"height": "{:,}".format(b["height"]), "hash": h, "total": len(txs), "txs": data}, separators=(",", ":")).replace("</", "<\\/")
+    return ("<section class=card><h2>Every transaction going into the block</h2><div class=animbar><button id=anim-play type=button>Pause</button>"
+            "<select id=anim-speed aria-label=Speed><option value=1>1×</option><option value=3 selected>3×</option><option value=10>10×</option><option value=40>40×</option><option value=200>200×</option></select>"
+            "<input id=anim-seek type=range min=0 value=0 aria-label='Transaction'><span id=anim-label class=muted></span><a id=anim-link class=mono href='#'></a></div>"
+            "<svg id=anim-svg viewBox='0 0 1130 330' role=img aria-label='Transactions flying into the block'></svg>"
+            "<p class=muted>Each square is one transaction, coloured by the fee rate it paid (grey is lowest, orange highest, white the coinbase). Left: the coins it spends. Right: the outputs it creates.</p>"
+            "<script>" + ANIM_JS.replace("__DATA__", blob) + "</script></section>")
+
+
 def block_diagrams(b):
     """the diagrams of a block page, worked out from the transactions of the block"""
     txs = b["tx"][1:]
@@ -1105,8 +1203,8 @@ def block_page(ident):
                     ("Difficulty", "{:,.0f}".format(b.get("difficulty", 0))), ("Confirmations", "{:,}".format(b.get("confirmations", 0))),
                     ("Coinbase text", "<span class=mono>" + html.escape("".join(c if 32 <= ord(c) < 127 else "·" for c in text)) + "</span>"),
                     ("Paid to", "<span class='mono'>" + html.escape(", ".join(dict.fromkeys(addrs)) or "-") + "</span>")] + header_rows(b))
-                + "</dl></section>" + block_diagrams(b) + block_stats_card(h) + "<section class=card><h2>Transactions</h2><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
-                + rows + "</table>" + more + "</section>")
+                + "</dl></section>" + block_animation(b, h) + block_diagrams(b) + block_stats_card(h) + "<details class=card><summary>Show the transaction list</summary><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
+                + rows + "</table>" + more + "</details>")
 
 
 def tx_page(txid, block_hash):
