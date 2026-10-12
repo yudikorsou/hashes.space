@@ -19,11 +19,11 @@ services:
       PORT: "3000"
       # the same explorer as the Bitcoin Explorer app, on the BLAKE2b chain
       CHAIN: blake2b
-      # the Bitcoin Knots app on this Umbrel (a pruned node is fine)
-      RPC_HOST: ${APP_BITCOIN_KNOTS_NODE_IP}
-      RPC_PORT: ${APP_BITCOIN_KNOTS_INTERNAL_RPC_PORT:-${APP_BITCOIN_KNOTS_RPC_PORT:-8332}}
-      RPC_USER: ${APP_BITCOIN_KNOTS_RPC_USER}
-      RPC_PASS: ${APP_BITCOIN_KNOTS_RPC_PASS}
+      # the Bitcoin app on this Umbrel: the Bitcoin Knots app (it implements the "bitcoin" dependency; a pruned node is fine)
+      RPC_HOST: ${APP_BITCOIN_NODE_IP}
+      RPC_PORT: ${APP_BITCOIN_RPC_PORT}
+      RPC_USER: ${APP_BITCOIN_RPC_USER}
+      RPC_PASS: ${APP_BITCOIN_RPC_PASS}
       # how far back the pool of each block is read (4320 blocks = 30 days; a pruned node keeps fewer blocks than that)
       POOL_BLOCKS: "4320"
     volumes:

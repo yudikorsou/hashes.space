@@ -19,12 +19,13 @@ description: >-
   BLAKE2b explorer of your website.
 
 
-  Requires the Bitcoin Knots app, synced. While it is still syncing, the explorer says so and the page
+  Requires the Bitcoin Knots app, synced. It reads the Bitcoin app Umbrel gives it, so if Bitcoin Node and Bitcoin Knots are
+  both installed, pick Bitcoin Knots for this app. While it is still syncing, the explorer says so and the page
   uses mempool.guide. /api/v1/status shows what the explorer sees of your node.
 developer: hashes.space
 website: https://hashes.space
 dependencies:
-  - bitcoin-knots
+  - bitcoin
 repo: https://github.com/yudikorsou/hashes.space
 support: https://github.com/yudikorsou/hashes.space/issues
 port: 4085

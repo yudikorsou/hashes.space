@@ -452,6 +452,10 @@ def poller():
             if info.get("initialblockdownload"):
                 raise RuntimeError("the node is still syncing (" + "{:.1f}".format(info.get("verificationprogress", 0) * 100) + "%)")
             blocks = STATS.refresh_live_blocks()
+            try:
+                info["subversion"] = NODE.call("getnetworkinfo").get("subversion", "")     # which node answers: shows in /api/v1/status
+            except Exception:  # noqa: BLE001
+                pass
             fresh = STATE["blocks"] and blocks[0]["id"] != STATE["blocks"][0]["id"] and blocks[0]["height"] > STATE["blocks"][0]["height"]
             with STATE_LOCK:
                 STATE.update(blocks=blocks, info=info, error="", at=int(time.time()))
@@ -642,7 +646,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/v1/status":
                 with STATE_LOCK:
                     s = {"live": not STATE["error"], "error": STATE["error"], "tip": STATE["blocks"][0]["height"] if STATE["blocks"] else None, "updated": STATE["at"],
-                         "mempool": STATE["mempool_count"], "pruned": STATE["info"].get("pruned"), "syncing": STATE["info"].get("initialblockdownload"),
+                         "mempool": STATE["mempool_count"], "pruned": STATE["info"].get("pruned"), "node": STATE["info"].get("subversion"), "chain": CHAIN, "syncing": STATE["info"].get("initialblockdownload"),
                          "statistics": STATS.ready, "statisticsError": STATS.error, "pools": len(POOLS.tags) > 0}
                 return self.json(s)
             m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(24h|14d|1w|1m|3m|6m|1y)", path)
