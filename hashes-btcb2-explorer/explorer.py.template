@@ -796,10 +796,8 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{c
 .hb{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;margin:6px 0;font-size:12.5px}.hl{color:var(--muted)}.ht{height:12px;background:#0b0d17;border-radius:6px;overflow:hidden;border:1px solid var(--line)}.ht i{display:block;height:100%}.hv{font-family:ui-monospace,Menlo,monospace;font-size:12px}
 .animbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;margin-bottom:10px}.animbar button{padding:7px 14px}.animbar select{background:#0b0d17;color:var(--text);border:1px solid var(--line);border-radius:8px;padding:6px 8px}.animbar input[type=range]{flex:1;min-width:140px;accent-color:var(--gold)}
 .animwrap{position:relative;display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:18px 34px;padding:6px 0 4px}
-.fanblock{display:grid;justify-items:center;gap:12px;margin-top:40px}.fanblock small{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
-.cube.mini{--s:104px;--d:14px}.cube.mini .front{background:linear-gradient(#9339f4,#105fb0);display:grid;place-items:center}
-.fan{display:block;width:74px;aspect-ratio:1;--fan-color:#fff}.fan svg{width:100%;height:100%;overflow:visible;display:block}.fan .frame circle,.fan .rotor path{fill:none;stroke:var(--fan-color);stroke-linejoin:round;stroke-linecap:round}.fan .rotor path{stroke-width:2.8}.fan .hub{fill:var(--fan-color)}.fan .hub-cut{fill:#2d3348}
-.fan .rotor{transform-box:view-box;transform-origin:50px 50px}.fan.hashing .rotor{animation:spin .5s linear infinite}.fan.hashing{filter:drop-shadow(0 0 7px rgba(255,255,255,.55))}@keyframes spin{to{transform:rotate(360deg)}}.flylayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}.front{overflow:hidden}
+.fan{display:block;flex:0 0 auto;width:clamp(240px,70vw,360px);aspect-ratio:1;--fan-color:rgba(255,255,255,.88)}.fan svg{width:100%;height:100%;overflow:visible;display:block}.fan .frame circle,.fan .rotor path{fill:none;stroke:var(--fan-color);stroke-linejoin:round;stroke-linecap:round}.fan .rotor path{stroke-width:1.6}.fan .frame circle{stroke-width:2.4}.fan .hub{fill:var(--fan-color)}.fan .hub-cut{fill:var(--bg)}
+.fan .rotor{transform-box:view-box;transform-origin:50px 50px}.fan.hashing .rotor{animation:spin .6s linear infinite}.fan.hashing{filter:drop-shadow(0 0 10px rgba(255,255,255,.45))}@keyframes spin{to{transform:rotate(360deg)}}.flylayer{position:absolute;inset:0;pointer-events:none;overflow:hidden;z-index:2}.front{overflow:hidden}
 .block-wrap{--s:clamp(260px,74vw,360px);--d:clamp(28px,7vw,40px);flex:0 0 auto;width:calc(var(--s) + var(--d));display:grid;gap:8px;justify-items:center;margin:0;padding:6px 4px 0}
 .block-wrap .above{padding-left:var(--d);font:500 12px/1.3 system-ui,sans-serif;color:var(--muted)}.block-wrap .below{font:500 14px/1.3 system-ui,sans-serif;color:var(--muted);text-align:center}
 .height b{display:inline-block;padding:3px 8px;border-radius:3px;background:#232838;border:1px solid rgba(255,255,255,.10);border-top-color:rgba(255,255,255,.16);box-shadow:-2px 2px 0 0 rgba(25,28,39,.9);font:600 13px/1.15 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;color:#e8ebf5}
@@ -809,13 +807,9 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{c
 .txt{height:100%;display:grid;grid-template-rows:1fr auto auto;justify-items:center;align-items:center;padding:30px 8px 12px;font:400 14px/1.25 system-ui,sans-serif;color:#fff;text-align:center}
 .txt .fee{font-weight:600;font-size:17px}.txt .range{color:rgba(255,255,255,.8);font-size:13px}.txt .txs,.txt .time{font-size:13px}
 .mid{position:relative;width:100%;height:100%;display:grid;align-content:center;gap:5px;justify-items:center}.rlabel{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:rgba(255,255,255,.75);opacity:0}
-.achip{display:flex;gap:9px;align-items:baseline;text-align:left;white-space:nowrap;opacity:0;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 10px rgba(0,0,0,.55)}
-.achip b{font:600 13px/1.2 ui-monospace,Menlo,monospace;color:#7fe9ff;flex:none}.achip span{font:13px/1.2 system-ui,sans-serif;color:#f1f3fb;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.achip.in{position:absolute;box-sizing:border-box;justify-content:center}.achip.out{width:94%;box-sizing:border-box;display:grid;justify-items:center;gap:1px;text-align:center}.achip.out span{max-width:100%;white-space:nowrap}.achip.out b{color:#7dff9f}
-.packet{position:absolute;box-sizing:border-box;opacity:0;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 12px rgba(0,0,0,.6)}
-.packet i{display:block;font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:#ffb95c;font-style:normal;margin-bottom:6px}
-.packet code{display:block;white-space:pre;font:600 13.5px/1.4 ui-monospace,Menlo,monospace;color:#fff;letter-spacing:.01em}.packet small{display:block;margin-top:6px;font:12.5px/1.2 system-ui,sans-serif;color:#d5d9ea}
-.hexbit{position:absolute;font:600 12px/1 ui-monospace,Menlo,monospace;color:#f7931a;opacity:0;text-shadow:0 0 8px rgba(247,147,26,.9)}
+.hx{position:absolute;box-sizing:border-box;text-align:center;white-space:pre;opacity:0;font:600 13.5px/1.35 ui-monospace,Menlo,monospace;color:#fff;overflow:hidden;text-overflow:ellipsis;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 10px rgba(0,0,0,.55)}
+.hx.small{font:500 12.5px/1.3 system-ui,sans-serif;color:#d5d9ea}.hx.out{font:500 12.5px/1.3 ui-monospace,Menlo,monospace;color:#7dff9f}
+.lbl{position:absolute;left:0;right:0;text-align:center;opacity:0;font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:#7fe9ff;text-shadow:0 1px 3px rgba(0,0,0,.85)}.lbl.b{color:#ffb95c}
 .cube.hit{animation:hit .45s ease-out}@keyframes hit{0%{box-shadow:0 0 0 0 rgba(60,226,107,.7)}100%{box-shadow:0 0 0 12px rgba(60,226,107,0)}}summary{cursor:pointer;color:var(--muted);font-weight:600}details table{margin-top:10px}
 .err{color:#ff6b6b}.ok{color:#3ce26b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 """.replace("ACCENT", CFG["accent"])
@@ -1021,65 +1015,55 @@ def svg_rate_range(pc):
 
 ANIM_MAX = 2500           # transactions of a block that the animation holds
 ANIM_JS = r"""(function(){
-var D=__DATA__, T=D.txs, N=T.length, DUR=7500, HEX="0123456789abcdef";
+var D=__DATA__, T=D.txs, N=T.length, DUR=8000, HEX="0123456789abcdef";
 var $=function(i){return document.getElementById(i)};
-var fan=$("anim-fan"),cube=$("anim-cube"),front=$("anim-front"),mid=$("anim-mid"),layer=$("anim-layer"),cTx=$("anim-ctx"),btn=$("anim-play"),rng=$("anim-seek"),lab=$("anim-label"),lnk=$("anim-link"),rl=$("anim-rlabel");
+var fan=$("anim-fan"),cube=$("anim-cube"),front=$("anim-front"),layer=$("anim-layer"),cTx=$("anim-ctx"),btn=$("anim-play"),rng=$("anim-seek"),lab=$("anim-label"),lnk=$("anim-link");
 var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 function clamp(x){return x<0?0:x>1?1:x}function ease(t){return t*t*(3-2*t)}
 var cum=[],acc=0;for(var i=0;i<N;i++){acc+=T[i].vs;cum.push(acc)}
-function el(cls,html,parent){var e=document.createElement("div");e.className=cls;if(html)e.innerHTML=html;parent.appendChild(e);return e}
-function chip(cls,parent){return el("achip "+cls,"<b></b><span></span>",parent)}
-var pk=el("packet","<i>TRANSACTION ID (TXID)</i><code></code><small></small>",layer),pkCode=pk.children[1],pkMeta=pk.children[2];
-var ins=[chip("in",layer),chip("in",layer),chip("in",layer)],outs=[chip("out",mid),chip("out",mid),chip("out",mid)];
-var bits=[];for(var k=0;k<16;k++)bits.push(el("hexbit","",layer));
-function fill(e,x){e.firstChild.textContent=x[0];e.lastChild.textContent=x[1]}
-// a hash that resolves: the first characters are settled, the rest still shuffle
-function resolve(str,t){var n=Math.floor(clamp(t)*str.length),o=str.slice(0,n);for(var i=n;i<str.length;i++){var c=str.charAt(i);o+=(c===" "||c==="…"||c===":"||c==="\n")?c:HEX.charAt(Math.random()*16|0)}return o}
+function el(cls,parent,txt){var e=document.createElement("div");e.className=cls;if(txt)e.textContent=txt;parent.appendChild(e);return e}
+var lblA=el("lbl",layer,"SENDER TRANSACTION"),lblB=el("lbl b",layer,"RECEIVING TRANSACTION");
+var h1=el("hx",layer),h2=el("hx",layer),more=el("hx small",layer),meta=el("hx small",layer),outs=[el("hx out",layer),el("hx out",layer),el("hx out",layer)];
 var EMPTY="#2d3348",M1="#9339f4",M2="#105fb0";
 function setFill(n){var done=n>0?cum[n-1]/Math.max(1,D.totalVs):0,pct=Math.max(4,Math.min(100,D.full*done)),e=100-pct;
  front.style.background="repeating-linear-gradient("+EMPTY+","+EMPTY+" "+e+"%,"+M1+" "+e+"%,"+M2+" 100%)";
  cTx.textContent=n.toLocaleString()+" / "+D.total.toLocaleString()+" transactions · "+(D.size*done/1e6).toFixed(2)+" MB"}
-var geo=null;function measure(){var a=layer.getBoundingClientRect(),m=mid.getBoundingClientRect();geo={cx:a.width/2,cy:m.top+m.height/2-a.top,pw:Math.min(330,a.width*0.94),cw:Math.min(340,a.width*0.94)}}
-var pos=0,playing=false,last=0,shown=-1,hitAt=-1,lastTxt="";
+function two(h){return h.slice(0,32)+"\n"+h.slice(32)}
+// the sender's hash turns, character by character, into the hash of the receiving transaction
+function morph(a,b,t){var o="";for(var i=0;i<b.length;i++){var c=b.charAt(i);if(c==="\n"){o+=c;continue}var sw=((i*37)%64)/64*0.55;o+=t<sw?(a.charAt(i)||" "):t<sw+0.25?HEX.charAt(Math.random()*16|0):c}return o}
+function pad(s,n){while(s.length<n)s+=" ";return s}
+var geo=null;function measure(){var a=layer.getBoundingClientRect(),m=a.height;geo={w:a.width,cx:a.width/2,cy:a.height*0.47,hw:Math.min(360,a.width*0.94)}}
+var pos=0,playing=false,last=0,shown=-1,hitAt=-1;
+function place(e,y,x,op,sc){e.style.width=geo.hw+"px";e.style.left=(geo.cx-geo.hw/2+x)+"px";e.style.top=y+"px";e.style.opacity=op;e.style.transform=sc&&sc!==1?"scale("+sc+")":"none"}
 function render(){
  if(!geo)measure();
- var i=Math.min(N-1,Math.floor(pos)),p=pos-i,t=T[i],id=t.id,g=geo;
- setFill(p>=0.62?i+1:i);
- if(p>=0.62&&hitAt!==i){hitAt=i;cube.classList.remove("hit");void cube.offsetWidth;cube.classList.add("hit")}
+ var i=Math.min(N-1,Math.floor(pos)),p=pos-i,t=T[i],id=t.id,g=geo,cy=g.cy,w=g.hw;
+ setFill(p>=0.64?i+1:i);
+ if(p>=0.64&&hitAt!==i){hitAt=i;cube.classList.remove("hit");void cube.offsetWidth;cube.classList.add("hit")}
  if(shown!==i){shown=i;rng.value=i;lab.textContent="Transaction "+(i+1).toLocaleString()+" of "+N.toLocaleString()+(D.total>N?" (first "+N.toLocaleString()+" of "+D.total.toLocaleString()+")":"");lnk.textContent=id.slice(0,20)+"…";lnk.href="/tx/"+id+"?b="+D.hash}
- fan.classList.toggle("hashing",p>0.02&&p<0.5);
- var pulse=Math.max(0,1-Math.abs(p-0.62)/0.07);front.style.filter="brightness("+(1+0.4*pulse)+")";
- rl.style.opacity=clamp((p-0.64)/0.06)*(1-clamp((p-0.94)/0.06));
- // the packet: the transaction's own id, resolving, taking in the coins it spends, then diving into the block
- var show=clamp(p/0.1),dive=ease(clamp((p-0.42)/0.2)),pw=g.pw;
- var full=id.slice(0,32)+"\n"+id.slice(32);
- var txt=p<0.16?resolve(full,p/0.14):full;
- if(txt!==lastTxt){pkCode.textContent=txt;lastTxt=txt}
- pkMeta.textContent=t.nin+" in → "+t.nout+" out · "+(t.cb?"coinbase":t.r+" sat/vB")+" · "+t.vs+" vB";
- pk.style.width=pw+"px";pk.style.left=(g.cx-pw/2)+"px";pk.style.top=(g.cy-30)+"px";
- var abs=0;for(var j=0;j<3;j++){var s=clamp((p-(0.12+0.07*j))/0.2);abs=Math.max(abs,Math.max(0,1-Math.abs(s-0.9)/0.12))}
- pk.style.transform="translateY("+(-18*(1-ease(show))+10*dive)+"px) scale("+(1-0.88*dive)+")";
- pk.style.opacity=ease(show)*(1-clamp((dive-0.55)/0.45));
- pk.style.filter="brightness("+(1+0.5*abs)+")";
- // the coins it spends slide in from the left and merge into the packet
- for(var j=0;j<3;j++){var e=ins[j],x=t.ins[j];
-  if(!x||p>0.5){e.style.opacity=0;continue}
-  fill(e,["spends "+x[0],x[1]]);var a=0.04+0.07*j,s=clamp((p-a)/0.34),k=ease(s),w=g.cw,sx=-w-20,ex=g.cx-w/2,lane=g.cy-96+j*22,ey=g.cy-14;
-  e.style.width=w+"px";e.style.left=(sx+(ex-sx)*k)+"px";e.style.top=(lane+(ey-lane)*Math.pow(k,2.2))+"px";
-  e.style.transform="scale("+(1-0.45*clamp((s-0.6)/0.4))+")";e.style.opacity=clamp(s/0.18)*(1-clamp((s-0.72)/0.28))}
- // hex digits of the id stream from the packet into the block
- var q=clamp((p-0.42)/0.22);
- for(var k=0;k<bits.length;k++){var b=bits[k],f=clamp(q*1.3-k*0.025);
-  if(q<=0||q>=1||f<=0){b.style.opacity=0;continue}
-  var sx=g.cx-pw/2+((k*37)%100)/100*pw,sy=g.cy-30+10+(k%3)*12,e2=ease(f);
-  b.textContent=id.charAt((k*5)%64)+id.charAt((k*5+1)%64);
-  b.style.left=(sx+(g.cx-sx)*e2)+"px";b.style.top=(sy+(g.cy-sy)*e2)+"px";b.style.opacity=Math.sin(f*Math.PI);b.style.transform="scale("+(1.1-0.6*e2)+")"}
- // the outputs it creates resolve in the middle of the block, each as txid:index
+ fan.classList.toggle("hashing",p>0.02&&p<0.46);
+ front.style.filter="brightness("+(1+0.35*Math.max(0,1-Math.abs(p-0.64)/0.06))+")";
+ var out=1-clamp((p-0.94)/0.06);
+ // 1. the sender hashes fly out of the fan into the block
+ var s1=ease(clamp(p/0.28)),s2=ease(clamp((p-0.07)/0.28)),m=clamp((p-0.42)/0.2),em=ease(m);
+ var send1=t.cb?pad("COINBASE · NEWLY CREATED COINS\n",65):two(t.ins[0].h),mainY=cy-86+36*em;
+ var x1=-(w+40)*(1-s1);
+ h1.textContent=m>0?(m>=1?two(id):morph(send1,two(id),m)):send1;
+ place(h1,mainY,x1,Math.min(1,s1*3)*out,1);
+ var s2h=t.ins[1]?two(t.ins[1].h):"";
+ if(s2h){h2.textContent=s2h;place(h2,cy-40-(cy-40-mainY)*em,-(w+40)*(1-s2),Math.min(1,s2*3)*(1-clamp(em*1.3))*out,1)}else place(h2,cy,0,0,1);
+ var extra=t.nin-(t.cb?1:Math.min(2,t.ins.length));
+ if(extra>0&&!t.cb){more.textContent="+"+extra+" more sender"+(extra>1?"s":"");place(more,cy-2,0,clamp((p-0.2)/0.1)*(1-clamp((p-0.4)/0.08))*out,1)}else place(more,cy,0,0,1);
+ place(lblA,cy-112,0,clamp((p-0.08)/0.12)*(1-clamp((p-0.46)/0.08))*out,1);
+ place(lblB,cy-112,0,clamp((p-0.5)/0.1)*out,1);
+ // 2. resolved in the receiving transaction: its fee and size, then the outputs it creates
+ meta.textContent=t.nin+" in → "+t.nout+" out · "+(t.cb?"coinbase":t.r+" sat/vB")+" · "+t.vs+" vB";
+ place(meta,cy-6,0,clamp((p-0.64)/0.08)*out,1);
  for(var j=0;j<3;j++){var e=outs[j],x=t.outs[j];
-  if(!x){e.style.opacity=0;continue}
-  var a=0.64+0.07*j,s=clamp((p-a)/0.16),k=ease(s),idx=/^\+/.test(x[0])?x[0]:id.slice(0,12)+"…:"+j;
-  fill(e,[s<1&&!/^\+/.test(x[0])?resolve(idx,s):idx,x[1]?x[0]+" · "+x[1]:x[0]]);
-  e.style.opacity=Math.min(1,s*1.6)*(1-clamp((p-0.94)/0.06));e.style.transform="translateY("+(-26*(1-k)+0)+"px) scale("+(0.55+0.45*k)+")"}
+  if(!x){place(e,cy,0,0,1);continue}
+  var a=0.68+0.06*j,s=ease(clamp((p-a)/0.14));
+  e.textContent=(/^\+/.test(x[0])?x[0]:"#"+j+"  "+x[0]+(x[1]?" · "+x[1]:""));
+  place(e,cy+22+j*24+(1-s)*-14,0,s*out,1)}
 }
 function tick(now){var dt=now-last;last=now;if(playing){pos+=dt/DUR;if(pos>=N-0.001){pos=N-0.001;playing=false;btn.textContent="Replay"}render()}requestAnimationFrame(tick)}
 btn.onclick=function(){if(playing){playing=false;btn.textContent="Play";return}if(pos>=N-0.01)pos=0;playing=true;btn.textContent="Pause"};
@@ -1101,14 +1085,14 @@ FAN_SVG = ("<svg viewBox='0 0 100 100' aria-hidden=true><g class=frame><circle c
            + "".join("<path transform='rotate(" + str(a) + ")' d='M -4.5,-8.5 C -10,-17 -9,-27 -1.5,-35.5 Q 12,-34 17.5,-24.5 C 10,-22 6,-16 5,-9'></path>" for a in (0, 72, 144, 216, 288))
            + "<circle r=10.5 class=hub></circle><polygon class=hub-cut points='0,-5.6 5.3,-1.7 3.3,4.5 -3.3,4.5 -5.3,-1.7'></polygon></g></g></svg>")
 # the hashes.space fan on a small block of its own, in the faces and colours of the blocks; it spins while a transaction's hashes are on their way in
-FAN_HTML = ("<div class=fanblock><div class='cube mini'><div class='face front'><span class=fan id=anim-fan>" + FAN_SVG + "</span></div><div class='face top'></div><div class='face side'></div></div><small>hashing</small></div>")
+FAN_HTML = "<span class=fan id=anim-fan>" + FAN_SVG + "</span>"
 
 
 def cube_html(b, st, pool):
     """the block as the Find Mempool page draws it: the 3D block with its height, coin, fee rate and transaction count; the middle of its front face is where the transactions resolve"""
     coin = "<svg class=cube-coin viewBox='0 0 32 32'><circle cx=16 cy=16 r=16 fill='" + CFG["accent"] + "'/><text x=16 y=22.5 text-anchor=middle font-size=19 font-weight=700 fill='#fff'>₿</text></svg>"
     return ("<div class=block-wrap><div class='above height'><b>" + "{:,}".format(b["height"]) + "</b></div><div class=cube id=anim-cube><div class='face front' id=anim-front style='background:#2d3348'>" + coin + "<div class=txt>"
-            "<div class=mid id=anim-mid><span class=rlabel id=anim-rlabel>RECEIVING</span></div><span class=txs id=anim-ctx>0 transactions</span><span class=time>" + ago(b["time"]) + "</span></div><div class=flylayer id=anim-layer></div></div>"
+            "<div class=mid id=anim-mid></div><span class=txs id=anim-ctx>0 transactions</span><span class=time>" + ago(b["time"]) + "</span></div><div class=flylayer id=anim-layer></div></div>"
             "<div class='face top'></div><div class='face side'></div></div><div class=below>" + html.escape(pool) + "</div></div>")
 
 
@@ -1130,9 +1114,8 @@ def block_animation(b, h):
                 continue
             po = i.get("prevout") or {}
             who = short_addr(po.get("scriptPubKey", {}).get("address") or "")
-            ins.append([i["txid"][:8] + "…:" + str(i["vout"]), ("· " + btc(round(float(po["value"]) * 1e8))) if "value" in po else ""])
-        if len(t["vin"]) > 3:
-            ins[2] = ["+" + str(len(t["vin"]) - 2) + " more inputs", ""]
+            ins.append({"h": i["txid"], "n": i["vout"]})
+        ins = ins[:2]
         outs = [[short_addr(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")), btc(round(float(o["value"]) * 1e8))] for o in t["vout"][:3]]
         if len(t["vout"]) > 3:
             outs[2] = ["+" + str(len(t["vout"]) - 2) + " more outputs", ""]
