@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.2.0"
+version: "1.3.0"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -33,4 +33,4 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  New data from your node: the blocks of each pool, difficulty adjustment, recommended fees, halving countdown and network info (API and home page). A pruned block shows its header.
+  Per-block statistics (average fee, SegWit and Taproot share, total sent), block size and fee charts, a Forks page (stale blocks), a mempool transaction's projected block and whether it can be replaced, address balances (one background scan at a time, cached) and the unspent outputs of old transactions on a pruned node.

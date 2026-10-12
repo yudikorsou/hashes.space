@@ -19,6 +19,11 @@ Reads everything from the node's RPC, pruned or not, and serves:
   /api/v1/fees/recommended            fastest / half-hour / hour / economy / minimum fee rates, from your own mempool
   /api/v1/halving                     blocks and time to the next halving
   /api/v1/network                     the node: version, peers, mempool size and minimum fee, disk use, pruning
+  /api/v1/block/<hash|height>/stats   per-block statistics: fees, fee rates, SegWit and Taproot share, OP_RETURN, total sent
+  /api/v1/blocks/history              block size, fees and fee rates of the blocks the node keeps (the charts on the home page)
+  /api/v1/chain-tips                  chain forks and stale blocks (getchaintips); /forks is the page
+  /api/v1/tx/<txid>/projection        where a mempool transaction lands (block, ETA), its CPFP package and whether it can be replaced
+  /api/v1/address/<address>           balance and unspent outputs of one address (scantxoutset: slow, runs in the background, cached)
   /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
   /api/v1/status         what the explorer sees of the node (for when something does not show up)
 
@@ -63,6 +68,8 @@ def log(msg):
 
 # ---------- the node, the pool list, hashrate and pool statistics, the live blocks and the mempool blocks ----------
 
+HISTORY_BLOCKS = int(os.environ.get("HISTORY_BLOCKS", "288"))     # how many of the newest blocks the size and fee charts cover (two days)
+ADDRESS_SCAN = os.environ.get("ADDRESS_SCAN", "1") != "0"         # address balances (scantxoutset): one scan at a time, cached
 POOL_BLOCKS = int(os.environ.get("POOL_BLOCKS", "4320"))     # how far back the pool of each block is read: 30 days
 POOLS_URL = os.environ.get("POOLS_URL", "https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json")
 BTC_BLOCKS_PER_DAY = int(os.environ.get("BLOCKS_PER_DAY", "144"))        # both chains aim at ten minutes a block
@@ -210,6 +217,7 @@ class ChainStats:
         self.headers = {}                  # height -> (time, chainwork, hashes per block, difficulty)
         self.pool_of = {}                  # height -> pool name
         self.pool_rows = {}                # height -> the block as the pool view lists it
+        self.history = {}                  # height -> block size, fees and fee rates (getblockstats), for the charts
         self.miner_of = {}                 # height -> the miner the pool names in the coinbase ("" when it names none)
         self.tip, self.fine, self.coarse, self.now = None, [], [], (0, 0)
         self.ready, self.pruned_at, self.error = False, None, ""
@@ -388,6 +396,26 @@ class ChainStats:
                 "hashrates": [{"timestamp": t, "avgHashrate": v} for t, v in keep],
                 "difficulty": [{"time": t, "difficulty": d} for t, d in before + [x for x in ds if x[0] >= cut]]}
 
+    def refresh_history(self):
+        """block size, fees and fee rates of the newest HISTORY_BLOCKS blocks, newest first: a pruned node stops where its blocks end"""
+        tip = self.tip
+        for h in range(tip, max(1, tip - HISTORY_BLOCKS) - 1, -1):
+            if h in self.history:
+                continue
+            try:
+                st = self.rpc.call("getblockstats", h, ["time", "txs", "total_size", "total_weight", "totalfee", "feerate_percentiles", "swtxs", "total_out"], timeout=120)
+            except Exception:  # noqa: BLE001
+                break
+            self.history[h] = {"height": h, "timestamp": st["time"], "txs": st["txs"], "size": st["total_size"], "weight": st["total_weight"],
+                               "totalFees": st["totalfee"], "medianFeeRate": (st.get("feerate_percentiles") or [0, 0, 0])[2], "swShare": round(st["swtxs"] / st["txs"], 4) if st["txs"] else 0,
+                               "totalOut": st["total_out"]}
+        for h in [h for h in self.history if h < tip - HISTORY_BLOCKS]:
+            del self.history[h]
+
+    def history_rows(self):
+        with self.lock:
+            return [self.history[h] for h in sorted(self.history)]
+
     def pool_blocks(self, slug, limit=40):
         """The latest blocks of one pool, in mempool.space's format (id, height, timestamp, tx_count, size)."""
         with self.lock:
@@ -501,6 +529,132 @@ def network():
                       "pruneHeight": ci.get("pruneheight"), "verificationProgress": ci.get("verificationprogress")}}
 
 
+def block_statistics(ident):
+    """Statistics of one block: fees and fee rates (the node's undo data), SegWit and Taproot share, OP_RETURN, total sent."""
+    h = NODE.call("getblockhash", int(ident)) if str(ident).isdigit() else ident
+    if not HEX64.fullmatch(h):
+        raise ValueError("not a block")
+    st = NODE.call("getblockstats", h, timeout=120)
+    out = {"hash": h, "height": st["height"], "timestamp": st["time"], "txs": st["txs"], "totalFees": st["totalfee"], "avgFee": st["avgfee"], "medianFee": st["medianfee"],
+           "minFee": st["minfee"], "maxFee": st["maxfee"], "avgFeeRate": st["avgfeerate"], "minFeeRate": st["minfeerate"], "maxFeeRate": st["maxfeerate"],
+           "feeRatePercentiles": st.get("feerate_percentiles"), "size": st["total_size"], "weight": st["total_weight"], "avgTxSize": st["avgtxsize"],
+           "segwitTxs": st["swtxs"], "segwitShare": round(st["swtxs"] / st["txs"], 4) if st["txs"] else 0, "inputs": st["ins"], "outputs": st["outs"],
+           "totalOut": st["total_out"], "subsidy": st["subsidy"], "utxoIncrease": st["utxo_increase"], "utxoSizeIncrease": st["utxo_size_inc"]}
+    b = NODE.call("getblock", h, 2, timeout=120)       # the outputs' types: Taproot and OP_RETURN
+    tap = opret = 0
+    for t in b["tx"][1:]:
+        types = [o.get("scriptPubKey", {}).get("type") for o in t["vout"]]
+        tap += "witness_v1_taproot" in types
+        opret += types.count("nulldata")
+    n = max(1, len(b["tx"]) - 1)
+    out.update({"taprootTxs": tap, "taprootShare": round(tap / n, 4), "opReturnOutputs": opret})
+    return out
+
+
+def chain_tips():
+    """Every chain the node knows: the active one and the forks (stale blocks) next to it."""
+    tips = NODE.call("getchaintips")
+    out = []
+    for t in sorted(tips, key=lambda x: -x["height"]):
+        try:
+            hd = NODE.call("getblockheader", t["hash"])
+            when = hd.get("time")
+        except Exception:  # noqa: BLE001
+            when = None
+        out.append({"height": t["height"], "hash": t["hash"], "branchLength": t["branchlen"], "status": t["status"], "timestamp": when,
+                    "stale": t["status"] != "active" and t["branchlen"] > 0})
+    return out
+
+
+def tx_projection(txid):
+    """Where a mempool transaction lands: the block of the projected blocks it fits in, its CPFP package, and whether it can be replaced."""
+    e = NODE.call("getmempoolentry", txid)
+    v = e.get("vsize") or e.get("size") or 1
+    f = e.get("fees", {})
+    base = float(f.get("base", e.get("fee", 0))) * 1e8
+    own = base / v
+    anc = float(f.get("ancestor", 0)) * 1e8 / max(1, e.get("ancestorsize", v))
+    desc = float(f.get("descendant", 0)) * 1e8 / max(1, e.get("descendantsize", v))
+    rate = max(own, anc, desc)                  # what a miner sees: the best of its own rate and its packages' rates
+    with STATE_LOCK:
+        mb = STATE["mempool"]
+    slot = None
+    for i, b in enumerate(mb):
+        if rate >= b["feeRange"][0]:
+            slot = i
+            break
+    mi = NODE.call("getmempoolinfo")
+    signals = None
+    try:
+        raw = NODE.call("getrawtransaction", txid, True)
+        signals = any(int(i.get("sequence", 0xffffffff)) < 0xfffffffe for i in raw["vin"])
+    except Exception:  # noqa: BLE001
+        pass
+    return {"txid": txid, "vsize": v, "fee": round(base), "feeRate": round(own, 2), "effectiveFeeRate": round(rate, 2),
+            "ancestors": e.get("ancestorcount", 1) - 1, "descendants": e.get("descendantcount", 1) - 1,
+            "ancestorFeeRate": round(anc, 2), "descendantFeeRate": round(desc, 2),
+            "projectedBlock": slot, "etaMinutes": None if slot is None else (slot + 1) * 10,
+            "minFeeOfNextBlock": mb[0]["feeRange"][0] if mb else None, "minFeeOfLastProjected": mb[-1]["feeRange"][0] if mb else None,
+            "signalsRbf": signals, "nodeReplacesWithoutSignal": bool(mi.get("fullrbf")), "replaceable": bool(signals) or bool(mi.get("fullrbf")),
+            "bip125Replaceable": e.get("bip125-replaceable"), "age": int(time.time() - e.get("time", time.time()))}
+
+
+ADDR_RE = re.compile(r"[A-Za-z0-9]{14,90}")
+ADDR = {}                                   # address -> {"state": scanning|done|error, "result"|"error", "at"}
+ADDR_LOCK = threading.Lock()                # one scan at a time: it reads the whole UTXO set
+SCAN_RPC = None
+
+
+def address_scan(addr):
+    """Start (or read) the balance scan of one address. scantxoutset reads the whole UTXO set, so it runs in the background."""
+    if not ADDRESS_SCAN:
+        raise ValueError("address balances are switched off on this explorer")
+    if not ADDR_RE.fullmatch(addr) or not NODE.call("validateaddress", addr).get("isvalid"):
+        raise ValueError("not a valid address")
+    hit = ADDR.get(addr)
+    if hit and hit["state"] == "done" and time.time() - hit["at"] < 600:
+        return hit
+    if hit and hit["state"] == "scanning":
+        return hit
+    if not ADDR_LOCK.acquire(blocking=False):
+        return {"state": "busy", "at": time.time()}
+    ADDR[addr] = {"state": "scanning", "at": time.time()}
+
+    def run():
+        global SCAN_RPC
+        try:
+            if SCAN_RPC is None:        # its own connection: the scan must not hold up the explorer's other calls
+                SCAN_RPC = BtcRpc(NODE.host, NODE.port, os.environ["RPC_USER"], os.environ["RPC_PASS"])
+            r = SCAN_RPC.call("scantxoutset", "start", ["addr(" + addr + ")"], timeout=900)
+            ADDR[addr] = {"state": "done", "at": time.time(), "result": {"address": addr, "balance": round(float(r.get("total_amount", 0)) * 1e8),
+                          "unspents": [{"txid": u["txid"], "vout": u["vout"], "value": round(float(u["amount"]) * 1e8), "height": u.get("height")} for u in r.get("unspents", [])][:200],
+                          "unspentCount": len(r.get("unspents", [])), "scannedAtHeight": r.get("height")}}
+        except Exception as exc:  # noqa: BLE001
+            ADDR[addr] = {"state": "error", "at": time.time(), "error": str(exc)}
+        finally:
+            ADDR_LOCK.release()
+            for k in [k for k, v in ADDR.items() if time.time() - v["at"] > 3600]:
+                ADDR.pop(k, None)
+    threading.Thread(target=run, daemon=True).start()
+    return ADDR[addr]
+
+
+def spent_or_pruned_tx(txid):
+    """A pruned node cannot read a transaction that left its blocks, but the UTXO set still knows the unspent outputs of recent
+    and unspent transactions: find those (gettxout), and say what the node can tell about the rest."""
+    found = []
+    for n in range(0, 24):
+        try:
+            o = NODE.call("gettxout", txid, n, True)
+        except Exception:  # noqa: BLE001
+            break
+        if o:
+            found.append((n, o))
+        elif n >= 4 and not found:
+            break
+    return found
+
+
 def check_node():
     """Refuse a node of the other chain: the Bitcoin Explorer reads the regular Bitcoin chain (the Bitcoin Node app, or Libre Relay,
     a Bitcoin Core fork), the BLAKE2b Explorer the Bitcoin Knots app. Umbrel lets you choose the Bitcoin app per app, so a wrong choice would otherwise show
@@ -524,6 +678,7 @@ def stats_worker():
             check_node()
             STATS.refresh_hashrate()
             STATS.refresh_pools()
+            STATS.refresh_history()
             log("mining statistics ready (tip " + str(STATS.tip) + ")")
         except Exception as exc:  # noqa: BLE001
             STATS.error = str(exc)
@@ -634,6 +789,7 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 10px
 td.r,th.r{text-align:right}.mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}.muted{color:var(--muted)}.wrap{white-space:normal;word-break:break-all}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.stat b{display:block;font:600 20px/1.2 ui-monospace,Menlo,monospace}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}.chart svg{width:100%;height:auto;color:var(--muted)}.chart h2{margin:0 0 4px}
 .err{color:#ff6b6b}.ok{color:#3ce26b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 """.replace("ACCENT", CFG["accent"])
 
@@ -642,7 +798,7 @@ def page(title, body):
     return ("<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
             "<title>" + html.escape(title) + " · " + NAME + " explorer</title><style>" + CSS + "</style></head><body>"
             "<header><a class=brand href='/'>" + html.escape(NAME) + " <span>explorer</span></a>"
-            "<form action='/search'><input name=q placeholder='Block height, block hash or transaction id' aria-label=Search>"
+            "<a href='/forks' class=muted>Forks</a><form action='/search'><input name=q placeholder='Block height, block hash, transaction id or address' aria-label=Search>"
             "<button>Search</button></form></header><main>" + body + "</main>"
             "<footer>Read from your own " + ("Bitcoin Knots" if CHAIN == "blake2b" else "Bitcoin") + " node · hashes.space</footer></body></html>")
 
@@ -654,6 +810,84 @@ def btc(sats):
 def ago(t):
     s = max(0, int(time.time() - t))
     return str(s) + "s ago" if s < 60 else str(s // 60) + "m ago" if s < 3600 else str(s // 3600) + "h ago" if s < 86400 else str(s // 86400) + "d ago"
+
+
+def svg_chart(rows, key, title, unit, fmt, color):
+    """a small server-side line chart of one value per block (oldest left)"""
+    vals = [r_[key] for r_ in rows]
+    if len(vals) < 2:
+        return ""
+    w, h, pad = 520, 150, 34
+    lo, hi = min(vals), max(vals)
+    span = (hi - lo) or 1
+    pts = " ".join("{:.1f},{:.1f}".format(pad + i * (w - pad - 8) / (len(vals) - 1), 10 + (h - 30) * (1 - (v - lo) / span)) for i, v in enumerate(vals))
+    return ("<div class=chart><h2>" + html.escape(title) + "</h2><svg viewBox='0 0 " + str(w) + " " + str(h) + "' role=img aria-label='" + html.escape(title) + "'>"
+            "<polyline fill=none stroke='" + color + "' stroke-width=1.6 points='" + pts + "'/>"
+            "<text x=2 y=16 fill=currentColor font-size=10>" + fmt(hi) + "</text><text x=2 y=" + str(h - 22) + " fill=currentColor font-size=10>" + fmt(lo) + "</text>"
+            "<text x=" + str(pad) + " y=" + str(h - 6) + " fill=currentColor font-size=10>" + "{:,}".format(rows[0]["height"]) + "</text>"
+            "<text x=" + str(w - 8) + " y=" + str(h - 6) + " text-anchor=end fill=currentColor font-size=10>" + "{:,}".format(rows[-1]["height"]) + " · " + unit + "</text></svg></div>")
+
+
+def charts():
+    rows = STATS.history_rows()
+    if len(rows) < 2:
+        return "<section class=card><h2>Charts</h2><p class=muted>The size and fee charts fill in as the node's statistics are read (a few minutes after start).</p></section>"
+    return ("<section class=card><h2>The last " + str(len(rows)) + " blocks the node keeps</h2><div class=charts>"
+            + svg_chart(rows, "size", "Block size", "MB", lambda v: "{:.2f}".format(v / 1e6), "#f7931a")
+            + svg_chart(rows, "medianFeeRate", "Median fee rate", "sat/vB", lambda v: "{:g}".format(round(v, 1)), "#3ce26b")
+            + svg_chart(rows, "totalFees", "Fees per block", COIN, lambda v: "{:.3f}".format(v / 1e8), "#5aa9ff")
+            + svg_chart(rows, "txs", "Transactions per block", "txs", lambda v: "{:,}".format(v), "#c78bff") + "</div></section>")
+
+
+def forks_page():
+    rows = ""
+    for t in chain_tips():
+        rows += ("<tr><td class=r>" + "{:,}".format(t["height"]) + "</td><td class=mono><a href='/block/" + t["hash"] + "'>" + t["hash"][:20] + "…</a></td><td>" + html.escape(t["status"])
+                 + "</td><td class=r>" + str(t["branchLength"]) + "</td><td class=muted>" + (ago(t["timestamp"]) if t["timestamp"] else "") + "</td></tr>")
+    return page("Forks", "<h1>Chain forks and stale blocks</h1><section class=card><table><tr><th class=r>Tip height</th><th>Tip hash</th><th>Status</th><th class=r>Branch length</th><th>Mined</th></tr>"
+                + rows + "</table></section><section class=card><p class=muted>The node lists every chain tip it has seen. <b>active</b> is the chain it follows; the others are blocks that were mined but lost the race "
+                "(<b>valid-fork</b>, <b>valid-headers</b>, <b>headers-only</b>) or were rejected (<b>invalid</b>). A branch length of 1 is a single stale block.</p></section>")
+
+
+def address_page(addr):
+    st = address_scan(addr)
+    if st["state"] == "done":
+        r_ = st["result"]
+        rows = "".join("<tr><td class='mono wrap'><a href='/tx/" + u["txid"] + "'>" + u["txid"][:20] + "…</a>:" + str(u["vout"]) + "</td><td class=r>" + (("{:,}".format(u["height"])) if u["height"] else "") + "</td><td class=r>" + btc(u["value"]) + "</td></tr>" for u in r_["unspents"])
+        return page("Address", "<h1>Address</h1><section class=card><dl><dt>Address</dt><dd class=mono>" + html.escape(addr) + "</dd><dt>Balance</dt><dd><b>" + btc(r_["balance"]) + "</b></dd><dt>Unspent outputs</dt><dd>"
+                    + "{:,}".format(r_["unspentCount"]) + "</dd><dt>Scanned at block</dt><dd>" + "{:,}".format(r_["scannedAtHeight"] or 0) + "</dd></dl></section>"
+                    "<section class=card><h2>Unspent outputs</h2><table><tr><th>Output</th><th class=r>Block</th><th class=r>Value</th></tr>" + rows + "</table></section>"
+                    "<section class=card><p class=muted>Read from the node's UTXO set. It shows what the address holds now, not its history: a node keeps no address index.</p></section>")
+    if st["state"] == "error":
+        return page("Address", "<h1>Address</h1><section class='card err'>" + html.escape(st["error"]) + "</section>")
+    wait = ("The node is scanning another address; this page tries again by itself." if st["state"] == "busy" else "The node is reading its whole UTXO set for this address. This takes a few minutes; the result is kept for 10 minutes.")
+    return page("Address", "<meta http-equiv=refresh content=10><h1>Address</h1><section class=card><p class=mono>" + html.escape(addr) + "</p><p>" + wait + "</p></section>")
+
+
+def tx_extras(txid):
+    """mempool projection (block, ETA, CPFP, replaceability) as table rows; none for a confirmed transaction"""
+    try:
+        pr = tx_projection(txid)
+    except Exception:  # noqa: BLE001
+        return []
+    where = ("Block " + str(pr["projectedBlock"] + 1) + " of the projection · about " + str(pr["etaMinutes"]) + " min") if pr["projectedBlock"] is not None else \
+        "Not in the first " + str(len(STATE["mempool"])) + " blocks; needs more than " + "{:g}".format(pr["minFeeOfLastProjected"] or 0) + " sat/vB"
+    rbf = "Yes: signals replaceability (BIP125)" if pr["signalsRbf"] else ("Yes: this node replaces without signalling (full RBF)" if pr["nodeReplacesWithoutSignal"] else "No: does not signal replaceability")
+    rows = [("Projected", where), ("Effective fee rate", "{:g}".format(pr["effectiveFeeRate"]) + " sat/vB" + (" (the package it belongs to pays more)" if pr["effectiveFeeRate"] > pr["feeRate"] else "")),
+            ("Unconfirmed parents / children", str(pr["ancestors"]) + " / " + str(pr["descendants"])), ("Can be replaced", rbf), ("In the mempool for", ago(time.time() - pr["age"]).replace(" ago", ""))]
+    return rows
+
+
+def old_tx_page(txid):
+    found = spent_or_pruned_tx(txid)
+    if not found:
+        raise ValueError("Transaction not found. This node is pruned: it knows transactions in its mempool, in the blocks it still keeps, and any with an unspent output; "
+                         "a transaction whose outputs are all spent and whose block is pruned cannot be read. Open it from its block, or use a full-node explorer.")
+    rows = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")) + "</td><td class=r>"
+                   + btc(round(float(o["value"]) * 1e8)) + "</td><td class=r>" + "{:,}".format(o.get("confirmations", 0)) + "</td></tr>" for n, o in found)
+    return page("Transaction", "<h1>Transaction</h1><section class=card><dl><dt>Txid</dt><dd class=mono>" + txid + "</dd></dl></section><section class=card><h2>Unspent outputs</h2><table>"
+                "<tr><th>#</th><th>Address</th><th class=r>Value</th><th class=r>Confirmations</th></tr>" + rows + "</table></section><section class=card><p class=muted>This node is pruned and no longer has the "
+                "block of this transaction, so only its outputs that are still unspent are shown (from the UTXO set). Its inputs and fee are not available.</p></section>")
 
 
 def home():
@@ -687,7 +921,21 @@ def home():
                 + "".join("<div class='card stat'><span class=muted>" + k + "</span><b>" + v + "</b></div>" for k, v in stats)
                 + "</div><section class=card><h2>Latest blocks</h2><table><tr><th>Height</th><th>Mined</th><th>Pool</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Median fee</th><th class=r>Fees</th></tr>"
                 + rows + "</table></section><section class=card><h2>Mempool, in blocks of 1 MvB</h2><table><tr><th>Block</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Median fee</th></tr>"
-                + prow + "</table></section>")
+                + prow + "</table></section>" + charts())
+
+
+def block_stats_card(h):
+    try:
+        st = block_statistics(h)
+    except Exception:  # noqa: BLE001
+        return ""
+    p = st.get("feeRatePercentiles") or []
+    items = [("Average fee", btc(st["avgFee"]) + " (" + "{:.1f}".format(st["avgFeeRate"]) + " sat/vB)"), ("Median fee", btc(st["medianFee"])),
+             ("Fee rate range", "{:g} – {:g} sat/vB".format(st["minFeeRate"], st["maxFeeRate"])) if p else ("Fee rate range", "-"),
+             ("SegWit transactions", "{:.1f}%".format(st["segwitShare"] * 100)), ("Taproot transactions", "{:.1f}%".format(st["taprootShare"] * 100)),
+             ("Total sent", btc(st["totalOut"])), ("Inputs / outputs", "{:,} / {:,}".format(st["inputs"], st["outputs"])), ("OP_RETURN outputs", "{:,}".format(st["opReturnOutputs"])),
+             ("Average transaction", "{:,} bytes".format(st["avgTxSize"])), ("UTXO set change", "{:+,}".format(st["utxoIncrease"]) + " outputs")]
+    return "<section class=card><h2>Block statistics</h2><div class=stats>" + "".join("<div class='stat'><span class=muted>" + k + "</span><b style='font-size:15px'>" + v + "</b></div>" for k, v in items) + "</div></section>"
 
 
 def block_page(ident):
@@ -725,7 +973,7 @@ def block_page(ident):
                     ("Pool", html.escape(pool)), ("Transactions", "{:,}".format(len(txs))), ("Size", "{:,} bytes · {:,} weight units".format(b["size"], b["weight"])),
                     ("Fees", btc(fees)), ("Reward", btc(fees + (SUBSIDY0 >> (b["height"] // 210000)))),
                     ("Difficulty", "{:,.0f}".format(b.get("difficulty", 0))), ("Confirmations", "{:,}".format(b.get("confirmations", 0)))])
-                + "</dl></section><section class=card><h2>Transactions</h2><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
+                + "</dl></section>" + block_stats_card(h) + "<section class=card><h2>Transactions</h2><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
                 + rows + "</table>" + more + "</section>")
 
 
@@ -736,8 +984,7 @@ def tx_page(txid, block_hash):
         try:
             tx = NODE.call("getrawtransaction", txid, True, *([block_hash] if block_hash else []))
         except RuntimeError:
-            raise ValueError("Transaction not found. A node finds a transaction that is in its mempool or in a block it still keeps; "
-                             "open it from its block, or run the node with -txindex=1 (not possible on a pruned node).")
+            return old_tx_page(txid)
     ins = "".join("<tr><td class='mono wrap'>" + ("coinbase" if "coinbase" in i else "<a href='/tx/" + i["txid"] + "'>" + i["txid"][:16] + "…</a>:" + str(i["vout"])) + "</td></tr>" for i in tx["vin"])
     outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")) + "</td><td class=r>"
                    + btc(round(float(o["value"]) * 1e8)) + "</td></tr>" for n, o in enumerate(tx["vout"]))
@@ -747,6 +994,8 @@ def tx_page(txid, block_hash):
             ("Size", "{:,} bytes · {:,} vB".format(tx["size"], tx["vsize"])), ("Total out", btc(round(sum(float(o["value"]) for o in tx["vout"]) * 1e8)))]
     if "fee" in tx:
         rows.append(("Fee", btc(round(float(tx["fee"]) * 1e8)) + " (" + "{:.1f}".format(float(tx["fee"]) * 1e8 / tx["vsize"]) + " sat/vB)"))
+    if not bh:
+        rows += tx_extras(txid)
     return page("Transaction", "<h1>Transaction</h1><section class=card><dl>" + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in rows)
                 + "</dl></section><section class=card><h2>Inputs</h2><table>" + ins + "</table></section><section class=card><h2>Outputs</h2><table><tr><th>#</th><th>Address</th><th class=r>Value</th></tr>"
                 + outs + "</table></section>")
@@ -787,6 +1036,25 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/api/v1/mining/pool/([a-z0-9-]+)/blocks", path)
             if m:
                 return self.json(STATS.pool_blocks(m.group(1)), 60)
+            m = re.fullmatch(r"/api/v1/block/([0-9]+|[0-9a-fA-F]{64})/stats", path)
+            if m:
+                return self.json(block_statistics(m.group(1)), 60)
+            if path == "/api/v1/blocks/history":
+                return self.json(STATS.history_rows(), 60)
+            if path == "/api/v1/chain-tips":
+                return self.json(chain_tips(), 30)
+            m = re.fullmatch(r"/api/v1/tx/([0-9a-fA-F]{64})/projection", path)
+            if m:
+                return self.json(tx_projection(m.group(1).lower()), 5)
+            m = re.fullmatch(r"/api/v1/address/([A-Za-z0-9]{14,90})", path)
+            if m:
+                st = address_scan(m.group(1))
+                return self.json(st["result"] if st["state"] == "done" else {"state": st["state"], "error": st.get("error")}, 0)
+            if path == "/forks":
+                return self.send(200, forks_page())
+            m = re.fullmatch(r"/address/([A-Za-z0-9]{14,90})", path)
+            if m:
+                return self.send(200, address_page(m.group(1)))
             if path == "/api/v1/difficulty-adjustment":
                 return self.json(difficulty_adjustment(), 30)
             if path == "/api/v1/fees/recommended":
@@ -823,7 +1091,9 @@ class Handler(BaseHTTPRequestHandler):
                         return self.redirect("/block/" + q)
                     except RuntimeError:
                         return self.redirect("/tx/" + q.lower())
-                return self.send(404, page("Not found", "<h1>Nothing found</h1><p>Search for a block height, a block hash or a transaction id.</p>"))
+                if ADDR_RE.fullmatch(q):
+                    return self.redirect("/address/" + q)
+                return self.send(404, page("Not found", "<h1>Nothing found</h1><p>Search for a block height, a block hash, a transaction id or an address.</p>"))
             return self.send(404, page("Not found", "<h1>Not found</h1>"))
         except (RuntimeError, ValueError, OSError, KeyError, IndexError) as exc:
             if path.startswith("/api/"):
