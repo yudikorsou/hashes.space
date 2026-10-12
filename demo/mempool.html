@@ -62,9 +62,9 @@
   @keyframes found { 0%, 100% { box-shadow: 0 0 0 0 rgba(27,216,244,0); } 40% { box-shadow: 0 0 0 7px rgba(27,216,244,.55); } }
   /* the line between the blocks still to be mined and the mined ones is a 3D fan, spinning: the blocks pass through it to the other side.
      Three layers give it depth (frame, spinning rotor, frame) and the whole is turned about the vertical axis, as the blocks' own top and side faces are. */
-  .gate { --fh: calc(var(--s) * 1.2); position: relative; z-index: 0; align-self: stretch; display: grid; place-items: center; width: calc(var(--fh) * .5); perspective: 1200px; pointer-events: none; }
-  .strip .half.mined { position: relative; z-index: 2; }   /* the mined blocks, and the bits that fly into a new one, are drawn over the fan, never behind it */
-  .gate .fan3d { position: relative; width: var(--fh); height: var(--fh); transform-style: preserve-3d; transform: translateX(-6%) rotateY(-62deg); filter: drop-shadow(0 0 12px rgba(255,255,255,.28)); }
+  .gate { --fh: calc(var(--s) * 1.2); position: relative; z-index: 3; align-self: stretch; display: grid; place-items: center; width: calc(var(--fh) * .66); perspective: 1200px; pointer-events: none; }
+  .strip .half.mined { position: relative; z-index: 1; }   /* the fan is drawn over the mined blocks, so a block never covers it; the bits of a new block are seen through its open blades */
+  .gate .fan3d { position: relative; width: var(--fh); height: var(--fh); transform-style: preserve-3d; transform: rotateY(-62deg); filter: drop-shadow(0 0 12px rgba(255,255,255,.28)); }
   .gate .fan { position: absolute; inset: 0; width: 100%; height: 100%; --fan-color: rgba(255,255,255,.9); }
   .gate .fan .hub-cut { fill: var(--bg); }
   .gate .fan .rotor path { stroke-width: 2.6; }
