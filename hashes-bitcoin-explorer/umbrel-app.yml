@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.12.0"
+version: "1.13.0"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -33,4 +33,4 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  Block animation: a large transparent fan as big as the block. The sender's transaction hash flies out of the fan into the block and resolves, character by character, into the receiving transaction's hash and its outputs.
+  Block animation: no pause button (it plays on its own and loops), and the headline names the block: Every transaction going into block <number>.

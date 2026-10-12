@@ -1017,8 +1017,7 @@ ANIM_MAX = 2500           # transactions of a block that the animation holds
 ANIM_JS = r"""(function(){
 var D=__DATA__, T=D.txs, N=T.length, DUR=8000, HEX="0123456789abcdef";
 var $=function(i){return document.getElementById(i)};
-var fan=$("anim-fan"),cube=$("anim-cube"),front=$("anim-front"),layer=$("anim-layer"),cTx=$("anim-ctx"),btn=$("anim-play"),rng=$("anim-seek"),lab=$("anim-label"),lnk=$("anim-link");
-var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
+var fan=$("anim-fan"),cube=$("anim-cube"),front=$("anim-front"),layer=$("anim-layer"),cTx=$("anim-ctx"),rng=$("anim-seek"),lab=$("anim-label"),lnk=$("anim-link");
 function clamp(x){return x<0?0:x>1?1:x}function ease(t){return t*t*(3-2*t)}
 var cum=[],acc=0;for(var i=0;i<N;i++){acc+=T[i].vs;cum.push(acc)}
 function el(cls,parent,txt){var e=document.createElement("div");e.className=cls;if(txt)e.textContent=txt;parent.appendChild(e);return e}
@@ -1065,13 +1064,12 @@ function render(){
   e.textContent=(/^\+/.test(x[0])?x[0]:"#"+j+"  "+x[0]+(x[1]?" · "+x[1]:""));
   place(e,cy+22+j*24+(1-s)*-14,0,s*out,1)}
 }
-function tick(now){var dt=now-last;last=now;if(playing){pos+=dt/DUR;if(pos>=N-0.001){pos=N-0.001;playing=false;btn.textContent="Replay"}render()}requestAnimationFrame(tick)}
-btn.onclick=function(){if(playing){playing=false;btn.textContent="Play";return}if(pos>=N-0.01)pos=0;playing=true;btn.textContent="Pause"};
+function tick(now){var dt=now-last;last=now;if(playing){pos+=dt/DUR;if(pos>=N-0.001)pos=0;render()}requestAnimationFrame(tick)}
 rng.max=N-1;rng.oninput=function(){pos=+rng.value;render()};
 window.addEventListener("resize",function(){geo=null;render()});
 render();requestAnimationFrame(function(n){last=n;tick(n)});
-if(!reduce){var started=false,go=function(){if(!started){started=true;playing=true;btn.textContent="Pause"}};
- if("IntersectionObserver" in window){new IntersectionObserver(function(es){if(es[0].isIntersecting)go()},{threshold:0.5}).observe(cube)}else go()}
+var started=false,go=function(){if(!started){started=true;playing=true}};
+if("IntersectionObserver" in window){new IntersectionObserver(function(es){if(es[0].isIntersecting)go()},{threshold:0.5}).observe(cube)}else go();
 })();
 """
 
@@ -1123,7 +1121,7 @@ def block_animation(b, h):
         data.append({"id": t["txid"], "idf": t["txid"], "cb": cb, "nin": len(t["vin"]), "nout": len(t["vout"]), "vs": t.get("vsize", 0), "r": rate, "ins": ins, "outs": outs})
     blob = json.dumps({"height": "{:,}".format(b["height"]), "hash": h, "total": len(txs), "size": b["size"], "full": min(100.0, b["weight"] / 40000.0),
                            "totalVs": sum(t.get("vsize", 0) for t in txs), "txs": data}, separators=(",", ":")).replace("</", "<\\/")
-    return ("<section class=card><h2>Every transaction going into the block</h2><div class=animbar><button id=anim-play type=button>Pause</button>"
+    return ("<section class=card><h2>Every transaction going into block " + "{:,}".format(b["height"]) + "</h2><div class=animbar>"
             "<input id=anim-seek type=range min=0 value=0 aria-label='Transaction'><span id=anim-label class=muted></span><a id=anim-link class=mono href='#'></a></div>"
             "<div class=animwrap id=anim-wrap>" + FAN_HTML + cube_html(b, st, pool) + "</div>"
             "<p class=muted>Each transaction in turn: the coins it spends (sending) travel into the block, then the outputs it creates (receiving) resolve in the middle of it, and the block fills.</p>"
