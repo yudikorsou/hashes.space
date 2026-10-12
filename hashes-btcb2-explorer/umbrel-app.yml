@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.0.3"
+version: "1.0.4"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
