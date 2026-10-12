@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.8.0"
+version: "1.9.0"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
@@ -36,4 +36,4 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  Block animation: no boxes around the hashes, larger readable text on the block, spent coins glide in one line each, the TXID packet dives in and the outputs emerge from the middle of the block.
+  Block animation: the fee rate lines are removed from the block, so only the hashes move in it.

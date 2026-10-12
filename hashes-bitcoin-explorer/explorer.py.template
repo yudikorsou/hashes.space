@@ -802,7 +802,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{c
 .cube{position:relative;width:var(--s);height:var(--s);margin:var(--d) 0 0 var(--d)}.face{position:absolute}.front{inset:0}
 .top{left:0;top:calc(var(--d) * -1);width:var(--s);height:var(--d);transform-origin:bottom left;transform:skewX(45deg);background:#232838}.side{left:calc(var(--d) * -1);top:0;width:var(--d);height:var(--s);transform-origin:top right;transform:skewY(45deg);background:#191c27}
 .cube-coin{position:absolute;top:6px;left:6px;width:18px;height:18px;z-index:1;filter:drop-shadow(0 1px 2px rgba(0,0,0,.45))}
-.txt{height:100%;display:grid;grid-template-rows:auto auto 1fr auto auto;justify-items:center;align-items:center;padding:30px 8px 12px;font:400 14px/1.25 system-ui,sans-serif;color:#fff;text-align:center}
+.txt{height:100%;display:grid;grid-template-rows:1fr auto auto;justify-items:center;align-items:center;padding:30px 8px 12px;font:400 14px/1.25 system-ui,sans-serif;color:#fff;text-align:center}
 .txt .fee{font-weight:600;font-size:17px}.txt .range{color:rgba(255,255,255,.8);font-size:13px}.txt .txs,.txt .time{font-size:13px}
 .mid{position:relative;width:100%;height:100%;display:grid;align-content:center;gap:5px;justify-items:center}.rlabel{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:rgba(255,255,255,.75);opacity:0}
 .achip{display:flex;gap:9px;align-items:baseline;text-align:left;white-space:nowrap;opacity:0;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 10px rgba(0,0,0,.55)}
@@ -1095,7 +1095,6 @@ def cube_html(b, st, pool):
     """the block as the Find Mempool page draws it: the 3D block with its height, coin, fee rate and transaction count; the middle of its front face is where the transactions resolve"""
     coin = "<svg class=cube-coin viewBox='0 0 32 32'><circle cx=16 cy=16 r=16 fill='" + CFG["accent"] + "'/><text x=16 y=22.5 text-anchor=middle font-size=19 font-weight=700 fill='#fff'>₿</text></svg>"
     return ("<div class=block-wrap><div class='above height'><b>" + "{:,}".format(b["height"]) + "</b></div><div class=cube id=anim-cube><div class='face front' id=anim-front style='background:#2d3348'>" + coin + "<div class=txt>"
-            "<span class=fee id=anim-fee>~" + "{:g}".format(st["med"]) + " sat/vB</span><span class=range>" + "{:g}".format(st["lo"]) + " - " + "{:g}".format(st["hi"]) + " sat/vB</span>"
             "<div class=mid id=anim-mid><span class=rlabel id=anim-rlabel>RECEIVING</span></div><span class=txs id=anim-ctx>0 transactions</span><span class=time>" + ago(b["time"]) + "</span></div></div>"
             "<div class='face top'></div><div class='face side'></div></div><div class=below>" + html.escape(pool) + "</div></div>")
 
