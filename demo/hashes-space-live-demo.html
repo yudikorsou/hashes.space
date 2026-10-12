@@ -1814,8 +1814,9 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   //   <- {blocks:[…]}, {block:{…}}, {"mempool-blocks":[…]}
   // Works when this file is opened in a normal browser tab; inside a sandboxed
   // preview the connection is blocked and the chain stays simulated.
-  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and mempool.space when that does not answer
-  const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: ['wss://btc.hashes.space/api/v1/ws', 'wss://mempool.space/api/v1/ws'], scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: 'wss://mempool.guide/api/v1/ws' };
+  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and mempool.space when that does not answer;
+  // Bitcoin BLAKE2b: the Bitcoin BLAKE2b Explorer app on your Bitcoin Knots node (btcb2.hashes.space), and mempool.guide when that does not answer
+  const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: ['wss://btc.hashes.space/api/v1/ws', 'wss://mempool.space/api/v1/ws'], scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: ['wss://btcb2.hashes.space/api/v1/ws', 'wss://mempool.guide/api/v1/ws'] };
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
   const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://mempool.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmr.hashes.space/block/' };
   const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,

@@ -1,0 +1,37 @@
+manifestVersion: 1
+id: hashes-btcb2-explorer
+category: crypto
+name: Bitcoin BLAKE2b Explorer
+version: "1.0.0"
+tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
+icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
+description: >-
+  A light block explorer for the Bitcoin BLAKE2b chain (BTCB2) that reads blocks, fees, mining pools and the
+  mempool straight from the Bitcoin Knots app on your Umbrel: no third party sees what you look up. A pruned
+  node is enough for the newest blocks, which is what a live view needs. Search by block height, block hash
+  or transaction id.
+
+
+  It also offers mempool.space's API and WebSocket (/api/v1/blocks, /api/v1/fees/mempool-blocks,
+  /api/v1/ws) and the global hashrate and mining pool statistics, worked out from your node, so the
+  hashes.space Find Mempool page can stream Bitcoin BLAKE2b from your own node instead of mempool.guide.
+  Publish it on the internet (for example with the Cloudflare Tunnel app, as btcb2.hashes.space) to make it the
+  BLAKE2b explorer of your website.
+
+
+  Requires the Bitcoin Knots app, synced. While it is still syncing, the explorer says so and the page
+  uses mempool.guide. /api/v1/status shows what the explorer sees of your node.
+developer: hashes.space
+website: https://hashes.space
+dependencies:
+  - bitcoin-knots
+repo: https://github.com/yudikorsou/hashes.space
+support: https://github.com/yudikorsou/hashes.space/issues
+port: 4085
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: yudikorsou
+submission: https://github.com/yudikorsou/hashes.space
+releaseNotes: First release.

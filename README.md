@@ -8,7 +8,7 @@ Connect your ASIC miners on a local network, run the backend on a computer in th
 - **A computer talks to a miner:** the dashboard asks each miner over its API (port 4028) how fast it hashes, how hot it runs and which pool it works for.
 - **Proof of work becomes visible:** every share a miner submits flies from its fan into the block being mined, as a string of 0s and 1s. The leading zeros are the proof of work: harder shares carry more zeros.
 - **Right or wrong setup shows at a glance:** a miner's fan only spins when it is configured correctly and its shares really reach the node. A wrong pool, a wrong port or the wrong blockchain stops it, with a plain-language reason.
-- **The blockchain keeps moving:** a mempool-style strip shows the blocks being mined live, from mempool.space, litecoinspace.org, mempool.guide or your own node.
+- **The blockchain keeps moving:** a mempool-style strip shows the blocks being mined live, from your own Bitcoin, Bitcoin Knots (BLAKE2b), Dogecoin and Monero nodes through the explorers in this repo, or from mempool.space, litecoinspace.org and mempool.guide.
 - **CPU mining too:** Monero (RandomX) with blocks from xmrchain.net, and CPU miners running [XMRig](https://github.com/xmrig/xmrig). A CPU miner is shown as a processor chip with one square per thread instead of a fan, and as "16 cores · 32 threads" instead of an ASIC model: the class sees how many cores it keeps busy, and every mining thread lights up.
 - **Bring your own firmware:** support for another miner firmware is one JavaScript file in [`backend/firmware/`](backend/firmware/README.md). See *Add your own mining firmware* below.
 
@@ -397,6 +397,10 @@ Monero blocks get none of these.
 ## Your own Bitcoin block explorer on Umbrel
 
 The Bitcoin SHA-256 chain of the Find Mempool page streams from **Bitcoin Explorer** ([`hashes-bitcoin-explorer/`](hashes-bitcoin-explorer)), an Umbrel app on top of the **Bitcoin Node** app (a pruned node is enough). It serves mempool.space's API and WebSocket (blocks with their fees and mining pool, the blocks your mempool would build, hashrate and pool statistics) worked out from your own node. Publish it as `btc.hashes.space` (for example with the Cloudflare Tunnel app, pointing at port 4084); the page falls back to mempool.space while it does not answer or while the node is still syncing. `/api/v1/status` shows what the explorer sees of your node.
+
+## Your own Bitcoin BLAKE2b block explorer on Umbrel
+
+The Bitcoin BLAKE2b chain streams from **Bitcoin BLAKE2b Explorer** ([`hashes-btcb2-explorer/`](hashes-btcb2-explorer)), the same explorer as above running on the **Bitcoin Knots** app (a pruned node is enough): blocks with their fees and mining pool, the blocks your mempool would build, and the global hashrate and mining pool statistics, in mempool.space's API and WebSocket. Install it on your Umbrel (port 4085) and publish it as `btcb2.hashes.space`, for example with the Cloudflare Tunnel app: Zero Trust → Networks → Tunnels → your tunnel → Routes → Add route → Published application, subdomain `btcb2`, domain `hashes.space`, service URL `http://10.21.0.1:4085`. The page falls back to mempool.guide while it does not answer or while the node is still syncing; `/api/v1/status` shows what the explorer sees of your node. Both explorers run the same `explorer.py` (`CHAIN=sha256` or `CHAIN=blake2b`), so a fix goes into both folders.
 
 ## Your own Monero block explorer on Umbrel
 

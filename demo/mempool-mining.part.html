@@ -271,7 +271,7 @@
   // and the pool split out of the Bitcoin nodes on your Umbrel; mempool.space / mempool.guide are only the fallback when no node answers
   var MINING_NODE = {};
   MINING_NODE.sha256 = 'btc.hashes.space';   // the hashes Bitcoin Explorer app: statistics from your own Bitcoin node (mempool.space when it does not answer)
-  MINING_NODE.blake2b = NODE_HOST + '/api/v1/mining/node/blake2b';
+  MINING_NODE.blake2b = 'btcb2.hashes.space';   // the hashes Bitcoin BLAKE2b Explorer app: statistics from your own Bitcoin Knots node (mempool.guide when it does not answer)
   const NODE_NAME = { sha256: 'your Bitcoin node', blake2b: 'your Bitcoin BLAKE2b node' };
   const fromName = (net, site) => (miningBy[net]?.node ? NODE_NAME[net] : MINING_FROM[net] ?? site + '/mining');
   // sites without mempool.space's mining pages: "View more" opens the explorer itself

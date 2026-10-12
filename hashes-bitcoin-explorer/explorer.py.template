@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 """Bitcoin block explorer for Umbrel, on your own Bitcoin node (Python standard library only).
 
-Reads everything from the Bitcoin Node app's RPC, pruned or not, and serves:
+One file for both Bitcoin chains: CHAIN=sha256 (the Bitcoin Node app, "Bitcoin Explorer" at btc.hashes.space) or
+CHAIN=blake2b (the Bitcoin Knots app on the BLAKE2b chain, "Bitcoin BLAKE2b Explorer" at btcb2.hashes.space).
+Reads everything from the node's RPC, pruned or not, and serves:
 
   /                      the node's state, the latest blocks and the mempool
   /block/<hash|height>   a block with its transactions (a block the pruned node no longer keeps links to mempool.space)
@@ -15,8 +17,8 @@ Reads everything from the Bitcoin Node app's RPC, pruned or not, and serves:
   /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
   /api/v1/status         what the explorer sees of the node (for when something does not show up)
 
-Fees are in sat/vB. The explorer refuses to serve (the page then uses mempool.space) while the node is still
-syncing, because a node that is behind would show old blocks as live.
+Fees are in sat/vB. The explorer refuses to serve (the page then uses mempool.space, or mempool.guide for the BLAKE2b
+chain) while the node is still syncing, because a node that is behind would show old blocks as live.
 """
 
 import base64
@@ -41,15 +43,24 @@ HEX64 = re.compile(r"[0-9a-fA-F]{64}")
 SUBSIDY0 = 50 * 100_000_000
 
 
+CHAIN = os.environ.get("CHAIN", "sha256")
+if CHAIN not in ("sha256", "blake2b"):
+    raise SystemExit("CHAIN must be sha256 or blake2b")
+# what differs between the two chains: the names, the ticker, the accent colour and where a block is opened when this node has pruned it
+CFG = {"sha256": {"name": "Bitcoin", "coin": "BTC", "accent": "#f7931a", "other": "mempool.space"},
+       "blake2b": {"name": "Bitcoin BLAKE2b", "coin": "BTCB2", "accent": "#e2b33c", "other": "mempool.guide"}}[CHAIN]
+NAME, COIN, OTHER = CFG["name"], CFG["coin"], CFG["other"]
+
+
 def log(msg):
-    print("[btc-explorer] " + msg, flush=True)
+    print("[" + CHAIN + "-explorer] " + msg, flush=True)
 
 
 # ---------- the node, the pool list, hashrate and pool statistics, the live blocks and the mempool blocks ----------
 
 POOL_BLOCKS = int(os.environ.get("POOL_BLOCKS", "4320"))     # how far back the pool of each block is read: 30 days
 POOLS_URL = os.environ.get("POOLS_URL", "https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json")
-BTC_BLOCKS_PER_DAY = 144
+BTC_BLOCKS_PER_DAY = int(os.environ.get("BLOCKS_PER_DAY", "144"))        # both chains aim at ten minutes a block
 POOL_WINDOWS = {"24h": DAY, "1w": WEEK, "14d": 14 * DAY, "1m": 30 * DAY}   # the periods the pool split is cut to
 EPOCH = 2016                 # one difficulty period: the "14 days" are the last 2016 blocks, the stretch the difficulty is set over
 # tags to know when the public list cannot be fetched (and for chains it knows nothing about)
@@ -59,6 +70,11 @@ FALLBACK_POOLS = [
     ("OCEAN", ["OCEAN\\.XYZ"]), ("Braiins Pool", ["/slush/", "Braiins"]), ("NiceHash", ["NiceHash"]), ("BTC.com", ["BTC\\.COM"]),
     ("Binance Pool", ["binance"]), ("CONVOY", ["convoy"]), ("BTCB2", ["btcb2"]), ("B2Pool", ["b2pool"]),
 ]
+# pools that mine the BLAKE2b chain (named in its blocks the way mempool.guide shows them), asked before the SHA-256 list
+B2_POOLS = [("CONVOY", ["convoy"]), ("BTCB2", ["btcb2"]), ("B2Pool", ["b2pool"]), ("AlphaPool", ["alphapool"]), ("Lazarus", ["lazarus"]),
+            ("DxPool", ["dxpool"]), ("Omega Pool", ["omega ?pool"]), ("Legata", ["legata"]), ("Rabid Pool", ["rabid ?pool"]),
+            ("RIPTIDE", ["riptide"]), ("PyBLOCK", ["pyblock"]), ("Quai Network", ["quai"]), ("Pow.re", ["pow\\.re"]),
+            ("Paperclip Pool", ["paperclip"]), ("Blockvase", ["blockvase"])]
 
 
 class BtcRpc:
@@ -133,6 +149,8 @@ class PoolList:
             entries = [(n, t, []) for n, t in FALLBACK_POOLS]
         known = {n.lower() for n, _, _ in entries}
         entries += [(n, t, []) for n, t in FALLBACK_POOLS if n.lower() not in known]   # pools of the BLAKE2b chain and friends
+        if CHAIN == "blake2b":
+            entries = [(n, t, []) for n, t in B2_POOLS] + entries
         self.addresses, self.tags = {}, []
         for name, tags, addrs in entries:
             for a in addrs:
@@ -368,7 +386,7 @@ class ChainStats:
 
 
 NODE = BtcRpc(os.environ["RPC_HOST"], os.environ.get("RPC_PORT", "8332"), os.environ["RPC_USER"], os.environ["RPC_PASS"])
-STATS = ChainStats("sha256", NODE)
+STATS = ChainStats(CHAIN, NODE)
 STATE = {"blocks": [], "mempool": [], "mempool_json": "", "error": "starting", "info": {}, "mempool_count": 0, "at": 0}
 STATE_LOCK = threading.Lock()
 
@@ -470,7 +488,7 @@ def need_live():
 # ---------- HTML ----------
 
 CSS = """
-:root{color-scheme:dark;--bg:#11131f;--surface:#1d1f31;--line:#2d3348;--text:#fff;--muted:#9ea4bc;--link:#1bd8f4;--gold:#f7931a}
+:root{color-scheme:dark;--bg:#11131f;--surface:#1d1f31;--line:#2d3348;--text:#fff;--muted:#9ea4bc;--link:#1bd8f4;--gold:ACCENT}
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
@@ -485,20 +503,20 @@ td.r,th.r{text-align:right}.mono{font-family:ui-monospace,Menlo,monospace;font-s
 dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.stat b{display:block;font:600 20px/1.2 ui-monospace,Menlo,monospace}
 .err{color:#ff6b6b}.ok{color:#3ce26b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
-"""
+""".replace("ACCENT", CFG["accent"])
 
 
 def page(title, body):
     return ("<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-            "<title>" + html.escape(title) + " · Bitcoin explorer</title><style>" + CSS + "</style></head><body>"
-            "<header><a class=brand href='/'>Bitcoin <span>explorer</span></a>"
+            "<title>" + html.escape(title) + " · " + NAME + " explorer</title><style>" + CSS + "</style></head><body>"
+            "<header><a class=brand href='/'>" + html.escape(NAME) + " <span>explorer</span></a>"
             "<form action='/search'><input name=q placeholder='Block height, block hash or transaction id' aria-label=Search>"
             "<button>Search</button></form></header><main>" + body + "</main>"
-            "<footer>Read from your own Bitcoin node · hashes.space</footer></body></html>")
+            "<footer>Read from your own " + ("Bitcoin Knots" if CHAIN == "blake2b" else "Bitcoin") + " node · hashes.space</footer></body></html>")
 
 
 def btc(sats):
-    return "{:,.8f}".format(sats / 1e8).rstrip("0").rstrip(".") + " BTC"
+    return "{:,.8f}".format(sats / 1e8).rstrip("0").rstrip(".") + " " + COIN
 
 
 def ago(t):
@@ -514,8 +532,8 @@ def home():
             info = NODE.call("getblockchaininfo")
         except Exception as exc:  # noqa: BLE001
             err = err or str(exc)
-    state = ("<div class='card err'>The explorer is not serving the page's live stream yet: " + html.escape(err) + ". The Find Mempool page uses mempool.space until this clears.</div>"
-             if err else "<div class='card ok'>Live: the Find Mempool page reads its Bitcoin blocks from this node.</div>")
+    state = ("<div class='card err'>The explorer is not serving the page's live stream yet: " + html.escape(err) + ". The Find Mempool page uses " + OTHER + " until this clears.</div>"
+             if err else "<div class='card ok'>Live: the Find Mempool page reads its " + NAME + " blocks from this node.</div>")
     rows = "".join(
         "<tr><td><a href='/block/" + b["id"] + "'>" + "{:,}".format(b["height"]) + "</a></td><td class=muted>" + ago(b["timestamp"]) + "</td><td>"
         + html.escape(b["extras"]["pool"]["name"]) + "</td><td class=r>" + "{:,}".format(b["tx_count"]) + "</td><td class=r>" + "{:,.2f}".format(b["size"] / 1e6) + " MB</td><td class=r>"
@@ -524,7 +542,7 @@ def home():
                    + "{:,.2f}".format(p["blockVSize"] / 1e6) + " MvB</td><td class=r>~" + "{:g}".format(p["medianFee"]) + " sat/vB</td></tr>" for i, p in enumerate(projected))
     stats = [("Block height", "{:,}".format(info.get("blocks", 0))), ("Mempool", "{:,} txs".format(count)),
              ("Node sync", "{:.2f}%".format(info.get("verificationprogress", 0) * 100)), ("Node", "pruned" if info.get("pruned") else "full")]
-    return page("Bitcoin", "<h1>Bitcoin</h1>" + state + "<div class=stats>"
+    return page("Latest blocks", "<h1>" + html.escape(NAME) + "</h1>" + state + "<div class=stats>"
                 + "".join("<div class='card stat'><span class=muted>" + k + "</span><b>" + v + "</b></div>" for k, v in stats)
                 + "</div><section class=card><h2>Latest blocks</h2><table><tr><th>Height</th><th>Mined</th><th>Pool</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Median fee</th><th class=r>Fees</th></tr>"
                 + rows + "</table></section><section class=card><h2>Mempool, in blocks of 1 MvB</h2><table><tr><th>Block</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Median fee</th></tr>"
@@ -541,7 +559,7 @@ def block_page(ident):
         hd = NODE.call("getblockheader", h)       # the header is never pruned
         return page("Block " + str(hd["height"]), "<h1>Block " + "{:,}".format(hd["height"]) + "</h1><section class='card'><p>This node is pruned and has deleted the data of this block ("
                     + html.escape(str(exc)) + "). Its header: " + "<span class=mono>" + h + "</span>, mined " + time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(hd["time"]))
-                    + ".</p><p><a href='https://mempool.space/block/" + h + "'>Open it on mempool.space →</a></p></section>")
+                    + ".</p><p><a href='https://" + OTHER + "/block/" + h + "'>Open it on " + OTHER + " →</a></p></section>")
     txs = b["tx"]
     fees = sum(round(float(t.get("fee", 0)) * 1e8) for t in txs[1:])
     cb = txs[0]
@@ -574,7 +592,7 @@ def tx_page(txid, block_hash):
             tx = NODE.call("getrawtransaction", txid, True, *([block_hash] if block_hash else []))
         except RuntimeError:
             raise ValueError("Transaction not found. A node finds a transaction that is in its mempool or in a block it still keeps; "
-                             "open it from its block, or run Bitcoin Core with -txindex=1 (not possible on a pruned node).")
+                             "open it from its block, or run the node with -txindex=1 (not possible on a pruned node).")
     ins = "".join("<tr><td class='mono wrap'>" + ("coinbase" if "coinbase" in i else "<a href='/tx/" + i["txid"] + "'>" + i["txid"][:16] + "…</a>:" + str(i["vout"])) + "</td></tr>" for i in tx["vin"])
     outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")) + "</td><td class=r>"
                    + btc(round(float(o["value"]) * 1e8)) + "</td></tr>" for n, o in enumerate(tx["vout"]))
@@ -590,7 +608,7 @@ def tx_page(txid, block_hash):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "bitcoin-explorer"
+    server_version = CHAIN + "-explorer"
     protocol_version = "HTTP/1.1"
 
     def log_message(self, fmt, *args):

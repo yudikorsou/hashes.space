@@ -1333,12 +1333,12 @@
     <h3 id="lb-title">How to read the blocks</h3>
     <p>The glow around a mined block tells you <b>who built its block template</b>, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay. Every proof-of-work chain has its own rules:</p>
     <div class="glows">
-    <section><h4>Bitcoin<small>SHA-256 · mempool.space</small></h4>
+    <section><h4>Bitcoin<small>SHA-256 · our own Bitcoin node</small></h4>
       <div class="glow-row"><div class="mini" data-net="sha256" data-kind="verified" data-pool="Solo miner" aria-hidden="true"></div><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
       <div class="glow-row"><div class="mini" data-net="sha256" data-kind="compatible" data-pool="OCEAN" aria-hidden="true"></div><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>OCEAN</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
       <div class="glow-row"><div class="mini" data-net="sha256" data-kind="central" data-pool="Any other pool" aria-hidden="true"></div><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
     </section>
-    <section><h4>Bitcoin BLAKE2b<small>BLAKE2b · mempool.guide</small></h4>
+    <section><h4>Bitcoin BLAKE2b<small>BLAKE2b · our own Bitcoin Knots node</small></h4>
       <div class="glow-row"><div class="mini" data-net="blake2b" data-kind="verified" data-pool="Solo miner" aria-hidden="true"></div><p><b class="green">Decentralised (green glow)</b> Only for blocks found by <b>DATUM Gateway verified solominers</b> of pools that are 100% DATUM. The miner built the block template on their own node and chose the transactions themselves.</p></div>
       <div class="glow-row"><div class="mini" data-net="blake2b" data-kind="compatible" data-pool="CONVOY" aria-hidden="true"></div><p><b class="orange">DATUM Compatible (orange glow)</b> The block was mined by <b>CONVOY</b>, a pool that lets its miners build their own block templates with their own node and DATUM Gateway. The pool gives miners the choice, so the block is marked as compatible with decentralised mining.</p></div>
       <div class="glow-row"><div class="mini" data-net="blake2b" data-kind="central" data-pool="Any other pool" aria-hidden="true"></div><p><b class="red">Centralised (red glow)</b> Every other pool. The pool builds the block template, so the pool decides which transactions go in and which stay out, and its miners only rent out hash power.</p></div>
@@ -2433,8 +2433,9 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   //   <- {blocks:[…]}, {block:{…}}, {"mempool-blocks":[…]}
   // Works when this file is opened in a normal browser tab; inside a sandboxed
   // preview the connection is blocked and the chain stays simulated.
-  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and mempool.space when that does not answer
-  const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: ['wss://btc.hashes.space/api/v1/ws', 'wss://mempool.space/api/v1/ws'], scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: 'wss://mempool.guide/api/v1/ws' };
+  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and mempool.space when that does not answer;
+  // Bitcoin BLAKE2b: the Bitcoin BLAKE2b Explorer app on your Bitcoin Knots node (btcb2.hashes.space), and mempool.guide when that does not answer
+  const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: ['wss://btc.hashes.space/api/v1/ws', 'wss://mempool.space/api/v1/ws'], scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: ['wss://btcb2.hashes.space/api/v1/ws', 'wss://mempool.guide/api/v1/ws'] };
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
   const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://mempool.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmr.hashes.space/block/' };
   const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,
@@ -3669,7 +3670,7 @@ window.__coins = COIN_LOGOS;
   // and the pool split out of the Bitcoin nodes on your Umbrel; mempool.space / mempool.guide are only the fallback when no node answers
   var MINING_NODE = {};
   MINING_NODE.sha256 = 'btc.hashes.space';   // the hashes Bitcoin Explorer app: statistics from your own Bitcoin node (mempool.space when it does not answer)
-  MINING_NODE.blake2b = NODE_HOST + '/api/v1/mining/node/blake2b';
+  MINING_NODE.blake2b = 'btcb2.hashes.space';   // the hashes Bitcoin BLAKE2b Explorer app: statistics from your own Bitcoin Knots node (mempool.guide when it does not answer)
   const NODE_NAME = { sha256: 'your Bitcoin node', blake2b: 'your Bitcoin BLAKE2b node' };
   const fromName = (net, site) => (miningBy[net]?.node ? NODE_NAME[net] : MINING_FROM[net] ?? site + '/mining');
   // sites without mempool.space's mining pages: "View more" opens the explorer itself
