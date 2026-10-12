@@ -924,6 +924,21 @@ def home():
                 + prow + "</table></section>" + charts())
 
 
+def header_rows(b):
+    """the block header as the node reports it (getblock / getblockheader): version and signalling, merkle root, bits, nonce, chainwork, median time"""
+    ver = b.get("version")
+    rows = []
+    if ver is not None:
+        rows.append(("Version", "0x{:08x}".format(ver) + (" · BIP9 signalling" if (ver >> 29) == 1 else "")))
+    rows += [("Merkle root", "<span class=mono>" + str(b.get("merkleroot")) + "</span>"), ("Bits", "<span class=mono>" + str(b.get("bits")) + "</span>"),
+             ("Nonce", "{:,}".format(b["nonce"]) if "nonce" in b else "-")]
+    if b.get("mediantime"):
+        rows.append(("Median time", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["mediantime"]))))
+    if b.get("chainwork"):
+        rows.append(("Chainwork", "<span class=mono>" + str(b["chainwork"]).lstrip("0") + "</span> (2^{:.2f} hashes)".format(__import__("math").log2(max(1, int(b["chainwork"], 16))))))
+    return rows
+
+
 def block_stats_card(h):
     try:
         st = block_statistics(h)
@@ -948,8 +963,8 @@ def block_page(ident):
         hd = NODE.call("getblockheader", h)       # the header is never pruned
         nav = ("<a href='/block/" + hd["previousblockhash"] + "'>← previous</a>" if hd.get("previousblockhash") else "") + ("  ·  <a href='/block/" + hd["nextblockhash"] + "'>next →</a>" if hd.get("nextblockhash") else "")
         rows = [("Hash", "<span class=mono>" + h + "</span>"), ("Mined", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(hd["time"])) + " (" + ago(hd["time"]) + ")"),
-                ("Transactions", "{:,}".format(hd.get("nTx", 0))), ("Difficulty", "{:,.0f}".format(hd.get("difficulty", 0))), ("Bits", "<span class=mono>" + str(hd.get("bits")) + "</span>"),
-                ("Merkle root", "<span class=mono>" + str(hd.get("merkleroot")) + "</span>"), ("Confirmations", "{:,}".format(hd.get("confirmations", 0)))]
+                ("Transactions", "{:,}".format(hd.get("nTx", 0))), ("Difficulty", "{:,.0f}".format(hd.get("difficulty", 0))),
+                ("Confirmations", "{:,}".format(hd.get("confirmations", 0)))] + header_rows(hd)
         return page("Block " + str(hd["height"]), "<h1>Block " + "{:,}".format(hd["height"]) + "</h1><p>" + nav + "</p><section class=card><dl>"
                     + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in rows) + "</dl></section><section class=card><p class=muted>This node is pruned: it has deleted the transactions of this block ("
                     + html.escape(str(exc)) + "), but a node never prunes a block's header, which is shown above.</p></section>")
@@ -971,8 +986,11 @@ def block_page(ident):
                 + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in [
                     ("Hash", "<span class=mono>" + h + "</span>"), ("Mined", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["time"])) + " (" + ago(b["time"]) + ")"),
                     ("Pool", html.escape(pool)), ("Transactions", "{:,}".format(len(txs))), ("Size", "{:,} bytes · {:,} weight units".format(b["size"], b["weight"])),
-                    ("Fees", btc(fees)), ("Reward", btc(fees + (SUBSIDY0 >> (b["height"] // 210000)))),
-                    ("Difficulty", "{:,.0f}".format(b.get("difficulty", 0))), ("Confirmations", "{:,}".format(b.get("confirmations", 0)))])
+                    ("Fees", btc(fees)), ("Reward", btc(fees + (SUBSIDY0 >> (b["height"] // 210000))) + " (subsidy " + btc(SUBSIDY0 >> (b["height"] // 210000)) + " + fees)"),
+                    ("Fullness", "{:.1f}% of the weight limit".format(b["weight"] / 40000) + (" · stripped size {:,} bytes".format(b["strippedsize"]) if "strippedsize" in b else "")),
+                    ("Difficulty", "{:,.0f}".format(b.get("difficulty", 0))), ("Confirmations", "{:,}".format(b.get("confirmations", 0))),
+                    ("Coinbase text", "<span class=mono>" + html.escape("".join(c if 32 <= ord(c) < 127 else "·" for c in text)) + "</span>"),
+                    ("Paid to", "<span class='mono'>" + html.escape(", ".join(dict.fromkeys(addrs)) or "-") + "</span>")] + header_rows(b))
                 + "</dl></section>" + block_stats_card(h) + "<section class=card><h2>Transactions</h2><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
                 + rows + "</table>" + more + "</section>")
 
