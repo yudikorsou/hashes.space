@@ -55,7 +55,18 @@
   .block-wrap.clipped { visibility: hidden; }        /* half a block is no block: scroll and it appears */
   .block-wrap.found .cube { animation: found 1.1s ease-out 2; }
   @keyframes found { 0%, 100% { box-shadow: 0 0 0 0 rgba(27,216,244,0); } 40% { box-shadow: 0 0 0 7px rgba(27,216,244,.55); } }
-  .divider { align-self: stretch; width: 0; border-left: 2px dashed rgba(255,255,255,.35); }
+  /* the line between the blocks still to be mined and the mined ones is a 3D fan, spinning: the blocks pass through it to the other side.
+     Three layers give it depth (frame, spinning rotor, frame) and the whole is turned about the vertical axis, as the blocks' own top and side faces are. */
+  .gate { --fh: calc(var(--s) * 1.62); align-self: stretch; display: grid; place-items: center; width: calc(var(--fh) * .5); perspective: 760px; pointer-events: none; }
+  .gate .fan3d { position: relative; width: var(--fh); height: var(--fh); transform-style: preserve-3d; transform: rotateY(-64deg); filter: drop-shadow(0 0 12px rgba(255,255,255,.28)); }
+  .gate .fan { position: absolute; inset: 0; width: 100%; height: 100%; --fan-color: rgba(255,255,255,.9); }
+  .gate .fan .hub-cut { fill: var(--bg); }
+  .gate .fan .rotor path { stroke-width: 2.2; }
+  .gate .fan.back { transform: translateZ(-14px); opacity: .5; } .gate .fan.front { transform: translateZ(14px); opacity: .75; }
+  .gate .fan.back .rotor, .gate .fan.front .rotor { display: none; } .gate .fan.back .hub, .gate .fan.front .hub, .gate .fan.back .hub-cut, .gate .fan.front .hub-cut { display: none; }
+  .gate .fan.mid { transform: translateZ(0); } .gate .fan.mid .frame { display: none; }
+  .gate .fan .rotor { animation-duration: 1.1s; }
+  @media (max-width: 640px) { .gate { perspective: 520px; } .gate .fan.back { transform: translateZ(-9px); } .gate .fan.front { transform: translateZ(9px); } }
   /* more blocks than fit: every few seconds the row nudges and a "swipe" hint slides across, so a visitor sees it can be moved */
   .swipe-hint { position: absolute; z-index: 20; top: var(--arrow-y, 50%); right: 10px; transform: translateY(-50%); display: flex; align-items: center; gap: 6px;
     padding: 6px 12px 6px 9px; border-radius: 999px; background: rgba(16,18,34,.82); border: 1px solid var(--line-strong); color: var(--text);
@@ -744,7 +755,7 @@
 </section>
 <section class="strip" aria-label="Blockchain">
   <div class="half projected" id="projected"></div>
-  <div class="divider" aria-hidden="true"></div>
+  <div class="gate" aria-hidden="true"><div class="fan3d"><span class="fan hashing back" data-fan-static></span><span class="fan hashing mid" data-fan-static></span><span class="fan hashing front" data-fan-static></span></div></div>
   <div class="half mined" id="mined"></div>
   <!-- shown now and then while there are more blocks to swipe to -->
   <div class="swipe-hint" id="swipe-hint" aria-hidden="true"><svg viewBox="0 0 12 12"><path d="M7.5 2.5 4 6l3.5 3.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Swipe for more blocks</div>
