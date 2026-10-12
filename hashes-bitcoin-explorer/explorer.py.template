@@ -789,7 +789,11 @@ table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 10px
 td.r,th.r{text-align:right}.mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}.muted{color:var(--muted)}.wrap{white-space:normal;word-break:break-all}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.stat b{display:block;font:600 20px/1.2 ui-monospace,Menlo,monospace}
-.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}.chart svg{width:100%;height:auto;color:var(--muted)}.chart h2{margin:0 0 4px}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:14px}.chart svg{width:100%;height:auto;color:var(--muted)}.chart h2{margin:0 0 4px}
+.chart.wide{grid-column:1/-1}.fill{display:flex;height:22px;border-radius:6px;background:#0b0d17;border:1px solid var(--line);overflow:hidden}.fill i{display:block;height:100%}
+.legend,.donut ul{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--muted)}.legend i,.donut li i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:6px}.legend b,.donut b{color:var(--text);font-weight:600}
+.donut{display:flex;align-items:center;gap:18px;flex-wrap:wrap}.donut svg{width:140px;height:140px;color:var(--text)}.donut ul{flex-direction:column;margin:0}
+.hb{display:grid;grid-template-columns:120px 1fr auto;gap:10px;align-items:center;margin:6px 0;font-size:12.5px}.hl{color:var(--muted)}.ht{height:12px;background:#0b0d17;border-radius:6px;overflow:hidden;border:1px solid var(--line)}.ht i{display:block;height:100%}.hv{font-family:ui-monospace,Menlo,monospace;font-size:12px}
 .err{color:#ff6b6b}.ok{color:#3ce26b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 """.replace("ACCENT", CFG["accent"])
 
@@ -823,9 +827,9 @@ def svg_chart(rows, key, title, unit, fmt, color):
     pts = " ".join("{:.1f},{:.1f}".format(pad + i * (w - pad - 8) / (len(vals) - 1), 10 + (h - 30) * (1 - (v - lo) / span)) for i, v in enumerate(vals))
     return ("<div class=chart><h2>" + html.escape(title) + "</h2><svg viewBox='0 0 " + str(w) + " " + str(h) + "' role=img aria-label='" + html.escape(title) + "'>"
             "<polyline fill=none stroke='" + color + "' stroke-width=1.6 points='" + pts + "'/>"
-            "<text x=2 y=16 fill=currentColor font-size=10>" + fmt(hi) + "</text><text x=2 y=" + str(h - 22) + " fill=currentColor font-size=10>" + fmt(lo) + "</text>"
-            "<text x=" + str(pad) + " y=" + str(h - 6) + " fill=currentColor font-size=10>" + "{:,}".format(rows[0]["height"]) + "</text>"
-            "<text x=" + str(w - 8) + " y=" + str(h - 6) + " text-anchor=end fill=currentColor font-size=10>" + "{:,}".format(rows[-1]["height"]) + " · " + unit + "</text></svg></div>")
+            "<text x=2 y=16 fill=currentColor font-size=12.5>" + fmt(hi) + "</text><text x=2 y=" + str(h - 22) + " fill=currentColor font-size=12.5>" + fmt(lo) + "</text>"
+            "<text x=" + str(pad) + " y=" + str(h - 6) + " fill=currentColor font-size=12.5>" + "{:,}".format(rows[0]["height"]) + "</text>"
+            "<text x=" + str(w - 8) + " y=" + str(h - 6) + " text-anchor=end fill=currentColor font-size=12.5>" + "{:,}".format(rows[-1]["height"]) + " · " + unit + "</text></svg></div>")
 
 
 def charts():
@@ -835,8 +839,8 @@ def charts():
     return ("<section class=card><h2>The last " + str(len(rows)) + " blocks the node keeps</h2><div class=charts>"
             + svg_chart(rows, "size", "Block size", "MB", lambda v: "{:.2f}".format(v / 1e6), "#f7931a")
             + svg_chart(rows, "medianFeeRate", "Median fee rate", "sat/vB", lambda v: "{:g}".format(round(v, 1)), "#3ce26b")
-            + svg_chart(rows, "totalFees", "Fees per block", COIN, lambda v: "{:.3f}".format(v / 1e8), "#5aa9ff")
-            + svg_chart(rows, "txs", "Transactions per block", "txs", lambda v: "{:,}".format(v), "#c78bff") + "</div></section>")
+            + svg_chart(rows, "totalFees", "Fees per block", COIN, lambda v: "{:.3f}".format(v / 1e8), "#1bd8f4")
+            + svg_chart(rows, "txs", "Transactions per block", "txs", lambda v: "{:,}".format(v), "#f2b53c") + "</div></section>")
 
 
 def forks_page():
@@ -924,14 +928,124 @@ def home():
                 + prow + "</table></section>" + charts())
 
 
+FEE_BANDS = [(0, 2, "under 2", "#4a5263"), (2, 5, "2–5", "#9ea4bc"), (5, 10, "5–10", "#1bd8f4"), (10, 20, "10–20", "#3ce26b"), (20, 50, "20–50", "#f2b53c"), (50, 1e12, "50 and up", "#f7931a")]
+TYPE_NAMES = {"witness_v0_keyhash": "SegWit P2WPKH", "witness_v1_taproot": "Taproot P2TR", "witness_v0_scripthash": "SegWit P2WSH", "scripthash": "P2SH", "pubkeyhash": "Legacy P2PKH",
+              "pubkey": "P2PK", "multisig": "Bare multisig", "nulldata": "OP_RETURN", "witness_unknown": "Other witness", "nonstandard": "Non-standard"}
+SVG_TEXT = "fill='currentColor' font-size='12.5'"
+
+
+def hbars(items, total, unit=""):
+    """horizontal bars (label, value, colour) as a share of total: plain HTML so they scale to any width"""
+    out = ""
+    for label, v, col in items:
+        pct = 100.0 * v / total if total else 0
+        out += ("<div class=hb><span class=hl>" + html.escape(label) + "</span><span class=ht><i style='width:" + "{:.2f}".format(max(pct, 0.4 if v else 0)) + "%;background:" + col + "'></i></span>"
+                "<span class=hv>" + "{:,}".format(v) + unit + " · " + "{:.1f}".format(pct) + "%</span></div>")
+    return out
+
+
+def svg_hist(buckets, title, xlabel, color):
+    """a column histogram (label, value) with the value on top of each column"""
+    w, h, pad = 520, 170, 22
+    top = max([v for _, v in buckets] + [1])
+    n = len(buckets)
+    slot = (w - 2 * pad) / n
+    parts = ""
+    for i, (lab, v) in enumerate(buckets):
+        bh = (h - 52) * v / top
+        x = pad + i * slot + slot * 0.12
+        parts += ("<rect x='{:.1f}' y='{:.1f}' width='{:.1f}' height='{:.1f}' rx=2 fill='{}'/>".format(x, h - 30 - bh, slot * 0.76, bh, color)
+                  + "<text x='{:.1f}' y='{:.1f}' text-anchor=middle ".format(x + slot * 0.38, h - 34 - bh) + SVG_TEXT + ">" + "{:,}".format(v) + "</text>"
+                  + "<text x='{:.1f}' y='{}' text-anchor=middle ".format(x + slot * 0.38, h - 16) + SVG_TEXT + ">" + html.escape(lab) + "</text>")
+    return ("<div class=chart><h2>" + html.escape(title) + "</h2><svg viewBox='0 0 " + str(w) + " " + str(h) + "' role=img aria-label='" + html.escape(title) + "'>" + parts
+            + "<text x='" + str(w // 2) + "' y='" + str(h - 3) + "' text-anchor=middle " + SVG_TEXT + ">" + html.escape(xlabel) + "</text></svg></div>")
+
+
+def svg_donut(parts, title, center):
+    """a donut of (label, value, colour) parts with the legend underneath"""
+    import math
+    tot = sum(v for _, v, _ in parts) or 1
+    r_, cx, cy, sw = 52, 70, 70, 20
+    circ = 2 * math.pi * r_
+    off, arcs, legend = 0.0, "", ""
+    for lab, v, col in parts:
+        ln = circ * v / tot
+        arcs += "<circle cx={} cy={} r={} fill=none stroke='{}' stroke-width={} stroke-dasharray='{:.2f} {:.2f}' stroke-dashoffset='{:.2f}' transform='rotate(-90 {} {})'/>".format(cx, cy, r_, col, sw, ln, circ - ln, -off, cx, cy)
+        off += ln
+        legend += "<li><i style='background:" + col + "'></i>" + html.escape(lab) + " <b>" + "{:.1f}".format(100.0 * v / tot) + "%</b></li>"
+    return ("<div class=chart><h2>" + html.escape(title) + "</h2><div class=donut><svg viewBox='0 0 140 140' role=img aria-label='" + html.escape(title) + "'>" + arcs
+            + "<text x=70 y=74 text-anchor=middle fill=currentColor font-size=15 font-weight=600>" + html.escape(center) + "</text></svg><ul>" + legend + "</ul></div></div>")
+
+
+def svg_rate_range(pc):
+    """box plot of the block's fee rates (10th, 25th, median, 75th, 90th percentile) on a log scale"""
+    import math
+    if not pc or len(pc) < 5:
+        return ""
+    lo, hi = math.log10(max(0.5, min(pc) * 0.8)), math.log10(max(pc) * 1.25 + 1)
+    w, x0, x1 = 520, 20, 500
+    X = lambda v: x0 + (x1 - x0) * (math.log10(max(v, 0.01)) - lo) / (hi - lo)  # noqa: E731
+    ticks = [t for t in (1, 2, 5, 10, 20, 50, 100, 200, 500, 1000) if 10 ** lo <= t <= 10 ** hi]
+    g = "".join("<line x1={0:.1f} x2={0:.1f} y1=20 y2=78 stroke='#2d3348'/><text x={0:.1f} y=94 text-anchor=middle ".format(X(t)) + SVG_TEXT + ">" + str(t) + "</text>" for t in ticks)
+    box = ("<line x1={:.1f} x2={:.1f} y1=49 y2=49 stroke='#9ea4bc' stroke-width=2 />".format(X(pc[0]), X(pc[4]))
+           + "<rect x={:.1f} y=32 width={:.1f} height=34 rx=3 fill='#1bd8f4' fill-opacity=.35 stroke='#1bd8f4'/>".format(X(pc[1]), max(2, X(pc[3]) - X(pc[1])))
+           + "<line x1={0:.1f} x2={0:.1f} y1=28 y2=70 stroke='#f7931a' stroke-width=3 />".format(X(pc[2]))
+           + "<text x={:.1f} y=14 text-anchor=middle ".format(X(pc[2])) + SVG_TEXT + ">median " + "{:g}".format(round(pc[2], 1)) + "</text>"
+           + "<text x={:.1f} y=14 text-anchor=middle ".format(X(pc[0])) + SVG_TEXT + ">10% " + "{:g}".format(round(pc[0], 1)) + "</text>"
+           + "<text x={:.1f} y=14 text-anchor=middle ".format(X(pc[4])) + SVG_TEXT + ">90% " + "{:g}".format(round(pc[4], 1)) + "</text>")
+    return "<div class=chart><h2>Fee rates paid (sat/vB, log scale)</h2><svg viewBox='0 0 520 100' role=img aria-label='Fee rate range'>" + g + box + "</svg></div>"
+
+
+def block_diagrams(b):
+    """the diagrams of a block page, worked out from the transactions of the block"""
+    txs = b["tx"][1:]
+    sub = SUBSIDY0 >> (b["height"] // 210000)
+    fees = sum(round(float(t.get("fee", 0)) * 1e8) for t in txs)
+    rated = [(float(t["fee"]) * 1e8 / t["vsize"], t["vsize"]) for t in txs if "fee" in t and t.get("vsize")]
+    out = ""
+    full = min(100.0, b["weight"] / 40000.0)
+    bands = []
+    for lo, hi, lab, col in FEE_BANDS:
+        v = sum(vs for rt, vs in rated if lo <= rt < hi)
+        bands.append((lab + " sat/vB", v, col))
+    tv = sum(v for _, v, _ in bands) or 1
+    seg = "".join("<i style='width:" + "{:.3f}".format(100.0 * v / tv * full / 100) + "%;background:" + col + "' title='" + lab + ": " + "{:.1f}".format(100.0 * v / tv) + "% of the block'></i>" for lab, v, col in bands)
+    out += ("<div class='chart wide'><h2>What fills the block: " + "{:.1f}".format(full) + "% of the weight limit, by fee rate</h2><div class=fill>" + seg + "</div><ul class=legend>"
+            + "".join("<li><i style='background:" + col + "'></i>" + lab + " <b>" + "{:.1f}".format(100.0 * v / tv) + "%</b></li>" for lab, v, col in bands) + "</ul></div>")
+    edges = [(0, 2), (2, 3), (3, 5), (5, 8), (8, 12), (12, 20), (20, 35), (35, 60), (60, 120), (120, 1e12)]
+    labs = ["<2", "2", "3–5", "5–8", "8–12", "12–20", "20–35", "35–60", "60–120", "120+"]
+    out += svg_hist([(labs[i], sum(1 for rt, _ in rated if lo <= rt < hi)) for i, (lo, hi) in enumerate(edges)], "Transactions by fee rate", "sat/vB", "#f7931a")
+    sizes = [(0, 150, "<150"), (150, 250, "150–250"), (250, 400, "250–400"), (400, 700, "400–700"), (700, 1500, "700–1.5k"), (1500, 1e12, "1.5k+")]
+    out += svg_hist([(lab, sum(1 for t in txs if lo <= t.get("vsize", 0) < hi)) for lo, hi, lab in sizes], "Transactions by size", "vBytes", "#3ce26b")
+    cnt = {}
+    for t in txs:
+        for o in t["vout"]:
+            k = o.get("scriptPubKey", {}).get("type", "nonstandard")
+            cnt[k] = cnt.get(k, 0) + 1
+    cols = ["#f7931a", "#1bd8f4", "#3ce26b", "#f2b53c", "#9ea4bc", "#ff4d4d", "#4a5263", "#454d68"]
+    items = [(TYPE_NAMES.get(k, k), v, cols[i % len(cols)]) for i, (k, v) in enumerate(sorted(cnt.items(), key=lambda x: -x[1])[:8])]
+    out += "<div class=chart><h2>Output types</h2>" + hbars(items, sum(cnt.values())) + "</div>"
+    out += svg_donut([("Subsidy", sub, "#4a5263"), ("Fees", fees, "#f7931a")], "Miner reward", "{:.3f}".format((sub + fees) / 1e8))
+    try:
+        pc = NODE.call("getblockstats", b["hash"], ["feerate_percentiles"], timeout=60).get("feerate_percentiles")
+    except Exception:  # noqa: BLE001
+        pc = None
+    out += svg_rate_range(pc)
+    return "<section class=card><h2>Block diagrams</h2><div class=charts>" + out + "</div></section>"
+
+
 def header_rows(b):
     """the block header as the node reports it (getblock / getblockheader): version and signalling, merkle root, bits, nonce, chainwork, median time"""
     ver = b.get("version")
     rows = []
     if ver is not None:
         rows.append(("Version", "0x{:08x}".format(ver) + (" · BIP9 signalling" if (ver >> 29) == 1 else "")))
-    rows += [("Merkle root", "<span class=mono>" + str(b.get("merkleroot")) + "</span>"), ("Bits", "<span class=mono>" + str(b.get("bits")) + "</span>"),
-             ("Nonce", "{:,}".format(b["nonce"]) if "nonce" in b else "-")]
+    if b.get("merkleroot"):
+        rows.append(("Merkle root", "<span class=mono>" + str(b["merkleroot"]) + "</span>"))
+    if b.get("bits"):
+        rows.append(("Bits", "<span class=mono>" + str(b["bits"]) + "</span>"))
+    if "nonce" in b:
+        rows.append(("Nonce", "{:,}".format(b["nonce"])))
     if b.get("mediantime"):
         rows.append(("Median time", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["mediantime"]))))
     if b.get("chainwork"):
@@ -991,7 +1105,7 @@ def block_page(ident):
                     ("Difficulty", "{:,.0f}".format(b.get("difficulty", 0))), ("Confirmations", "{:,}".format(b.get("confirmations", 0))),
                     ("Coinbase text", "<span class=mono>" + html.escape("".join(c if 32 <= ord(c) < 127 else "·" for c in text)) + "</span>"),
                     ("Paid to", "<span class='mono'>" + html.escape(", ".join(dict.fromkeys(addrs)) or "-") + "</span>")] + header_rows(b))
-                + "</dl></section>" + block_stats_card(h) + "<section class=card><h2>Transactions</h2><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
+                + "</dl></section>" + block_diagrams(b) + block_stats_card(h) + "<section class=card><h2>Transactions</h2><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
                 + rows + "</table>" + more + "</section>")
 
 

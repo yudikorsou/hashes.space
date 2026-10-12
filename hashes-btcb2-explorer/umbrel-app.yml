@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.2.0"
+version: "1.3.0"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
@@ -36,4 +36,4 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  Per-block statistics (average fee, SegWit and Taproot share, total sent), block size and fee charts, a Forks page (stale blocks), a mempool transaction's projected block and whether it can be replaced, address balances (one background scan at a time, cached) and the unspent outputs of old transactions on a pruned node.
+  Block pages now have diagrams in the hashes.space style: what fills the block by fee rate, transactions by fee rate and size, output types, miner reward and the fee rates paid. Plus header details, coinbase text and payout address.
