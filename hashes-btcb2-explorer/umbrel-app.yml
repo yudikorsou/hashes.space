@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.4.0"
+version: "1.5.0"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
@@ -36,4 +36,4 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  Block pages show every transaction as an animation: the coins it spends and the outputs it creates fly into the block, with play, speed and scrub controls. The plain list is one click away.
+  The block page animation now fills the same 3D block as the Find Mempool page (height, coin, fee rate, size and transaction count) as each transaction flies in.

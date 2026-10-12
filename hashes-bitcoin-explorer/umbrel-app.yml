@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.5.0"
+version: "1.6.0"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -33,4 +33,4 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  Block pages show every transaction as an animation: the coins it spends and the outputs it creates fly into the block, with play, speed and scrub controls. The plain list is one click away.
+  The block page animation now fills the same 3D block as the Find Mempool page (height, coin, fee rate, size and transaction count) as each transaction flies in.
