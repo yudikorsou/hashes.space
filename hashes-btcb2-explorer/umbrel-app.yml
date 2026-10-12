@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.6.0"
+version: "1.7.0"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
@@ -36,4 +36,4 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  Block pages: one large 3D block as the animation. Each transaction's sending hashes slowly travel into it and its receiving outputs resolve in the middle. No speed option.
+  Block animation: each transaction's full TXID resolves in a packet, the coins it spends slide in and merge into it, the packet dives into the block and its outputs (txid:index) resolve in the middle.

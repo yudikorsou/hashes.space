@@ -807,7 +807,11 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{c
 .mid{position:relative;width:100%;height:100%;display:grid;align-content:center;gap:5px;justify-items:center}.rlabel{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:rgba(255,255,255,.75);opacity:0}
 .achip{display:grid;gap:2px;text-align:left;padding:7px 10px;border-radius:9px;background:rgba(14,16,30,.78);border:1px solid rgba(255,255,255,.22);box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:0}
 .achip b{font:600 12.5px/1.2 ui-monospace,Menlo,monospace;color:#1bd8f4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.achip span{font:12px/1.2 system-ui,sans-serif;color:#e8ebf5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.achip.in{position:absolute;box-sizing:border-box;height:54px}.achip.out{width:88%;box-sizing:border-box}.achip.out b{color:#3ce26b}
+.achip.in{position:absolute;box-sizing:border-box;height:50px;border-color:rgba(27,216,244,.5)}
+.packet{position:absolute;box-sizing:border-box;padding:9px 12px;border-radius:12px;background:rgba(14,16,30,.94);border:1px solid #f7931a;opacity:0;text-align:left}
+.packet i{display:block;font:600 10.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:#f7931a;font-style:normal;margin-bottom:6px}
+.packet code{display:block;white-space:pre;font:12px/1.35 ui-monospace,Menlo,monospace;color:#fff;overflow:hidden}.packet small{display:block;margin-top:6px;font:12px/1.2 system-ui,sans-serif;color:#9ea4bc}
+.hexbit{position:absolute;font:600 12px/1 ui-monospace,Menlo,monospace;color:#f7931a;opacity:0;text-shadow:0 0 8px rgba(247,147,26,.9)}.achip.out{width:88%;box-sizing:border-box}.achip.out b{color:#3ce26b}
 .cube.hit{animation:hit .45s ease-out}@keyframes hit{0%{box-shadow:0 0 0 0 rgba(60,226,107,.7)}100%{box-shadow:0 0 0 12px rgba(60,226,107,0)}}summary{cursor:pointer;color:var(--muted);font-weight:600}details table{margin-top:10px}
 .err{color:#ff6b6b}.ok{color:#3ce26b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 """.replace("ACCENT", CFG["accent"])
@@ -1013,40 +1017,64 @@ def svg_rate_range(pc):
 
 ANIM_MAX = 2500           # transactions of a block that the animation holds
 ANIM_JS = r"""(function(){
-var D=__DATA__, T=D.txs, N=T.length, DUR=5600;
+var D=__DATA__, T=D.txs, N=T.length, DUR=7500, HEX="0123456789abcdef";
 var $=function(i){return document.getElementById(i)};
-var cube=$("anim-cube"),front=$("anim-front"),mid=$("anim-mid"),layer=$("anim-layer"),wrap=$("anim-wrap"),cTx=$("anim-ctx"),btn=$("anim-play"),rng=$("anim-seek"),lab=$("anim-label"),lnk=$("anim-link"),rl=$("anim-rlabel"),fee=$("anim-fee");
+var cube=$("anim-cube"),front=$("anim-front"),mid=$("anim-mid"),layer=$("anim-layer"),cTx=$("anim-ctx"),btn=$("anim-play"),rng=$("anim-seek"),lab=$("anim-label"),lnk=$("anim-link"),rl=$("anim-rlabel");
 var reduce=window.matchMedia&&matchMedia("(prefers-reduced-motion: reduce)").matches;
 function clamp(x){return x<0?0:x>1?1:x}function ease(t){return t*t*(3-2*t)}
-function esc(s){return String(s).replace(/[&<>]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;"}[c]})}
 var cum=[],acc=0;for(var i=0;i<N;i++){acc+=T[i].vs;cum.push(acc)}
-function chip(cls,parent){var e=document.createElement("div");e.className="achip "+cls;e.innerHTML="<b></b><span></span>";parent.appendChild(e);return e}
+function el(cls,html,parent){var e=document.createElement("div");e.className=cls;if(html)e.innerHTML=html;parent.appendChild(e);return e}
+function chip(cls,parent){return el("achip "+cls,"<b></b><span></span>",parent)}
+var pk=el("packet","<i>TRANSACTION ID (TXID)</i><code></code><small></small>",layer),pkCode=pk.children[1],pkMeta=pk.children[2];
 var ins=[chip("in",layer),chip("in",layer),chip("in",layer)],outs=[chip("out",mid),chip("out",mid),chip("out",mid)];
+var bits=[];for(var k=0;k<16;k++)bits.push(el("hexbit","",layer));
 function fill(e,x){e.firstChild.textContent=x[0];e.lastChild.textContent=x[1]}
+// a hash that resolves: the first characters are settled, the rest still shuffle
+function resolve(str,t){var n=Math.floor(clamp(t)*str.length),o=str.slice(0,n);for(var i=n;i<str.length;i++){var c=str.charAt(i);o+=(c===" "||c==="…"||c===":"||c==="\n")?c:HEX.charAt(Math.random()*16|0)}return o}
 var EMPTY="#2d3348",M1="#9339f4",M2="#105fb0";
 function setFill(n){var done=n>0?cum[n-1]/Math.max(1,D.totalVs):0,pct=Math.max(4,Math.min(100,D.full*done)),e=100-pct;
  front.style.background="repeating-linear-gradient("+EMPTY+","+EMPTY+" "+e+"%,"+M1+" "+e+"%,"+M2+" 100%)";
  cTx.textContent=n.toLocaleString()+" / "+D.total.toLocaleString()+" transactions · "+(D.size*done/1e6).toFixed(2)+" MB"}
-var geo=null;function measure(){var a=layer.getBoundingClientRect(),f=front.getBoundingClientRect(),m=mid.getBoundingClientRect();geo={cx:f.left+f.width/2-a.left,cy:m.top+m.height/2-a.top,w:Math.min(230,f.width*0.72)}}
-var pos=0,playing=false,last=0,shown=-1,hitAt=-1;
+var geo=null;function measure(){var a=layer.getBoundingClientRect(),f=front.getBoundingClientRect(),m=mid.getBoundingClientRect();geo={cx:f.left+f.width/2-a.left,cy:m.top+m.height/2-a.top,pw:Math.min(300,a.width-16),cw:Math.min(230,f.width*0.72),fw:f.width}}
+var pos=0,playing=false,last=0,shown=-1,hitAt=-1,lastTxt="";
 function render(){
  if(!geo)measure();
- var i=Math.min(N-1,Math.floor(pos)),p=pos-i,t=T[i];
- setFill(p>=0.55?i+1:i);
- if(p>=0.6&&hitAt!==i){hitAt=i;cube.classList.remove("hit");void cube.offsetWidth;cube.classList.add("hit")}
- if(shown!==i){shown=i;rng.value=i;lab.textContent="Transaction "+(i+1).toLocaleString()+" of "+N.toLocaleString()+(D.total>N?" (first "+N.toLocaleString()+" of "+D.total.toLocaleString()+")":"");lnk.textContent=t.id.slice(0,20)+"…";lnk.href="/tx/"+t.id+"?b="+D.hash}
- var pulse=Math.max(0,1-Math.abs(p-0.46)/0.1);front.style.filter="brightness("+(1+0.35*pulse)+")";
- var sOn=p<0.5;rl.style.opacity=clamp((p-0.5)/0.08)*(1-clamp((p-0.93)/0.07));
+ var i=Math.min(N-1,Math.floor(pos)),p=pos-i,t=T[i],id=t.id,g=geo;
+ setFill(p>=0.62?i+1:i);
+ if(p>=0.62&&hitAt!==i){hitAt=i;cube.classList.remove("hit");void cube.offsetWidth;cube.classList.add("hit")}
+ if(shown!==i){shown=i;rng.value=i;lab.textContent="Transaction "+(i+1).toLocaleString()+" of "+N.toLocaleString()+(D.total>N?" (first "+N.toLocaleString()+" of "+D.total.toLocaleString()+")":"");lnk.textContent=id.slice(0,20)+"…";lnk.href="/tx/"+id+"?b="+D.hash}
+ var pulse=Math.max(0,1-Math.abs(p-0.62)/0.07);front.style.filter="brightness("+(1+0.4*pulse)+")";
+ rl.style.opacity=clamp((p-0.64)/0.06)*(1-clamp((p-0.94)/0.06));
+ // the packet: the transaction's own id, resolving, taking in the coins it spends, then diving into the block
+ var show=clamp(p/0.1),dive=ease(clamp((p-0.42)/0.2)),pw=g.pw;
+ var full=id.slice(0,32)+"\n"+id.slice(32);
+ var txt=p<0.16?resolve(full,p/0.14):full;
+ if(txt!==lastTxt){pkCode.textContent=txt;lastTxt=txt}
+ pkMeta.textContent=t.nin+" in → "+t.nout+" out · "+(t.cb?"coinbase":t.r+" sat/vB")+" · "+t.vs+" vB";
+ pk.style.width=pw+"px";pk.style.left=(g.cx-pw/2)+"px";pk.style.top=(g.cy-48)+"px";
+ var abs=0;for(var j=0;j<3;j++){var s=clamp((p-(0.12+0.07*j))/0.2);abs=Math.max(abs,Math.max(0,1-Math.abs(s-0.9)/0.12))}
+ pk.style.transform="translateY("+(-18*(1-ease(show))+10*dive)+"px) scale("+(1-0.88*dive)+")";
+ pk.style.opacity=ease(show)*(1-clamp((dive-0.55)/0.45));
+ pk.style.boxShadow="0 0 "+(10+22*abs)+"px rgba(247,147,26,"+(0.25+0.55*abs)+")";
+ // the coins it spends slide in from the left and merge into the packet
  for(var j=0;j<3;j++){var e=ins[j],x=t.ins[j];
-  if(!x||!sOn&&p>0.56){e.style.opacity=0;continue}
-  fill(e,x);var a=0.03+0.07*j,s=clamp((p-a)/0.36),k=ease(s),w=geo.w,start=-(geo.cx+w/2+10);
-  e.style.width=w+"px";e.style.left=(geo.cx-w/2)+"px";e.style.top=(geo.cy+(j-1)*60-27)+"px";
-  e.style.transform="translateX("+(start*(1-k))+"px) scale("+(1-0.45*clamp((s-0.7)/0.3))+")";
-  e.style.opacity=clamp(s/0.12)*(1-clamp((s-0.8)/0.2))}
+  if(!x||p>0.5){e.style.opacity=0;continue}
+  fill(e,["spends "+x[0],x[1]]);var a=0.1+0.07*j,s=clamp((p-a)/0.26),k=ease(s),w=g.cw,end=g.cx-pw/2-w*0.2,start=-w-12;
+  e.style.width=w+"px";e.style.left=(end+(start-end)*(1-k))+"px";e.style.top=(g.cy-48+(j-1)*50+26)+"px";
+  e.style.transform="scale("+(1-0.5*clamp((s-0.7)/0.3))+")";e.style.opacity=clamp(s/0.15)*(1-clamp((s-0.78)/0.22))}
+ // hex digits of the id stream from the packet into the block
+ var q=clamp((p-0.42)/0.22);
+ for(var k=0;k<bits.length;k++){var b=bits[k],f=clamp(q*1.3-k*0.025);
+  if(q<=0||q>=1||f<=0){b.style.opacity=0;continue}
+  var sx=g.cx-pw/2+((k*37)%100)/100*pw,sy=g.cy-48+10+(k%3)*12,e2=ease(f);
+  b.textContent=id.charAt((k*5)%64)+id.charAt((k*5+1)%64);
+  b.style.left=(sx+(g.cx-sx)*e2)+"px";b.style.top=(sy+(g.cy-sy)*e2)+"px";b.style.opacity=Math.sin(f*Math.PI);b.style.transform="scale("+(1.1-0.6*e2)+")"}
+ // the outputs it creates resolve in the middle of the block, each as txid:index
  for(var j=0;j<3;j++){var e=outs[j],x=t.outs[j];
   if(!x){e.style.opacity=0;continue}
-  fill(e,x);var a=0.52+0.08*j,s=clamp((p-a)/0.14);
-  e.style.opacity=ease(s)*(1-clamp((p-0.93)/0.07));e.style.transform="translateY("+(14*(1-ease(s)))+"px) scale("+(0.9+0.1*ease(s))+")"}
+  var a=0.64+0.07*j,s=clamp((p-a)/0.12),idx=/^\+/.test(x[0])?x[0]:id.slice(0,12)+"…:"+j;
+  fill(e,[s<1&&!/^\+/.test(x[0])?resolve(idx,s):idx,x[1]?x[0]+" · "+x[1]:x[0]]);
+  e.style.opacity=ease(s)*(1-clamp((p-0.94)/0.06));e.style.transform="translateY("+(14*(1-ease(s)))+"px) scale("+(0.9+0.1*ease(s))+")"}
 }
 function tick(now){var dt=now-last;last=now;if(playing){pos+=dt/DUR;if(pos>=N-0.001){pos=N-0.001;playing=false;btn.textContent="Replay"}render()}requestAnimationFrame(tick)}
 btn.onclick=function(){if(playing){playing=false;btn.textContent="Play";return}if(pos>=N-0.01)pos=0;playing=true;btn.textContent="Pause"};
@@ -1090,7 +1118,7 @@ def block_animation(b, h):
                 continue
             po = i.get("prevout") or {}
             who = short_addr(po.get("scriptPubKey", {}).get("address") or "")
-            ins.append([i["txid"][:8] + "…:" + str(i["vout"]), (who + " · " if who else "") + (btc(round(float(po["value"]) * 1e8)) if "value" in po else "")])
+            ins.append([i["txid"][:8] + "…:" + str(i["vout"]), ((who + " · " if who else "") + (btc(round(float(po["value"]) * 1e8)) if "value" in po else "")) or "an output of an earlier transaction"])
         if len(t["vin"]) > 3:
             ins[2] = ["+" + str(len(t["vin"]) - 2) + " more inputs", ""]
         outs = [[short_addr(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")), btc(round(float(o["value"]) * 1e8))] for o in t["vout"][:3]]
