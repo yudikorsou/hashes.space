@@ -2532,15 +2532,20 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // Bitcoin SHA-256: the blocks and the mempool of the Bitcoin Node app on the Umbrel that serves this page
   // (site.py works out the fees and the pool of every block from the node, and the blocks the mempool would build).
   // Without that node (or in a preview) it falls back to the mempool.space websocket below.
+  // Asked at the page's own address first (the Umbrel serving it), then at the public address of that app, so a copy of the page
+  // on another site, or one opened from anywhere, is fed by the same node.
   const NODE_LIVE = { sha256: '/api/v1/mining/node/sha256/live' };
+  const NODE_BASES = /(^|\.)hashes\.space$/.test(location.hostname) ? [''] : ['', 'https://mempool.hashes.space'];
   function connectNode(id) {
     const c = chains[id]; c.connecting = true;
-    let fails = 0, lastTip = null;
+    let fails = 0, lastTip = null, base = null;
+    const ask = async (b) => { const r = await fetch(b + NODE_LIVE[id], { signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
     const poll = async () => {
       try {
-        const r = await fetch(NODE_LIVE[id], { signal: AbortSignal.timeout(15000) });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const j = await r.json(); if (!Array.isArray(j.blocks) || !j.blocks.length) throw new Error('empty');
+        let j;
+        if (base !== null) j = await ask(base);
+        else { for (const b of NODE_BASES) { try { j = await ask(b); base = b; break; } catch { /* try the next address */ } } if (!j) throw new Error('no node'); }
+        if (!Array.isArray(j.blocks) || !j.blocks.length) throw new Error('empty');
         fails = 0;
         const fresh = lastTip !== null && j.tip > lastTip; lastTip = j.tip;
         const was = c.live, blocks = j.blocks.map(mapBlock).sort((a, b) => b.height - a.height).slice(0, 8);
@@ -3679,11 +3684,13 @@ window.__coins = COIN_LOGOS;
   var MINING_FALLBACK = { monero: 'mempool.hashes.space' };
   // served from hashes.space, the two Bitcoin chains can also be asked through the hashes.space app, which passes the
   // statistics on with a single CORS header (mempool.guide sends two, so a browser refuses its answer)
-  if (/(^|\.)hashes\.space$/.test(location.hostname)) for (const n of ['sha256', 'blake2b']) MINING_FALLBACK[n] = location.host + '/api/v1/mining/proxy/' + MINING_SITES[n];
+  // anywhere else (a preview, a copy of the page on another site) the same app is asked at its public address, so everyone gets the node's numbers
+  const NODE_HOST = /(^|\.)hashes\.space$/.test(location.hostname) ? location.host : 'mempool.hashes.space';
+  for (const n of ['sha256', 'blake2b']) MINING_FALLBACK[n] = NODE_HOST + '/api/v1/mining/proxy/' + MINING_SITES[n];
   // Served from hashes.space, the two Bitcoin chains are asked first of the hashes.space app itself, which works the global hashrate
   // and the pool split out of the Bitcoin nodes on your Umbrel; mempool.space / mempool.guide are only the fallback when no node answers
   var MINING_NODE = {};
-  if (/(^|\.)hashes\.space$/.test(location.hostname)) for (const n of ['sha256', 'blake2b']) MINING_NODE[n] = location.host + '/api/v1/mining/node/' + n;
+  for (const n of ['sha256', 'blake2b']) MINING_NODE[n] = NODE_HOST + '/api/v1/mining/node/' + n;
   const NODE_NAME = { sha256: 'your Bitcoin node', blake2b: 'your Bitcoin BLAKE2b node' };
   const fromName = (net, site) => (miningBy[net]?.node ? NODE_NAME[net] : MINING_FROM[net] ?? site + '/mining');
   // sites without mempool.space's mining pages: "View more" opens the explorer itself

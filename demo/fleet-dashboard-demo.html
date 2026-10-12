@@ -1906,15 +1906,20 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // Bitcoin SHA-256: the blocks and the mempool of the Bitcoin Node app on the Umbrel that serves this page
   // (site.py works out the fees and the pool of every block from the node, and the blocks the mempool would build).
   // Without that node (or in a preview) it falls back to the mempool.space websocket below.
+  // Asked at the page's own address first (the Umbrel serving it), then at the public address of that app, so a copy of the page
+  // on another site, or one opened from anywhere, is fed by the same node.
   const NODE_LIVE = { sha256: '/api/v1/mining/node/sha256/live' };
+  const NODE_BASES = /(^|\.)hashes\.space$/.test(location.hostname) ? [''] : ['', 'https://mempool.hashes.space'];
   function connectNode(id) {
     const c = chains[id]; c.connecting = true;
-    let fails = 0, lastTip = null;
+    let fails = 0, lastTip = null, base = null;
+    const ask = async (b) => { const r = await fetch(b + NODE_LIVE[id], { signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
     const poll = async () => {
       try {
-        const r = await fetch(NODE_LIVE[id], { signal: AbortSignal.timeout(15000) });
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        const j = await r.json(); if (!Array.isArray(j.blocks) || !j.blocks.length) throw new Error('empty');
+        let j;
+        if (base !== null) j = await ask(base);
+        else { for (const b of NODE_BASES) { try { j = await ask(b); base = b; break; } catch { /* try the next address */ } } if (!j) throw new Error('no node'); }
+        if (!Array.isArray(j.blocks) || !j.blocks.length) throw new Error('empty');
         fails = 0;
         const fresh = lastTip !== null && j.tip > lastTip; lastTip = j.tip;
         const was = c.live, blocks = j.blocks.map(mapBlock).sort((a, b) => b.height - a.height).slice(0, 8);

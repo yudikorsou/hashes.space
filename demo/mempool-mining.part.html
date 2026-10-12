@@ -264,11 +264,13 @@
   var MINING_FALLBACK = { monero: 'mempool.hashes.space' };
   // served from hashes.space, the two Bitcoin chains can also be asked through the hashes.space app, which passes the
   // statistics on with a single CORS header (mempool.guide sends two, so a browser refuses its answer)
-  if (/(^|\.)hashes\.space$/.test(location.hostname)) for (const n of ['sha256', 'blake2b']) MINING_FALLBACK[n] = location.host + '/api/v1/mining/proxy/' + MINING_SITES[n];
+  // anywhere else (a preview, a copy of the page on another site) the same app is asked at its public address, so everyone gets the node's numbers
+  const NODE_HOST = /(^|\.)hashes\.space$/.test(location.hostname) ? location.host : 'mempool.hashes.space';
+  for (const n of ['sha256', 'blake2b']) MINING_FALLBACK[n] = NODE_HOST + '/api/v1/mining/proxy/' + MINING_SITES[n];
   // Served from hashes.space, the two Bitcoin chains are asked first of the hashes.space app itself, which works the global hashrate
   // and the pool split out of the Bitcoin nodes on your Umbrel; mempool.space / mempool.guide are only the fallback when no node answers
   var MINING_NODE = {};
-  if (/(^|\.)hashes\.space$/.test(location.hostname)) for (const n of ['sha256', 'blake2b']) MINING_NODE[n] = location.host + '/api/v1/mining/node/' + n;
+  for (const n of ['sha256', 'blake2b']) MINING_NODE[n] = NODE_HOST + '/api/v1/mining/node/' + n;
   const NODE_NAME = { sha256: 'your Bitcoin node', blake2b: 'your Bitcoin BLAKE2b node' };
   const fromName = (net, site) => (miningBy[net]?.node ? NODE_NAME[net] : MINING_FROM[net] ?? site + '/mining');
   // sites without mempool.space's mining pages: "View more" opens the explorer itself
