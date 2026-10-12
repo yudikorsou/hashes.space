@@ -396,7 +396,7 @@ Monero blocks get none of these.
 
 ## Your own Bitcoin block explorer on Umbrel
 
-The Bitcoin SHA-256 chain of the Find Mempool page streams from **Bitcoin Explorer** ([`hashes-bitcoin-explorer/`](hashes-bitcoin-explorer)), an Umbrel app on top of the **Bitcoin Node** app (a pruned node is enough). It serves mempool.space's API and WebSocket (blocks with their fees and mining pool, the blocks your mempool would build, hashrate and pool statistics) worked out from your own node. Publish it as `btc.hashes.space` (for example with the Cloudflare Tunnel app, pointing at port 4084); the page falls back to mempool.space while it does not answer or while the node is still syncing. `/api/v1/status` shows what the explorer sees of your node.
+The Bitcoin SHA-256 chain of the Find Mempool page streams from **Bitcoin Explorer** ([`hashes-bitcoin-explorer/`](hashes-bitcoin-explorer)), an Umbrel app on top of the **Bitcoin Node** app (a pruned node is enough). It serves mempool.space's API and WebSocket (blocks with their fees and mining pool, the blocks your mempool would build, hashrate and pool statistics) worked out from your own node. Publish it as `btc.hashes.space` (for example with the Cloudflare Tunnel app, pointing at port 4084); the Bitcoin chain of the page is backed by this explorer alone (no mempool.space): while it does not answer or while the node is still syncing, the chain shows simulated blocks and tries again every minute. Besides blocks, fees, pools and hashrate it also serves `/api/v1/mining/pool/<slug>/blocks`, `/api/v1/difficulty-adjustment`, `/api/v1/fees/recommended`, `/api/v1/halving` and `/api/v1/network`. `/api/v1/status` shows what the explorer sees of your node.
 
 ## Your own Bitcoin BLAKE2b block explorer on Umbrel
 

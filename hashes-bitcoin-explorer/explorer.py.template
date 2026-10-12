@@ -14,6 +14,11 @@ Reads everything from the node's RPC, pruned or not, and serves:
   /api/blocks/tip/height
   /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from the block headers (24h, 14d, 1m, 6m, 1y)
   /api/v1/mining/pools/<period>     blocks per mining pool, from the tags and payout addresses in each coinbase
+  /api/v1/mining/pool/<slug>/blocks   the latest blocks of one pool (the page's pool view)
+  /api/v1/difficulty-adjustment       where the chain is in its difficulty period, and the change the period is heading for
+  /api/v1/fees/recommended            fastest / half-hour / hour / economy / minimum fee rates, from your own mempool
+  /api/v1/halving                     blocks and time to the next halving
+  /api/v1/network                     the node: version, peers, mempool size and minimum fee, disk use, pruning
   /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
   /api/v1/status         what the explorer sees of the node (for when something does not show up)
 
@@ -204,6 +209,7 @@ class ChainStats:
         self.name, self.rpc, self.lock = name, rpc, threading.Lock()
         self.headers = {}                  # height -> (time, chainwork, hashes per block, difficulty)
         self.pool_of = {}                  # height -> pool name
+        self.pool_rows = {}                # height -> the block as the pool view lists it
         self.miner_of = {}                 # height -> the miner the pool names in the coinbase ("" when it names none)
         self.tip, self.fine, self.coarse, self.now = None, [], [], (0, 0)
         self.ready, self.pruned_at, self.error = False, None, ""
@@ -382,6 +388,26 @@ class ChainStats:
                 "hashrates": [{"timestamp": t, "avgHashrate": v} for t, v in keep],
                 "difficulty": [{"time": t, "difficulty": d} for t, d in before + [x for x in ds if x[0] >= cut]]}
 
+    def pool_blocks(self, slug, limit=40):
+        """The latest blocks of one pool, in mempool.space's format (id, height, timestamp, tx_count, size)."""
+        with self.lock:
+            heights = sorted((h for h, p in self.pool_of.items() if re.sub(r"[^a-z0-9]+", "-", p.lower()).strip("-") == slug), reverse=True)[:limit]
+        out = []
+        for h in heights:
+            row = self.pool_rows.get(h)
+            if row is None:
+                try:
+                    bh = self.rpc.call("getblockhash", h)
+                    b = self.rpc.call("getblock", bh, 1, timeout=120)
+                    row = {"id": bh, "height": h, "timestamp": int(b["time"]), "tx_count": int(b["nTx"]), "size": int(b["size"])}
+                except Exception:  # noqa: BLE001
+                    continue                       # pruned since: the block is simply left out
+                self.pool_rows[h] = row
+            out.append(row)
+        for h in [h for h in self.pool_rows if h not in self.pool_of]:
+            del self.pool_rows[h]
+        return out
+
     def pool_split(self, rows):
         """rows: [(pool, miner)] -> the pools with their blocks and, inside each pool, the miners it names"""
         count, miners = {}, {}
@@ -420,6 +446,59 @@ class ChainStats:
 
 NODE = BtcRpc(os.environ["RPC_HOST"], os.environ.get("RPC_PORT", "8332"), os.environ["RPC_USER"], os.environ["RPC_PASS"])
 STATS = ChainStats(CHAIN, NODE)
+
+
+def difficulty_adjustment():
+    """Where the chain is in its difficulty period (2016 blocks), as mempool.space's /api/v1/difficulty-adjustment."""
+    tip = int(NODE.call("getblockcount"))
+    start = tip - tip % EPOCH
+    t_tip, t_start = STATS.header(tip)[0], STATS.header(max(1, start))[0]
+    done = tip - start
+    avg = (t_tip - t_start) / done if done else 600.0
+    if avg <= 0:
+        avg = 600.0
+    change = max(-75.0, min(300.0, (600.0 / avg - 1) * 100)) if done else 0.0
+    left = EPOCH - done
+    prev = None
+    if start - EPOCH >= 1:
+        w1, w0 = STATS.header(max(1, start))[2], STATS.header(start - EPOCH)[2]
+        prev = (w1 / w0 - 1) * 100 if w0 else None
+    return {"progressPercent": round(done / EPOCH * 100, 2), "difficultyChange": round(change, 2), "estimatedRetargetDate": int((t_tip + left * avg) * 1000),
+            "remainingBlocks": left, "remainingTime": int(left * avg * 1000), "previousRetarget": None if prev is None else round(prev, 2),
+            "previousTime": t_start, "nextRetargetHeight": start + EPOCH, "timeAvg": int(avg * 1000), "expectedBlocks": round((t_tip - t_start) / 600.0, 1) if done else 0}
+
+
+def recommended_fees():
+    """Fee rates (sat/vB) from your own mempool: the blocks it would build next, best fee rate first."""
+    with STATE_LOCK:
+        mb = STATE["mempool"]
+    if not mb:
+        raise RuntimeError("no mempool data yet")
+    low = float(NODE.call("getmempoolinfo").get("mempoolminfee", 0.00001)) * 1e5      # BTC/kvB -> sat/vB
+    med = [b["medianFee"] for b in mb]
+    at = lambda i: med[min(i, len(med) - 1)]
+    minimum = max(round(low, 2), 0.1)
+    return {"fastestFee": max(minimum, at(0)), "halfHourFee": max(minimum, at(1)), "hourFee": max(minimum, at(2)),
+            "economyFee": max(minimum, round(mb[-1]["feeRange"][1], 2)), "minimumFee": minimum}
+
+
+def halving():
+    tip = int(NODE.call("getblockcount"))
+    nxt = (tip // 210000 + 1) * 210000
+    left = nxt - tip
+    t_tip = STATS.header(tip)[0]
+    return {"height": tip, "nextHalvingHeight": nxt, "remainingBlocks": left, "estimatedDate": int((t_tip + left * 600) * 1000),
+            "subsidyNow": (SUBSIDY0 >> (tip // 210000)) / 1e8, "subsidyNext": (SUBSIDY0 >> (nxt // 210000)) / 1e8}
+
+
+def network():
+    ni, mi, ci = NODE.call("getnetworkinfo"), NODE.call("getmempoolinfo"), NODE.call("getblockchaininfo")
+    return {"node": ni.get("subversion"), "protocol": ni.get("protocolversion"), "connections": ni.get("connections"),
+            "connectionsIn": ni.get("connections_in"), "connectionsOut": ni.get("connections_out"),
+            "mempool": {"count": mi.get("size"), "vsize": mi.get("bytes"), "memory": mi.get("usage"), "totalFee": mi.get("total_fee"),
+                        "minFeeRate": float(mi.get("mempoolminfee", 0)) * 1e5, "fullRbf": mi.get("fullrbf")},
+            "chain": {"blocks": ci.get("blocks"), "headers": ci.get("headers"), "sizeOnDisk": ci.get("size_on_disk"), "pruned": ci.get("pruned"),
+                      "pruneHeight": ci.get("pruneheight"), "verificationProgress": ci.get("verificationprogress")}}
 
 
 def check_node():
@@ -595,6 +674,15 @@ def home():
                    + "{:,.2f}".format(p["blockVSize"] / 1e6) + " MvB</td><td class=r>~" + "{:g}".format(p["medianFee"]) + " sat/vB</td></tr>" for i, p in enumerate(projected))
     stats = [("Block height", "{:,}".format(info.get("blocks", 0))), ("Mempool", "{:,} txs".format(count)),
              ("Node sync", "{:.2f}%".format(info.get("verificationprogress", 0) * 100)), ("Node", "pruned" if info.get("pruned") else "full")]
+    try:                                   # what else the node knows: the difficulty period, fees, the halving and its peers
+        da, fees, hv, net = difficulty_adjustment(), recommended_fees(), halving(), network()
+        stats += [("Next difficulty", "{:+.2f}%".format(da["difficultyChange"]) + " in " + "{:,}".format(da["remainingBlocks"]) + " blocks"),
+                  ("Difficulty period", "{:.1f}% done".format(da["progressPercent"])),
+                  ("Fees now", "{:g}".format(fees["fastestFee"]) + " / " + "{:g}".format(fees["hourFee"]) + " / " + "{:g}".format(fees["economyFee"]) + " sat/vB"),
+                  ("Next halving", "{:,}".format(hv["remainingBlocks"]) + " blocks"),
+                  ("Peers", "{:,}".format(net.get("connections") or 0)), ("Mempool size", "{:,.1f} MvB".format(net["mempool"]["vsize"] / 1e6))]
+    except Exception:  # noqa: BLE001
+        pass
     return page("Latest blocks", "<h1>" + html.escape(NAME) + "</h1>" + state + "<div class=stats>"
                 + "".join("<div class='card stat'><span class=muted>" + k + "</span><b>" + v + "</b></div>" for k, v in stats)
                 + "</div><section class=card><h2>Latest blocks</h2><table><tr><th>Height</th><th>Mined</th><th>Pool</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Median fee</th><th class=r>Fees</th></tr>"
@@ -610,9 +698,13 @@ def block_page(ident):
         b = NODE.call("getblock", h, 2, timeout=120)
     except RuntimeError as exc:
         hd = NODE.call("getblockheader", h)       # the header is never pruned
-        return page("Block " + str(hd["height"]), "<h1>Block " + "{:,}".format(hd["height"]) + "</h1><section class='card'><p>This node is pruned and has deleted the data of this block ("
-                    + html.escape(str(exc)) + "). Its header: " + "<span class=mono>" + h + "</span>, mined " + time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(hd["time"]))
-                    + ".</p><p><a href='https://" + OTHER + "/block/" + h + "'>Open it on " + OTHER + " →</a></p></section>")
+        nav = ("<a href='/block/" + hd["previousblockhash"] + "'>← previous</a>" if hd.get("previousblockhash") else "") + ("  ·  <a href='/block/" + hd["nextblockhash"] + "'>next →</a>" if hd.get("nextblockhash") else "")
+        rows = [("Hash", "<span class=mono>" + h + "</span>"), ("Mined", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(hd["time"])) + " (" + ago(hd["time"]) + ")"),
+                ("Transactions", "{:,}".format(hd.get("nTx", 0))), ("Difficulty", "{:,.0f}".format(hd.get("difficulty", 0))), ("Bits", "<span class=mono>" + str(hd.get("bits")) + "</span>"),
+                ("Merkle root", "<span class=mono>" + str(hd.get("merkleroot")) + "</span>"), ("Confirmations", "{:,}".format(hd.get("confirmations", 0)))]
+        return page("Block " + str(hd["height"]), "<h1>Block " + "{:,}".format(hd["height"]) + "</h1><p>" + nav + "</p><section class=card><dl>"
+                    + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in rows) + "</dl></section><section class=card><p class=muted>This node is pruned: it has deleted the transactions of this block ("
+                    + html.escape(str(exc)) + "), but a node never prunes a block's header, which is shown above.</p></section>")
     txs = b["tx"]
     fees = sum(round(float(t.get("fee", 0)) * 1e8) for t in txs[1:])
     cb = txs[0]
@@ -692,6 +784,17 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(need_live()[1], 5)
             if path == "/api/blocks/tip/height":
                 return self.send(200, str(need_live()[0][0]["height"]), "text/plain", 5)
+            m = re.fullmatch(r"/api/v1/mining/pool/([a-z0-9-]+)/blocks", path)
+            if m:
+                return self.json(STATS.pool_blocks(m.group(1)), 60)
+            if path == "/api/v1/difficulty-adjustment":
+                return self.json(difficulty_adjustment(), 30)
+            if path == "/api/v1/fees/recommended":
+                return self.json(recommended_fees(), 10)
+            if path == "/api/v1/halving":
+                return self.json(halving(), 60)
+            if path == "/api/v1/network":
+                return self.json(network(), 10)
             if path == "/api/v1/status":
                 with STATE_LOCK:
                     s = {"live": not STATE["error"], "error": STATE["error"], "tip": STATE["blocks"][0]["height"] if STATE["blocks"] else None, "updated": STATE["at"],

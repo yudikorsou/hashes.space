@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.1.5"
+version: "1.2.0"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -32,4 +32,5 @@ defaultUsername: ""
 defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
-releaseNotes: Refuses a Bitcoin Knots node and says so; Bitcoin Node and Libre Relay (Bitcoin Core forks on the Bitcoin chain) are fine.
+releaseNotes: >-
+  New data from your node: the blocks of each pool, difficulty adjustment, recommended fees, halving countdown and network info (API and home page). A pruned block shows its header.

@@ -260,17 +260,18 @@
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, computing the same statistics from your Dogecoin Core node
   // Monero: the Monero Explorer app on your Umbrel (xmr.hashes.space), computing the same statistics from your Monero node;
   // the hashes.space app (mempool.hashes.space) computes them too and answers while the explorer has not been updated yet
-  var MINING_SITES = { sha256: 'mempool.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space', monero: 'xmr.hashes.space' };
+  var MINING_SITES = { sha256: 'btc.hashes.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space', monero: 'xmr.hashes.space' };
   var MINING_FALLBACK = { monero: 'mempool.hashes.space' };
+  var SNAPSHOT_FROM = { sha256: 'mempool.space', blake2b: 'mempool.guide' };   // where the built-in snapshots (shown only while the node does not answer) were taken
   // served from hashes.space, the two Bitcoin chains can also be asked through the hashes.space app, which passes the
   // statistics on with a single CORS header (mempool.guide sends two, so a browser refuses its answer)
   // anywhere else (a preview, a copy of the page on another site) the same app is asked at its public address, so everyone gets the node's numbers
   const NODE_HOST = /(^|\.)hashes\.space$/.test(location.hostname) ? location.host : 'mempool.hashes.space';
-  for (const n of ['sha256', 'blake2b']) MINING_FALLBACK[n] = NODE_HOST + '/api/v1/mining/proxy/' + MINING_SITES[n];
+  MINING_FALLBACK.blake2b = NODE_HOST + '/api/v1/mining/proxy/' + MINING_SITES.blake2b;   // Bitcoin goes only to its own node (btc.hashes.space), with no mempool.space behind it
   // Served from hashes.space, the two Bitcoin chains are asked first of the hashes.space app itself, which works the global hashrate
-  // and the pool split out of the Bitcoin nodes on your Umbrel; mempool.space / mempool.guide are only the fallback when no node answers
+  // and the pool split out of the Bitcoin nodes on your Umbrel; Bitcoin (SHA-256) asks only its own node, mempool.guide is the fallback of Bitcoin BLAKE2b
   var MINING_NODE = {};
-  MINING_NODE.sha256 = 'btc.hashes.space';   // the hashes Bitcoin Explorer app: statistics from your own Bitcoin node (mempool.space when it does not answer)
+  MINING_NODE.sha256 = 'btc.hashes.space';   // the hashes Bitcoin Explorer app: statistics from your own Bitcoin node (and nothing behind it)
   MINING_NODE.blake2b = 'btcb2.hashes.space';   // the hashes Bitcoin BLAKE2b Explorer app: statistics from your own Bitcoin Knots node (mempool.guide when it does not answer)
   const NODE_NAME = { sha256: 'your Bitcoin node', blake2b: 'your Bitcoin BLAKE2b node' };
   const fromName = (net, site) => (miningBy[net]?.node ? NODE_NAME[net] : MINING_FROM[net] ?? site + '/mining');
@@ -325,7 +326,7 @@
       const win = POOLS_WINDOW[net] ?? '1w';
       const from = async (host) => Promise.all([getJson(host, '/pools/' + win), getJson(host, '/hashrate/1y')]);
       const viaNodeAnswer = MINING_NODE[net] ? await from(MINING_NODE[net]).catch(() => null) : null, viaNode = !!viaNodeAnswer;
-      const [p, h] = viaNodeAnswer ?? await from(site).catch((e) => { if (!MINING_FALLBACK[net]) throw e; return from(MINING_FALLBACK[net]); });
+      const [p, h] = viaNodeAnswer ?? await (site === MINING_NODE[net] ? Promise.reject(new Error('node does not answer')) : from(site)).catch((e) => { if (!MINING_FALLBACK[net]) throw e; return from(MINING_FALLBACK[net]); });
       miningBy[net] = { node: viaNode, live: true, at: Date.now() / 1000, blockCount: p.blockCount, window: viaNode ? (p.window ?? win) : win,
         pools: p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
         hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: (h.difficulty ?? []).map((x) => [x.time, x.difficulty]),
@@ -373,7 +374,7 @@
   async function loadRangeFor(net, rng) {
     const key = net + ':' + rng; if (rangeBusy[key]) return; rangeBusy[key] = true;
     const base = miningBy[net]; if (!base) { rangeBusy[key] = false; return; }
-    const own = !!MINING_MORE[net], node = base.node ? MINING_NODE[net] : null, hosts = [MINING_SITES[net], MINING_FALLBACK[net]].filter(Boolean);
+    const own = !!MINING_MORE[net], node = base.node ? MINING_NODE[net] : null, hosts = [MINING_SITES[net], MINING_FALLBACK[net]].filter((x) => x && x !== MINING_NODE[net]);
     const hrPath = '/hashrate/' + (own ? rng : MEMPOOL_HASH[rng]), plPath = '/pools/' + (own ? rng : MEMPOOL_POOLS[rng]);
     // the pools and the hashrate are asked for separately, each from the hosts in turn: one that fails leaves the other standing
     // (your own node, when it answered the first time, is asked first and by the exact period; the mempool sites only when it does not)
@@ -447,7 +448,7 @@
         : `Waiting for the difficulty of ${network().chain} from ${site ?? network().source}. Pick another proof-of-work network above, or try again in a moment.`;
       $('calc-source').textContent = m && m.live
         ? `Difficulty live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-        : m ? `Difficulty from a snapshot of ${site}/mining (${site} is not reachable from this page)` : '';
+        : m ? `Difficulty from a snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining (${site} is not reachable from this page)` : '';
     }
     $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
     const onPools = typeof view !== 'undefined' && view === 'pools', art = document.querySelector('.m-pools'), slot = $('pools-slot');
@@ -482,7 +483,7 @@
     $('ms-hash-sub').textContent = hashrateThen(rv, info, range);
     $('ms-source').textContent = m.live
       ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
+      : `Snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
     if (onPools || (!sec.hidden && netId !== 'sha256')) drawPie(rp);
     if (!sec.hidden) drawChart(rv, range);
     renderCalc(); fillPools(); renderPoolCalc();

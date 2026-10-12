@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.6.0"
+version: "1.7.0"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -14,7 +14,7 @@ description: >-
   Published on the internet (for example with the Cloudflare Tunnel app), the page streams blocks
   live. Monero and Dogecoin come from your own full nodes through the Monero Explorer and Dogecoin
   Explorer apps, so no third party sees what your visitors look at. Bitcoin SHA-256 is read from your own node through the Bitcoin Explorer app (btc.hashes.space), pruned
-  or not; Bitcoin BLAKE2b the same way, from your Bitcoin Knots node through the Bitcoin BLAKE2b Explorer
+  or not, with no mempool.space behind it; Bitcoin BLAKE2b the same way, from your Bitcoin Knots node through the Bitcoin BLAKE2b Explorer
   app (btcb2.hashes.space).
 
 
@@ -35,7 +35,9 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  The Bitcoin BLAKE2b chain now streams from the new Bitcoin BLAKE2b Explorer app (btcb2.hashes.space), which reads blocks, fees,
+  The Bitcoin chain is now backed only by your own Bitcoin Explorer (btc.hashes.space): blocks, fees, pools, pool pages, hashrate and difficulty;
+  mempool.space is no longer asked. While the explorer's node is still syncing, the chain shows simulated blocks and tries again every minute.
+    The Bitcoin BLAKE2b chain now streams from the new Bitcoin BLAKE2b Explorer app (btcb2.hashes.space), which reads blocks, fees,
   mining pools and the mempool from your Bitcoin Knots app, pruned or not; mempool.guide is used only while that explorer does
   not answer or its node is still syncing. The Bitcoin SHA-256 chain streams from the new Bitcoin Explorer app (btc.hashes.space), which reads blocks, fees,
   mining pools and the mempool from your Bitcoin Node app, pruned or not; mempool.space is used only while that explorer
