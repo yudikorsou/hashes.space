@@ -2433,7 +2433,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   //   <- {blocks:[…]}, {block:{…}}, {"mempool-blocks":[…]}
   // Works when this file is opened in a normal browser tab; inside a sandboxed
   // preview the connection is blocked and the chain stays simulated.
-  const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: 'wss://mempool.space/api/v1/ws', scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: 'wss://mempool.guide/api/v1/ws' };
+  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and mempool.space when that does not answer
+  const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: ['wss://btc.hashes.space/api/v1/ws', 'wss://mempool.space/api/v1/ws'], scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: 'wss://mempool.guide/api/v1/ws' };
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
   const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://mempool.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmr.hashes.space/block/' };
   const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,
@@ -2529,54 +2530,23 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     if (msg['mempool-blocks'] || newBlock) renderProjected();
     if (msg.blocks || newBlock) renderMined(newBlock);
   }
-  // Bitcoin SHA-256: the blocks and the mempool of the Bitcoin Node app on the Umbrel that serves this page
-  // (site.py works out the fees and the pool of every block from the node, and the blocks the mempool would build).
-  // Without that node (or in a preview) it falls back to the mempool.space websocket below.
-  // Asked at the page's own address first (the Umbrel serving it), then at the public address of that app, so a copy of the page
-  // on another site, or one opened from anywhere, is fed by the same node.
-  const NODE_LIVE = { sha256: '/api/v1/mining/node/sha256/live' };
-  const NODE_BASES = /(^|\.)hashes\.space$/.test(location.hostname) ? [''] : ['', 'https://mempool.hashes.space'];
-  function connectNode(id) {
-    const c = chains[id]; c.connecting = true;
-    let fails = 0, lastTip = null, base = null;
-    const ask = async (b) => { const r = await fetch(b + NODE_LIVE[id], { signal: AbortSignal.timeout(15000) }); if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); };
-    const poll = async () => {
-      try {
-        let j;
-        if (base !== null) j = await ask(base);
-        else { for (const b of NODE_BASES) { try { j = await ask(b); base = b; break; } catch { /* try the next address */ } } if (!j) throw new Error('no node'); }
-        if (!Array.isArray(j.blocks) || !j.blocks.length) throw new Error('empty');
-        fails = 0;
-        const fresh = lastTip !== null && j.tip > lastTip; lastTip = j.tip;
-        const was = c.live, blocks = j.blocks.map(mapBlock).sort((a, b) => b.height - a.height).slice(0, 8);
-        const isNew = was && blocks[0].height > c.tipHeight;
-        c.blocks = blocks; c.tipHeight = blocks[0].height;
-        if (j.mempoolBlocks?.length) c.projected = padProjected(j.mempoolBlocks.slice(0, 6).map((b, index) => ({ index, nTx: b.nTx, vsize: b.blockVSize, medianFee: b.medianFee, feeRange: b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee], totalFees: b.totalFees })), c);
-        if (!c.live && c.projected.length) {
-          c.live = true; c.connecting = false;
-          const n = NETWORKS.find((x) => x.id === id); if (n) { n.source = 'your own Bitcoin node'; if (id === netId) renderNetworks(); }
-        }
-        if (c.live && id === netId) { if (isNew || fresh) sharesThisBlock = 0; renderProjected(); renderMined(!!(isNew || fresh)); }
-      } catch {
-        fails++;
-        if (!c.live) { c.connecting = false; return connectWs(id); }         // never answered: no node here, use the public explorer
-        if (fails >= 4) { c.live = false; c.connecting = false; const n = NETWORKS.find((x) => x.id === id); if (n) { n.source = 'mempool.space'; if (id === netId) renderNetworks(); } return connectWs(id); }   // the node went quiet
-      }
-      setTimeout(poll, 10_000);
-    };
-    poll();
-  }
   function connectLive(id) {
     if (id === 'monero') return connectXmr(id);
-    if (NODE_LIVE[id] && /^https?:$/.test(location.protocol)) return connectNode(id);
-    return connectWs(id);
+    return connectWs(id, 0);
   }
-  function connectWs(id) {
-    const c = chains[id];
-    let ws;
+  function connectWs(id, n) {
+    const c = chains[id], urls = [].concat(LIVE_WS[id]);
+    let ws, moved = false;
     c.connecting = true;
-    try { ws = new WebSocket(LIVE_WS[id]); } catch { c.connecting = false; if (id === netId) renderMined(false); return; }
-    const giveUp = setTimeout(() => { if (!c.live) { c.connecting = false; try { ws.close(); } catch {} if (id === netId) renderMined(false); } }, 7000);
+    // a source that does not go live (or drops before it did) hands over to the next one: Bitcoin tries your own node first
+    const next = () => {
+      if (moved) return; moved = true;
+      c.connecting = false; try { ws.close(); } catch {}
+      if (n + 1 < urls.length) return connectWs(id, n + 1);
+      if (id === netId) renderMined(false);
+    };
+    try { ws = new WebSocket(urls[n]); } catch { return next(); }
+    const giveUp = setTimeout(() => { if (!c.live) next(); }, 7000);
     ws.onopen = () => {
       ws.send(JSON.stringify({ action: 'init' }));
       ws.send(JSON.stringify({ action: 'want', data: ['blocks', 'mempool-blocks'] }));
@@ -2584,14 +2554,22 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     };
     ws.onmessage = (ev) => {
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
-      applyLive(id, c, msg, () => clearTimeout(giveUp));
+      applyLive(id, c, msg, () => {
+        clearTimeout(giveUp);
+        const host = new URL(urls[n]).host, net = NETWORKS.find((x) => x.id === id);
+        if (urls.length > 1) {      // say which source feeds the chain, and where its block links go
+          if (net) { net.source = host; if (id === netId) renderNetworks(); }
+          EXPLORER[id] = 'https://' + host + '/block/';
+        }
+      });
     };
     ws.onclose = () => {
       clearInterval(c.ping);
       const wasLive = c.live;
+      if (!wasLive) return next();
       c.live = false; c.connecting = false;
       if (id === netId) renderMined(false);
-      if (wasLive) setTimeout(() => connectLive(id), 5000); // dropped after working: try again
+      setTimeout(() => connectLive(id), 5000); // dropped after working: try again, from the first source
     };
     ws.onerror = () => {};
   }
@@ -3690,7 +3668,8 @@ window.__coins = COIN_LOGOS;
   // Served from hashes.space, the two Bitcoin chains are asked first of the hashes.space app itself, which works the global hashrate
   // and the pool split out of the Bitcoin nodes on your Umbrel; mempool.space / mempool.guide are only the fallback when no node answers
   var MINING_NODE = {};
-  for (const n of ['sha256', 'blake2b']) MINING_NODE[n] = NODE_HOST + '/api/v1/mining/node/' + n;
+  MINING_NODE.sha256 = 'btc.hashes.space';   // the hashes Bitcoin Explorer app: statistics from your own Bitcoin node (mempool.space when it does not answer)
+  MINING_NODE.blake2b = NODE_HOST + '/api/v1/mining/node/blake2b';
   const NODE_NAME = { sha256: 'your Bitcoin node', blake2b: 'your Bitcoin BLAKE2b node' };
   const fromName = (net, site) => (miningBy[net]?.node ? NODE_NAME[net] : MINING_FROM[net] ?? site + '/mining');
   // sites without mempool.space's mining pages: "View more" opens the explorer itself

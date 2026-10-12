@@ -1,0 +1,729 @@
+#!/usr/bin/env python3
+"""Bitcoin block explorer for Umbrel, on your own Bitcoin node (Python standard library only).
+
+Reads everything from the Bitcoin Node app's RPC, pruned or not, and serves:
+
+  /                      the node's state, the latest blocks and the mempool
+  /block/<hash|height>   a block with its transactions (a block the pruned node no longer keeps links to mempool.space)
+  /tx/<txid>             a transaction (mempool, a block you came from, or any tx with -txindex)
+  /search?q=             height, block hash or txid
+  /api/v1/blocks         the last blocks, in mempool.space's format, with the fees and the pool worked out from your node
+  /api/v1/fees/mempool-blocks   the blocks your mempool would build, best fee rate first
+  /api/blocks/tip/height
+  /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from the block headers (24h, 14d, 1m, 6m, 1y)
+  /api/v1/mining/pools/<period>     blocks per mining pool, from the tags and payout addresses in each coinbase
+  /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
+  /api/v1/status         what the explorer sees of the node (for when something does not show up)
+
+Fees are in sat/vB. The explorer refuses to serve (the page then uses mempool.space) while the node is still
+syncing, because a node that is behind would show old blocks as live.
+"""
+
+import base64
+import hashlib
+import html
+import http.client
+import json
+import os
+import re
+import struct
+import threading
+import time
+import urllib.request
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+PORT = int(os.environ.get("PORT", "3000"))
+DAY = 86400
+WEEK = 7 * DAY
+YEAR = 365 * DAY
+WS_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
+HEX64 = re.compile(r"[0-9a-fA-F]{64}")
+SUBSIDY0 = 50 * 100_000_000
+
+
+def log(msg):
+    print("[btc-explorer] " + msg, flush=True)
+
+
+# ---------- the node, the pool list, hashrate and pool statistics, the live blocks and the mempool blocks ----------
+
+POOL_BLOCKS = int(os.environ.get("POOL_BLOCKS", "4320"))     # how far back the pool of each block is read: 30 days
+POOLS_URL = os.environ.get("POOLS_URL", "https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json")
+BTC_BLOCKS_PER_DAY = 144
+POOL_WINDOWS = {"24h": DAY, "1w": WEEK, "14d": 14 * DAY, "1m": 30 * DAY}   # the periods the pool split is cut to
+EPOCH = 2016                 # one difficulty period: the "14 days" are the last 2016 blocks, the stretch the difficulty is set over
+# tags to know when the public list cannot be fetched (and for chains it knows nothing about)
+FALLBACK_POOLS = [
+    ("Foundry USA", ["Foundry USA Pool"]), ("AntPool", ["AntPool"]), ("F2Pool", ["F2Pool", "\U0001F41F"]), ("ViaBTC", ["ViaBTC"]),
+    ("SpiderPool", ["SpiderPool"]), ("SECPOOL", ["SECPOOL"]), ("MARA Pool", ["MARA Pool"]), ("Luxor", ["Luxor"]),
+    ("OCEAN", ["OCEAN\\.XYZ"]), ("Braiins Pool", ["/slush/", "Braiins"]), ("NiceHash", ["NiceHash"]), ("BTC.com", ["BTC\\.COM"]),
+    ("Binance Pool", ["binance"]), ("CONVOY", ["convoy"]), ("BTCB2", ["btcb2"]), ("B2Pool", ["b2pool"]),
+]
+
+
+class BtcRpc:
+    """A bitcoind-style JSON-RPC client (Bitcoin Core, Bitcoin Knots) over one kept-open connection."""
+
+    def __init__(self, host, port, user, password):
+        self.host, self.port = host, int(port)
+        self.auth = "Basic " + base64.b64encode((user + ":" + password).encode()).decode()
+        self.conn, self.lock = None, threading.Lock()
+
+    def call(self, method, *params, timeout=60):
+        body = json.dumps({"jsonrpc": "1.0", "id": "hs", "method": method, "params": list(params)}).encode()
+        with self.lock:
+            for attempt in (1, 2):
+                try:
+                    if self.conn is None:
+                        self.conn = http.client.HTTPConnection(self.host, self.port, timeout=timeout)
+                    self.conn.timeout = timeout
+                    self.conn.request("POST", "/", body=body, headers={"Authorization": self.auth, "Content-Type": "application/json"})
+                    r = self.conn.getresponse()
+                    status, data = r.status, r.read()
+                    break
+                except (http.client.HTTPException, OSError):
+                    try:
+                        self.conn and self.conn.close()
+                    except Exception:
+                        pass
+                    self.conn = None
+                    if attempt == 2:
+                        raise
+        if status == 401:
+            raise RuntimeError("the node refused the RPC login")
+        out = json.loads(data)             # an RPC error comes back as HTTP 500 with the error in the JSON
+        if out.get("error"):
+            raise RuntimeError(str(out["error"].get("message", out["error"])))
+        return out["result"]
+
+
+def bits_work(bits_hex):
+    """The hashes one block takes on average at this target (the compact 'bits' of a header)."""
+    b = int(bits_hex, 16)
+    exp, mant = b >> 24, b & 0x7FFFFF
+    target = mant << (8 * (exp - 3)) if exp > 3 else mant >> (8 * (3 - exp))
+    return (1 << 256) // (target + 1) if target > 0 else 0
+
+
+def percentiles(rates):
+    """[lowest, 10%, 25%, median, 75%, 90%, highest] of a list of fee rates, as mempool.space's feeRange."""
+    if not rates:
+        return [0, 0, 0, 0, 0, 0, 0]
+    r = sorted(rates)
+    at = lambda q: r[min(len(r) - 1, int(q * len(r)))]
+    return [r[0], at(.1), at(.25), at(.5), at(.75), at(.9), r[-1]]
+
+
+class PoolList:
+    """Which pool wrote a coinbase: payout addresses first, then the tags a pool puts in its coinbase text."""
+
+    def __init__(self):
+        self.addresses, self.tags, self.loaded = {}, [], False
+
+    def load(self):
+        entries = []
+        try:
+            req = urllib.request.Request(POOLS_URL, headers={"User-Agent": "hashes.space"})
+            with urllib.request.urlopen(req, timeout=30) as r:
+                for e in json.loads(r.read()):
+                    entries.append((e["name"], e.get("tags") or [], e.get("addresses") or []))
+            self.loaded = True
+        except Exception as exc:
+            log("pool list: " + str(exc) + " (using the short built-in list)")
+            entries = [(n, t, []) for n, t in FALLBACK_POOLS]
+        known = {n.lower() for n, _, _ in entries}
+        entries += [(n, t, []) for n, t in FALLBACK_POOLS if n.lower() not in known]   # pools of the BLAKE2b chain and friends
+        self.addresses, self.tags = {}, []
+        for name, tags, addrs in entries:
+            for a in addrs:
+                self.addresses[a] = name
+            for t in tags:
+                try:
+                    self.tags.append((re.compile(t, re.I), name))
+                except re.error:
+                    pass
+
+    def find(self, coinbase_text, addresses):
+        for a in addresses:
+            if a in self.addresses:
+                return self.addresses[a]
+        for rx, name in self.tags:
+            if rx.search(coinbase_text):
+                return name
+        return "Unknown"
+
+
+POOLS = PoolList()
+
+
+class ChainStats:
+    def __init__(self, name, rpc):
+        self.name, self.rpc, self.lock = name, rpc, threading.Lock()
+        self.headers = {}                  # height -> (time, chainwork, hashes per block, difficulty)
+        self.pool_of = {}                  # height -> pool name
+        self.tip, self.fine, self.coarse, self.now = None, [], [], (0, 0)
+        self.ready, self.pruned_at, self.error = False, None, ""
+        self.live_blocks, self.live = {}, None     # block hash -> the block as shown; the latest live view
+
+    def header(self, h):
+        hit = self.headers.get(h)
+        if hit:
+            return hit
+        hd = self.rpc.call("getblockheader", self.rpc.call("getblockhash", h))
+        hit = (int(hd["time"]), int(hd["chainwork"], 16), bits_work(hd["bits"]), float(hd["difficulty"]))
+        self.headers[h] = hit
+        return hit
+
+    def _series(self, heights):
+        hs, ds, last = [], [], None
+        for a, b in zip(heights, heights[1:]):
+            ta, wa, _, _ = self.header(a)
+            tb, wb, work, diff = self.header(b)
+            if tb > ta and wb > wa:
+                hs.append((tb, (wb - wa) / (tb - ta)))
+            d = work if self.name == "blake2b" else diff   # BLAKE2b: the hashes a block takes, as mempool.guide shows it
+            if d != last:
+                ds.append((tb, d))
+                last = d
+        return hs, ds
+
+    def refresh_hashrate(self):
+        tip = int(self.rpc.call("getblockcount"))
+        step_f, step_c = 18, BTC_BLOCKS_PER_DAY                  # 3 hours for the month, a day for the year
+        grid = lambda step, n: sorted({max(1, (tip // step - i) * step) for i in range(n, -1, -1)} | {tip})
+        fine, coarse = self._series(grid(step_f, 30 * 8)), self._series(grid(step_c, 366))
+        a, b = self.header(max(1, tip - BTC_BLOCKS_PER_DAY)), self.header(tip)
+        rate = (b[1] - a[1]) / (b[0] - a[0]) if b[0] > a[0] else 0
+        with self.lock:
+            self.tip, self.fine, self.coarse = tip, fine, coarse
+            self.now = (rate, b[2] if self.name == "blake2b" else b[3])
+            self.ready = True
+        # forget what is out of reach, so the cache stays small
+        for h in [h for h in self.headers if h < tip - 400 * BTC_BLOCKS_PER_DAY]:
+            del self.headers[h]
+
+    def classify(self, h):
+        block_hash = self.rpc.call("getblockhash", h)
+        txid = self.rpc.call("getblock", block_hash, 1)["tx"][0]
+        tx = self.rpc.call("getrawtransaction", txid, True, block_hash)
+        text = bytes.fromhex(tx["vin"][0].get("coinbase", "")).decode("latin-1")
+        addrs = []
+        for o in tx.get("vout", []):
+            sp = o.get("scriptPubKey", {})
+            addrs += [sp["address"]] if sp.get("address") else (sp.get("addresses") or [])
+        self.header(h)
+        return POOLS.find(text, addrs)
+
+    def refresh_pools(self):
+        tip = self.tip
+        for h in range(tip, max(1, tip - POOL_BLOCKS) - 1, -1):    # newest first, so the day and the week are ready early
+            if h in self.pool_of:
+                continue
+            try:
+                self.pool_of[h] = self.classify(h)
+            except Exception as exc:
+                if self.pruned_at is None:
+                    log(self.name + ": block " + str(h) + " cannot be read (" + str(exc) + "): the pool split covers the blocks from " + str(h + 1))
+                self.pruned_at = h
+                break
+        for h in [h for h in self.pool_of if h < tip - POOL_BLOCKS]:
+            del self.pool_of[h]
+
+    # ---- the live block stream: the newest blocks and the blocks the mempool would build, straight from the node ----
+    # The same shape as mempool.space's websocket ("blocks" and "mempool-blocks"), so the page reads either one.
+    def block_view(self, hash_):
+        """One block as the page shows it: size, fees (from the node's own undo data) and the pool that mined it."""
+        hit = self.live_blocks.get(hash_)
+        if hit:
+            return hit
+        b = self.rpc.call("getblock", hash_, 2, timeout=120)
+        txs = b["tx"]
+        cb = txs[0]
+        text = bytes.fromhex(cb["vin"][0].get("coinbase", "")).decode("latin-1")
+        addrs = []
+        for o in cb.get("vout", []):
+            sp = o.get("scriptPubKey", {})
+            addrs += [sp["address"]] if sp.get("address") else (sp.get("addresses") or [])
+        rates, fees = [], 0
+        for t in txs[1:]:
+            if "fee" in t and t.get("vsize"):
+                f = round(float(t["fee"]) * 1e8)
+                fees += f
+                rates.append(f / t["vsize"])
+        if not rates and len(txs) > 1:     # no undo data for this block: the fees are what the coinbase claims above the subsidy
+            subsidy = int(50e8) >> (int(b["height"]) // 210000)
+            fees = max(0, round(sum(float(o["value"]) for o in cb["vout"]) * 1e8) - subsidy)
+        view = {"id": b["hash"], "height": int(b["height"]), "timestamp": int(b["time"]), "tx_count": int(b["nTx"]),
+                "size": int(b["size"]), "weight": int(b["weight"]), "previousblockhash": b.get("previousblockhash"),
+                "extras": {"medianFee": percentiles(rates)[3], "feeRange": percentiles(rates), "totalFees": fees,
+                           "pool": {"name": POOLS.find(text, addrs)}, "coinbaseRaw": cb["vin"][0].get("coinbase", "")}}
+        self.live_blocks[hash_] = view
+        return view
+
+    def refresh_live_blocks(self):
+        if not POOLS.tags:
+            raise RuntimeError("the list of mining pools is still loading")
+        info = self.rpc.call("getblockchaininfo")
+        if info.get("initialblockdownload"):
+            raise RuntimeError("the node is still syncing")
+        tip, out = info["bestblockhash"], []
+        h = tip
+        while h and len(out) < 8:
+            v = self.block_view(h)
+            out.append(v)
+            h = v["previousblockhash"]
+        for k in [k for k in self.live_blocks if k not in {v["id"] for v in out}]:
+            if len(self.live_blocks) > 24:
+                del self.live_blocks[k]
+        return [{k: x for k, x in v.items() if k != "previousblockhash"} for v in out]
+
+    def refresh_live_mempool(self):
+        pool = self.rpc.call("getrawmempool", True, timeout=180)
+        items = []
+        for e in pool.values():
+            v = e.get("vsize") or e.get("size") or 0
+            if not v:
+                continue
+            f = e.get("fees", {})
+            base = float(f.get("base", e.get("fee", 0))) * 1e8
+            # a transaction is mined together with the parents it needs and the children that pay for it:
+            # its worth to a miner is the best of its own rate and its packages' rates
+            rate = max(base / v, float(f.get("ancestor", 0)) * 1e8 / max(1, e.get("ancestorsize", v)),
+                       float(f.get("descendant", 0)) * 1e8 / max(1, e.get("descendantsize", v)))
+            items.append((rate, v, base))
+        items.sort(key=lambda x: -x[0])
+        blocks, cur, size = [], [], 0
+        def flush():
+            rates = [r for r, _, _ in cur]
+            blocks.append({"nTx": len(cur), "blockVSize": size, "medianFee": round(percentiles(rates)[3], 2),
+                           "feeRange": [round(x, 2) for x in percentiles(rates)], "totalFees": round(sum(b for _, _, b in cur))})
+        for it in items:
+            if size + it[1] > 1_000_000 and cur:
+                flush()
+                cur, size = [], 0
+                if len(blocks) >= 8:
+                    break
+            cur.append(it)
+            size += it[1]
+        if cur and len(blocks) < 8:
+            flush()
+        return blocks, len(pool)
+
+    def refresh_live(self):
+        blocks = self.refresh_live_blocks()
+        try:
+            mb, count = self.refresh_live_mempool()
+        except Exception as exc:           # blocks are still worth showing when the mempool cannot be read right now
+            log(self.name + " mempool: " + str(exc))
+            mb, count = (self.live or {}).get("mempoolBlocks", []), 0
+        with self.lock:
+            self.live = {"blocks": blocks, "mempoolBlocks": mb, "mempoolCount": count, "tip": blocks[0]["height"], "updated": int(time.time())}
+
+    def hashrate(self, period):
+        with self.lock:
+            if not self.ready:
+                raise RuntimeError("no data yet")
+            (fine_h, fine_d), (coarse_h, coarse_d), (rate, diff) = self.fine, self.coarse, self.now
+        span = {"24h": DAY, "14d": 14 * DAY, "1m": 30 * DAY, "6m": 183 * DAY, "1y": YEAR}[period]
+        hs, ds = (fine_h, fine_d) if span <= 30 * DAY else (coarse_h, coarse_d)
+        cut = hs[-1][0] - span if hs else 0
+        if period == "14d":                # the last difficulty period (2016 blocks), not a fixed 14 days
+            cut = self.header(max(1, self.tip - EPOCH))[0]
+        keep = [x for x in hs if x[0] >= cut]
+        before = [x for x in ds if x[0] < cut][-1:]
+        return {"currentHashrate": rate, "currentDifficulty": diff,
+                "hashrates": [{"timestamp": t, "avgHashrate": v} for t, v in keep],
+                "difficulty": [{"time": t, "difficulty": d} for t, d in before + [x for x in ds if x[0] >= cut]]}
+
+    def pools(self, period):
+        with self.lock:
+            heights = list(self.pool_of.items())
+        if not heights:
+            raise RuntimeError("no data yet")
+        times = {h: self.headers[h][0] for h, _ in heights if h in self.headers}
+        if period == "14d":                # the last difficulty period: the last 2016 blocks, as far as they have been read
+            top = max(h for h, _ in heights)
+            if min(h for h, _ in heights) <= top - EPOCH + 1:
+                count = {}
+                for h, pool in heights:
+                    if h > top - EPOCH:
+                        count[pool] = count.get(pool, 0) + 1
+                return {"window": "14d", "blockCount": sum(count.values()),
+                        "pools": [{"name": n, "slug": re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-"), "blockCount": c}
+                                  for n, c in sorted(count.items(), key=lambda x: -x[1])]}
+        newest = max(times.values()), min(times.values())
+        # the nearest period (not longer than asked for) that the blocks read so far reach back to
+        want = POOL_WINDOWS.get(period, POOL_WINDOWS["1m"])
+        fits = [(sec, name) for name, sec in POOL_WINDOWS.items() if sec <= want and newest[1] <= newest[0] - sec + 3600]
+        sec, name = max(fits) if fits else (min(POOL_WINDOWS.values()), "24h")
+        count = {}
+        for h, pool in heights:
+            if h in times and times[h] >= newest[0] - sec:
+                count[pool] = count.get(pool, 0) + 1
+        total = sum(count.values())
+        return {"window": name, "blockCount": total,
+                "pools": [{"name": n, "slug": re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-"), "blockCount": c}
+                          for n, c in sorted(count.items(), key=lambda x: -x[1])]}
+
+
+
+NODE = BtcRpc(os.environ["RPC_HOST"], os.environ.get("RPC_PORT", "8332"), os.environ["RPC_USER"], os.environ["RPC_PASS"])
+STATS = ChainStats("sha256", NODE)
+STATE = {"blocks": [], "mempool": [], "mempool_json": "", "error": "starting", "info": {}, "mempool_count": 0, "at": 0}
+STATE_LOCK = threading.Lock()
+
+
+def stats_worker():
+    """hashrate and pool statistics: recomputed every 10 minutes (the first run reads the pool of every block of the period)"""
+    while True:
+        try:
+            STATS.refresh_hashrate()
+            STATS.refresh_pools()
+            log("mining statistics ready (tip " + str(STATS.tip) + ")")
+        except Exception as exc:  # noqa: BLE001
+            STATS.error = str(exc)
+            log("mining statistics: " + str(exc))
+        time.sleep(600)
+
+
+# ---------- WebSocket (mempool.space protocol) ----------
+
+_clients = set()
+_clients_lock = threading.Lock()
+_send_lock = threading.Lock()
+
+
+def ws_send(sock, text):
+    data = text.encode()
+    head = bytearray([0x81])
+    if len(data) < 126:
+        head.append(len(data))
+    elif len(data) < 65536:
+        head += bytes([126]) + struct.pack(">H", len(data))
+    else:
+        head += bytes([127]) + struct.pack(">Q", len(data))
+    with _send_lock:
+        sock.sendall(bytes(head) + data)
+
+
+def broadcast(obj):
+    text = json.dumps(obj)
+    with _clients_lock:
+        dead = []
+        for c in _clients:
+            try:
+                ws_send(c, text)
+            except OSError:
+                dead.append(c)
+        for c in dead:
+            _clients.discard(c)
+
+
+def view(b):
+    return {k: v for k, v in b.items() if k != "previousblockhash"}
+
+
+def poller():
+    """every few seconds: is there a new block (pushed to the page at once), and every 20 seconds the mempool blocks"""
+    last_mempool = 0
+    while True:
+        try:
+            info = NODE.call("getblockchaininfo")
+            if not POOLS.tags:
+                raise RuntimeError("the list of mining pools is still loading")
+            if info.get("initialblockdownload"):
+                raise RuntimeError("the node is still syncing (" + "{:.1f}".format(info.get("verificationprogress", 0) * 100) + "%)")
+            blocks = STATS.refresh_live_blocks()
+            fresh = STATE["blocks"] and blocks[0]["id"] != STATE["blocks"][0]["id"] and blocks[0]["height"] > STATE["blocks"][0]["height"]
+            with STATE_LOCK:
+                STATE.update(blocks=blocks, info=info, error="", at=int(time.time()))
+            if fresh:
+                broadcast({"block": blocks[0]})
+                last_mempool = 0                       # a block changes the mempool: recompute now
+            if time.time() - last_mempool > 20:
+                try:
+                    mp, count = STATS.refresh_live_mempool()
+                    text = json.dumps(mp)
+                    with STATE_LOCK:
+                        STATE["mempool_count"] = count
+                    if text != STATE["mempool_json"]:
+                        with STATE_LOCK:
+                            STATE["mempool"], STATE["mempool_json"] = mp, text
+                        broadcast({"mempool-blocks": mp})
+                except Exception as exc:  # noqa: BLE001
+                    log("mempool: " + str(exc))
+                last_mempool = time.time()
+        except Exception as exc:  # noqa: BLE001
+            with STATE_LOCK:
+                STATE["error"] = str(exc)
+            log("poll: " + str(exc))
+        time.sleep(6)
+
+
+def need_live():
+    with STATE_LOCK:
+        if STATE["error"] or not STATE["blocks"]:
+            raise RuntimeError(STATE["error"] or "no data yet")
+        return STATE["blocks"], STATE["mempool"]
+
+
+# ---------- HTML ----------
+
+CSS = """
+:root{color-scheme:dark;--bg:#11131f;--surface:#1d1f31;--line:#2d3348;--text:#fff;--muted:#9ea4bc;--link:#1bd8f4;--gold:#f7931a}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
+a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
+header .brand{font:700 18px/1 system-ui;color:var(--text)}header .brand span{color:var(--gold)}
+form{display:flex;gap:8px;flex:1;max-width:560px}input{flex:1;min-width:0;background:#0b0d17;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 12px;font:13px ui-monospace,Menlo,monospace}
+button{background:var(--gold);color:#1a1406;border:0;border-radius:8px;padding:0 14px;font-weight:600;cursor:pointer}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:18px}
+h1{font:600 20px/1.3 system-ui;margin:0}h2{font:600 15px/1.3 system-ui;margin:0 0 8px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:500;font-size:12.5px}
+td.r,th.r{text-align:right}.mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}.muted{color:var(--muted)}.wrap{white-space:normal;word-break:break-all}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.stat b{display:block;font:600 20px/1.2 ui-monospace,Menlo,monospace}
+.err{color:#ff6b6b}.ok{color:#3ce26b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
+"""
+
+
+def page(title, body):
+    return ("<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
+            "<title>" + html.escape(title) + " · Bitcoin explorer</title><style>" + CSS + "</style></head><body>"
+            "<header><a class=brand href='/'>Bitcoin <span>explorer</span></a>"
+            "<form action='/search'><input name=q placeholder='Block height, block hash or transaction id' aria-label=Search>"
+            "<button>Search</button></form></header><main>" + body + "</main>"
+            "<footer>Read from your own Bitcoin node · hashes.space</footer></body></html>")
+
+
+def btc(sats):
+    return "{:,.8f}".format(sats / 1e8).rstrip("0").rstrip(".") + " BTC"
+
+
+def ago(t):
+    s = max(0, int(time.time() - t))
+    return str(s) + "s ago" if s < 60 else str(s // 60) + "m ago" if s < 3600 else str(s // 3600) + "h ago" if s < 86400 else str(s // 86400) + "d ago"
+
+
+def home():
+    with STATE_LOCK:
+        err, info, count, blocks, projected = STATE["error"], STATE["info"], STATE["mempool_count"], STATE["blocks"], STATE["mempool"]
+    if not info:
+        try:
+            info = NODE.call("getblockchaininfo")
+        except Exception as exc:  # noqa: BLE001
+            err = err or str(exc)
+    state = ("<div class='card err'>The explorer is not serving the page's live stream yet: " + html.escape(err) + ". The Find Mempool page uses mempool.space until this clears.</div>"
+             if err else "<div class='card ok'>Live: the Find Mempool page reads its Bitcoin blocks from this node.</div>")
+    rows = "".join(
+        "<tr><td><a href='/block/" + b["id"] + "'>" + "{:,}".format(b["height"]) + "</a></td><td class=muted>" + ago(b["timestamp"]) + "</td><td>"
+        + html.escape(b["extras"]["pool"]["name"]) + "</td><td class=r>" + "{:,}".format(b["tx_count"]) + "</td><td class=r>" + "{:,.2f}".format(b["size"] / 1e6) + " MB</td><td class=r>"
+        + "~" + "{:g}".format(round(b["extras"]["medianFee"], 1)) + " sat/vB</td><td class=r>" + btc(b["extras"]["totalFees"]) + "</td></tr>" for b in blocks)
+    prow = "".join("<tr><td>" + ("Next block" if i == 0 else "+" + str(i)) + "</td><td class=r>" + "{:,}".format(p["nTx"]) + "</td><td class=r>"
+                   + "{:,.2f}".format(p["blockVSize"] / 1e6) + " MvB</td><td class=r>~" + "{:g}".format(p["medianFee"]) + " sat/vB</td></tr>" for i, p in enumerate(projected))
+    stats = [("Block height", "{:,}".format(info.get("blocks", 0))), ("Mempool", "{:,} txs".format(count)),
+             ("Node sync", "{:.2f}%".format(info.get("verificationprogress", 0) * 100)), ("Node", "pruned" if info.get("pruned") else "full")]
+    return page("Bitcoin", "<h1>Bitcoin</h1>" + state + "<div class=stats>"
+                + "".join("<div class='card stat'><span class=muted>" + k + "</span><b>" + v + "</b></div>" for k, v in stats)
+                + "</div><section class=card><h2>Latest blocks</h2><table><tr><th>Height</th><th>Mined</th><th>Pool</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Median fee</th><th class=r>Fees</th></tr>"
+                + rows + "</table></section><section class=card><h2>Mempool, in blocks of 1 MvB</h2><table><tr><th>Block</th><th class=r>Txs</th><th class=r>Size</th><th class=r>Median fee</th></tr>"
+                + prow + "</table></section>")
+
+
+def block_page(ident):
+    h = NODE.call("getblockhash", int(ident)) if ident.isdigit() else ident
+    if not HEX64.fullmatch(h):
+        raise ValueError("not a block")
+    try:
+        b = NODE.call("getblock", h, 2, timeout=120)
+    except RuntimeError as exc:
+        hd = NODE.call("getblockheader", h)       # the header is never pruned
+        return page("Block " + str(hd["height"]), "<h1>Block " + "{:,}".format(hd["height"]) + "</h1><section class='card'><p>This node is pruned and has deleted the data of this block ("
+                    + html.escape(str(exc)) + "). Its header: " + "<span class=mono>" + h + "</span>, mined " + time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(hd["time"]))
+                    + ".</p><p><a href='https://mempool.space/block/" + h + "'>Open it on mempool.space →</a></p></section>")
+    txs = b["tx"]
+    fees = sum(round(float(t.get("fee", 0)) * 1e8) for t in txs[1:])
+    cb = txs[0]
+    nav = ("<a href='/block/" + b["previousblockhash"] + "'>← previous</a>" if b.get("previousblockhash") else "") + ("  ·  <a href='/block/" + b["nextblockhash"] + "'>next →</a>" if b.get("nextblockhash") else "")
+    text = bytes.fromhex(cb["vin"][0].get("coinbase", "")).decode("latin-1")
+    addrs = [o.get("scriptPubKey", {}).get("address") for o in cb.get("vout", []) if o.get("scriptPubKey", {}).get("address")]
+    pool = POOLS.find(text, addrs)
+    rows = ""
+    for t in txs[:500]:
+        outs = ", ".join(html.escape(o.get("scriptPubKey", {}).get("address") or "?") for o in t["vout"][:2]) + (" …" if len(t["vout"]) > 2 else "")
+        rate = ("{:.1f}".format(float(t["fee"]) * 1e8 / t["vsize"]) + " sat/vB") if "fee" in t and t.get("vsize") and t is not cb else ""
+        rows += ("<tr><td class=mono><a href='/tx/" + t["txid"] + "?b=" + h + "'>" + t["txid"][:16] + "…</a></td><td>" + ("coinbase" if t is cb else str(len(t["vin"])) + " in")
+                 + "</td><td class='mono wrap'>" + outs + "</td><td class=r>" + btc(round(sum(float(o["value"]) for o in t["vout"]) * 1e8)) + "</td><td class=r>" + rate + "</td></tr>")
+    more = "<p class=muted>Showing the first 500 of " + "{:,}".format(len(txs)) + " transactions.</p>" if len(txs) > 500 else ""
+    return page("Block " + str(b["height"]), "<h1>Block " + "{:,}".format(b["height"]) + "</h1><p>" + nav + "</p><section class=card><dl>"
+                + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in [
+                    ("Hash", "<span class=mono>" + h + "</span>"), ("Mined", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["time"])) + " (" + ago(b["time"]) + ")"),
+                    ("Pool", html.escape(pool)), ("Transactions", "{:,}".format(len(txs))), ("Size", "{:,} bytes · {:,} weight units".format(b["size"], b["weight"])),
+                    ("Fees", btc(fees)), ("Reward", btc(fees + (SUBSIDY0 >> (b["height"] // 210000)))),
+                    ("Difficulty", "{:,.0f}".format(b.get("difficulty", 0))), ("Confirmations", "{:,}".format(b.get("confirmations", 0)))])
+                + "</dl></section><section class=card><h2>Transactions</h2><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
+                + rows + "</table>" + more + "</section>")
+
+
+def tx_page(txid, block_hash):
+    try:
+        tx = NODE.call("getrawtransaction", txid, 2, *([block_hash] if block_hash else []))
+    except RuntimeError:
+        try:
+            tx = NODE.call("getrawtransaction", txid, True, *([block_hash] if block_hash else []))
+        except RuntimeError:
+            raise ValueError("Transaction not found. A node finds a transaction that is in its mempool or in a block it still keeps; "
+                             "open it from its block, or run Bitcoin Core with -txindex=1 (not possible on a pruned node).")
+    ins = "".join("<tr><td class='mono wrap'>" + ("coinbase" if "coinbase" in i else "<a href='/tx/" + i["txid"] + "'>" + i["txid"][:16] + "…</a>:" + str(i["vout"])) + "</td></tr>" for i in tx["vin"])
+    outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")) + "</td><td class=r>"
+                   + btc(round(float(o["value"]) * 1e8)) + "</td></tr>" for n, o in enumerate(tx["vout"]))
+    bh = tx.get("blockhash")
+    rows = [("Txid", "<span class=mono>" + tx["txid"] + "</span>"),
+            ("Status", ("In block <a href='/block/" + bh + "'>" + bh[:16] + "…</a> · " + "{:,}".format(tx.get("confirmations", 0)) + " confirmations") if bh else "In the mempool, waiting for a block"),
+            ("Size", "{:,} bytes · {:,} vB".format(tx["size"], tx["vsize"])), ("Total out", btc(round(sum(float(o["value"]) for o in tx["vout"]) * 1e8)))]
+    if "fee" in tx:
+        rows.append(("Fee", btc(round(float(tx["fee"]) * 1e8)) + " (" + "{:.1f}".format(float(tx["fee"]) * 1e8 / tx["vsize"]) + " sat/vB)"))
+    return page("Transaction", "<h1>Transaction</h1><section class=card><dl>" + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in rows)
+                + "</dl></section><section class=card><h2>Inputs</h2><table>" + ins + "</table></section><section class=card><h2>Outputs</h2><table><tr><th>#</th><th>Address</th><th class=r>Value</th></tr>"
+                + outs + "</table></section>")
+
+
+class Handler(BaseHTTPRequestHandler):
+    server_version = "bitcoin-explorer"
+    protocol_version = "HTTP/1.1"
+
+    def log_message(self, fmt, *args):
+        pass
+
+    def send(self, code, body, ctype="text/html; charset=utf-8", cache=0):
+        data = body.encode() if isinstance(body, str) else body
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.send_header("Content-Length", str(len(data)))
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Cache-Control", "public, max-age=" + str(cache) if cache else "no-store")
+        self.end_headers()
+        self.wfile.write(data)
+
+    def json(self, obj, cache=0):
+        self.send(200, json.dumps(obj), "application/json", cache)
+
+    def do_GET(self):  # noqa: N802
+        path, _, query = self.path.partition("?")
+        params = dict(p.split("=", 1) for p in query.split("&") if "=" in p)
+        try:
+            if path == "/api/v1/ws" and self.headers.get("Upgrade", "").lower() == "websocket":
+                return self.websocket()
+            if path == "/api/v1/blocks":
+                return self.json([view(b) for b in need_live()[0]], 5)
+            if path == "/api/v1/fees/mempool-blocks":
+                return self.json(need_live()[1], 5)
+            if path == "/api/blocks/tip/height":
+                return self.send(200, str(need_live()[0][0]["height"]), "text/plain", 5)
+            if path == "/api/v1/status":
+                with STATE_LOCK:
+                    s = {"live": not STATE["error"], "error": STATE["error"], "tip": STATE["blocks"][0]["height"] if STATE["blocks"] else None, "updated": STATE["at"],
+                         "mempool": STATE["mempool_count"], "pruned": STATE["info"].get("pruned"), "syncing": STATE["info"].get("initialblockdownload"),
+                         "statistics": STATS.ready, "statisticsError": STATS.error, "pools": len(POOLS.tags) > 0}
+                return self.json(s)
+            m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(24h|14d|1w|1m|3m|6m|1y)", path)
+            if m:
+                kind, period = m.groups()
+                if kind == "hashrate":
+                    return self.json(STATS.hashrate("14d" if period == "1w" else "1m" if period == "3m" else period), 300)
+                return self.json(STATS.pools(period), 300)
+            if path == "/":
+                return self.send(200, home())
+            if path.startswith("/block/"):
+                return self.send(200, block_page(path[7:]))
+            if path.startswith("/tx/") and HEX64.fullmatch(path[4:]):
+                return self.send(200, tx_page(path[4:].lower(), params.get("b")))
+            if path == "/search":
+                q = urllib.request.unquote(params.get("q", "").replace("+", " ")).strip()
+                if q.isdigit():
+                    return self.redirect("/block/" + q)
+                if HEX64.fullmatch(q):
+                    try:
+                        NODE.call("getblockheader", q)
+                        return self.redirect("/block/" + q)
+                    except RuntimeError:
+                        return self.redirect("/tx/" + q.lower())
+                return self.send(404, page("Not found", "<h1>Nothing found</h1><p>Search for a block height, a block hash or a transaction id.</p>"))
+            return self.send(404, page("Not found", "<h1>Not found</h1>"))
+        except (RuntimeError, ValueError, OSError, KeyError, IndexError) as exc:
+            if path.startswith("/api/"):
+                return self.send(503, json.dumps({"error": str(exc)}), "application/json")
+            return self.send(502, page("Error", "<h1>Something went wrong</h1><p class=err>" + html.escape(str(exc)) + "</p>"))
+
+    def redirect(self, to):
+        self.send_response(302)
+        self.send_header("Location", to)
+        self.send_header("Content-Length", "0")
+        self.end_headers()
+
+    def websocket(self):
+        try:
+            blocks, mempool = need_live()         # not live (node syncing, not answering): no upgrade, so the page uses another source at once
+        except RuntimeError as exc:
+            return self.send(503, json.dumps({"error": str(exc)}), "application/json")
+        key = self.headers.get("Sec-WebSocket-Key", "")
+        accept = base64.b64encode(hashlib.sha1((key + WS_GUID).encode()).digest()).decode()
+        self.send_response(101)
+        self.send_header("Upgrade", "websocket")
+        self.send_header("Connection", "Upgrade")
+        self.send_header("Sec-WebSocket-Accept", accept)
+        self.end_headers()
+        sock = self.connection
+        sock.settimeout(120)
+        try:
+            while True:
+                head = self.rfile.read(2)
+                if len(head) < 2:
+                    break
+                op, ln = head[0] & 0x0F, head[1] & 0x7F
+                if ln == 126:
+                    ln = struct.unpack(">H", self.rfile.read(2))[0]
+                elif ln == 127:
+                    ln = struct.unpack(">Q", self.rfile.read(8))[0]
+                mask = self.rfile.read(4) if head[1] & 0x80 else b"\0\0\0\0"
+                data = bytes(c ^ mask[i % 4] for i, c in enumerate(self.rfile.read(ln)))
+                if op == 8:
+                    break
+                if op == 9:
+                    with _send_lock:
+                        sock.sendall(bytes([0x8A, len(data)]) + data)
+                    continue
+                if op != 1:
+                    continue
+                try:
+                    msg = json.loads(data)
+                except ValueError:
+                    continue
+                if msg.get("action") == "want":
+                    with _clients_lock:
+                        _clients.add(sock)
+                    blocks, mempool = need_live()
+                    ws_send(sock, json.dumps({"blocks": [view(b) for b in blocks], "mempool-blocks": mempool}))
+                elif msg.get("action") == "ping":
+                    ws_send(sock, json.dumps({"pong": True}))
+        except (OSError, RuntimeError, ValueError):
+            pass
+        finally:
+            with _clients_lock:
+                _clients.discard(sock)
+            self.close_connection = True
+
+
+def main():
+    threading.Thread(target=POOLS.load, daemon=True).start()
+    threading.Thread(target=poller, daemon=True).start()
+    threading.Thread(target=stats_worker, daemon=True).start()
+    server = ThreadingHTTPServer(("0.0.0.0", PORT), Handler)
+    server.daemon_threads = True
+    log("node " + os.environ["RPC_HOST"] + ":" + os.environ.get("RPC_PORT", "8332") + ", listening on port " + str(PORT))
+    server.serve_forever()
+
+
+if __name__ == "__main__":
+    main()

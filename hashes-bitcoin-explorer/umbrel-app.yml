@@ -1,0 +1,35 @@
+manifestVersion: 1
+id: hashes-bitcoin-explorer
+category: crypto
+name: Bitcoin Explorer
+version: "1.0.0"
+tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
+icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
+description: >-
+  A light Bitcoin block explorer that reads blocks, fees, mining pools and the mempool straight from the
+  Bitcoin Node app on your Umbrel: no third party sees what you look up. A pruned node is enough for the
+  newest blocks, which is what a live view needs. Search by block height, block hash or transaction id.
+
+
+  It also offers mempool.space's API and WebSocket (/api/v1/blocks, /api/v1/fees/mempool-blocks,
+  /api/v1/ws) and the global hashrate and mining pool statistics, worked out from your node, so the
+  hashes.space Find Mempool page can stream Bitcoin from your own node. Publish it on the internet (for
+  example with the Cloudflare Tunnel app, as btc.hashes.space) to make it the Bitcoin explorer of your website.
+
+
+  Requires the Bitcoin Node app, synced. While it is still syncing, the explorer says so and the page
+  uses mempool.space. /api/v1/status shows what the explorer sees of your node.
+developer: hashes.space
+website: https://hashes.space
+dependencies:
+  - bitcoin
+repo: https://github.com/yudikorsou/hashes.space
+support: https://github.com/yudikorsou/hashes.space/issues
+port: 4084
+gallery: []
+path: ""
+defaultUsername: ""
+defaultPassword: ""
+submitter: yudikorsou
+submission: https://github.com/yudikorsou/hashes.space
+releaseNotes: First release.

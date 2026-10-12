@@ -394,6 +394,10 @@ Mined blocks of pools that work with [DATUM Gateway](https://github.com/OCEAN-xy
 
 Monero blocks get none of these.
 
+## Your own Bitcoin block explorer on Umbrel
+
+The Bitcoin SHA-256 chain of the Find Mempool page streams from **Bitcoin Explorer** ([`hashes-bitcoin-explorer/`](hashes-bitcoin-explorer)), an Umbrel app on top of the **Bitcoin Node** app (a pruned node is enough). It serves mempool.space's API and WebSocket (blocks with their fees and mining pool, the blocks your mempool would build, hashrate and pool statistics) worked out from your own node. Publish it as `btc.hashes.space` (for example with the Cloudflare Tunnel app, pointing at port 4084); the page falls back to mempool.space while it does not answer or while the node is still syncing. `/api/v1/status` shows what the explorer sees of your node.
+
 ## Your own Monero block explorer on Umbrel
 
 Monero blocks come from an [Onion Monero Blockchain Explorer](https://github.com/moneroexamples/onion-monero-blockchain-explorer) (the software behind xmrchain.net). You can run your own on your Umbrel, on top of the **Monero Node** app, and use it as the Monero block explorer of hashes.space. This repository is an Umbrel community app store with that app: **Monero Explorer** ([`hashes-monero-explorer/`](hashes-monero-explorer)).
