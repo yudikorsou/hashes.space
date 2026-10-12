@@ -188,7 +188,9 @@ class ChainStats:
         if hit:
             return hit
         hd = self.rpc.call("getblockheader", self.rpc.call("getblockhash", h))
-        hit = (int(hd["time"]), int(hd["chainwork"], 16), bits_work(hd["bits"]), float(hd["difficulty"]))
+        bits_w = bits_work(hd["bits"])
+        # the BLAKE2b chain's headers may carry no "difficulty": the hashes a block takes (from "bits") is what the page shows for it
+        hit = (int(hd["time"]), int(hd["chainwork"], 16), bits_w, float(hd["difficulty"]) if hd.get("difficulty") is not None else float(bits_w))
         self.headers[h] = hit
         return hit
 
