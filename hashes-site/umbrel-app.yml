@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.4.0"
+version: "1.5.0"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -13,8 +13,9 @@ description: >-
 
   Published on the internet (for example with the Cloudflare Tunnel app), the page streams blocks
   live. Monero and Dogecoin come from your own full nodes through the Monero Explorer and Dogecoin
-  Explorer apps, so no third party sees what your visitors look at. The block streams of the two Bitcoin chains come from mempool.space and mempool.guide;
-  their global hashrate and mining pool statistics are worked out from the Bitcoin nodes on this Umbrel.
+  Explorer apps, so no third party sees what your visitors look at. Bitcoin SHA-256 is read from the Bitcoin Node app on this Umbrel too (blocks, fees, pools and the
+  mempool), pruned or not; Bitcoin BLAKE2b streams from mempool.guide, with its global hashrate and mining pool statistics
+  worked out from the Bitcoin Knots app.
 
 
   A browser can only reach these explorers from a real web page, which is why the page shows
@@ -34,7 +35,8 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  The Global hashrate and Mining pools sections of Bitcoin SHA-256 and Bitcoin BLAKE2b no longer depend on mempool.space or
-  mempool.guide: they are worked out from the Bitcoin Node app (SHA-256) and the Bitcoin Knots app (BLAKE2b) on this Umbrel,
-  from the block headers and the pool tags in each block. Without a node, or while it is not answering, the page uses the
-  third-party numbers as before.
+  Bitcoin SHA-256 no longer depends on mempool.space for its blocks: the newest blocks (size, fees, the pool that mined
+  them) and the blocks your mempool would build next come from the Bitcoin Node app on this Umbrel, and a pruned node is
+  enough. The page shows "live from your own Bitcoin node". Without a node, or while it is not answering or still syncing,
+  it uses mempool.space as before. Also new: the Academy now has seven chapter videos, one at a time with next and
+  previous arrows.

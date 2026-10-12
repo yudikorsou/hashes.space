@@ -383,6 +383,15 @@ def bits_work(bits_hex):
     return (1 << 256) // (target + 1) if target > 0 else 0
 
 
+def percentiles(rates):
+    """[lowest, 10%, 25%, median, 75%, 90%, highest] of a list of fee rates, as mempool.space's feeRange."""
+    if not rates:
+        return [0, 0, 0, 0, 0, 0, 0]
+    r = sorted(rates)
+    at = lambda q: r[min(len(r) - 1, int(q * len(r)))]
+    return [r[0], at(.1), at(.25), at(.5), at(.75), at(.9), r[-1]]
+
+
 class PoolList:
     """Which pool wrote a coinbase: payout addresses first, then the tags a pool puts in its coinbase text."""
 
@@ -432,6 +441,7 @@ class ChainStats:
         self.pool_of = {}                  # height -> pool name
         self.tip, self.fine, self.coarse, self.now = None, [], [], (0, 0)
         self.ready, self.pruned_at, self.error = False, None, ""
+        self.live_blocks, self.live = {}, None     # block hash -> the block as shown; the latest live view
 
     def header(self, h):
         hit = self.headers.get(h)
@@ -496,6 +506,96 @@ class ChainStats:
                 break
         for h in [h for h in self.pool_of if h < tip - POOL_BLOCKS]:
             del self.pool_of[h]
+
+    # ---- the live block stream: the newest blocks and the blocks the mempool would build, straight from the node ----
+    # The same shape as mempool.space's websocket ("blocks" and "mempool-blocks"), so the page reads either one.
+    def block_view(self, hash_):
+        """One block as the page shows it: size, fees (from the node's own undo data) and the pool that mined it."""
+        hit = self.live_blocks.get(hash_)
+        if hit:
+            return hit
+        b = self.rpc.call("getblock", hash_, 2, timeout=120)
+        txs = b["tx"]
+        cb = txs[0]
+        text = bytes.fromhex(cb["vin"][0].get("coinbase", "")).decode("latin-1")
+        addrs = []
+        for o in cb.get("vout", []):
+            sp = o.get("scriptPubKey", {})
+            addrs += [sp["address"]] if sp.get("address") else (sp.get("addresses") or [])
+        rates, fees = [], 0
+        for t in txs[1:]:
+            if "fee" in t and t.get("vsize"):
+                f = round(float(t["fee"]) * 1e8)
+                fees += f
+                rates.append(f / t["vsize"])
+        if not rates and len(txs) > 1:     # no undo data for this block: the fees are what the coinbase claims above the subsidy
+            subsidy = int(50e8) >> (int(b["height"]) // 210000)
+            fees = max(0, round(sum(float(o["value"]) for o in cb["vout"]) * 1e8) - subsidy)
+        view = {"id": b["hash"], "height": int(b["height"]), "timestamp": int(b["time"]), "tx_count": int(b["nTx"]),
+                "size": int(b["size"]), "weight": int(b["weight"]), "previousblockhash": b.get("previousblockhash"),
+                "extras": {"medianFee": percentiles(rates)[3], "feeRange": percentiles(rates), "totalFees": fees,
+                           "pool": {"name": POOLS.find(text, addrs)}, "coinbaseRaw": cb["vin"][0].get("coinbase", "")}}
+        self.live_blocks[hash_] = view
+        return view
+
+    def refresh_live_blocks(self):
+        if not POOLS.tags:
+            raise RuntimeError("the list of mining pools is still loading")
+        info = self.rpc.call("getblockchaininfo")
+        if info.get("initialblockdownload"):
+            raise RuntimeError("the node is still syncing")
+        tip, out = info["bestblockhash"], []
+        h = tip
+        while h and len(out) < 8:
+            v = self.block_view(h)
+            out.append(v)
+            h = v["previousblockhash"]
+        for k in [k for k in self.live_blocks if k not in {v["id"] for v in out}]:
+            if len(self.live_blocks) > 24:
+                del self.live_blocks[k]
+        return [{k: x for k, x in v.items() if k != "previousblockhash"} for v in out]
+
+    def refresh_live_mempool(self):
+        pool = self.rpc.call("getrawmempool", True, timeout=180)
+        items = []
+        for e in pool.values():
+            v = e.get("vsize") or e.get("size") or 0
+            if not v:
+                continue
+            f = e.get("fees", {})
+            base = float(f.get("base", e.get("fee", 0))) * 1e8
+            # a transaction is mined together with the parents it needs and the children that pay for it:
+            # its worth to a miner is the best of its own rate and its packages' rates
+            rate = max(base / v, float(f.get("ancestor", 0)) * 1e8 / max(1, e.get("ancestorsize", v)),
+                       float(f.get("descendant", 0)) * 1e8 / max(1, e.get("descendantsize", v)))
+            items.append((rate, v, base))
+        items.sort(key=lambda x: -x[0])
+        blocks, cur, size = [], [], 0
+        def flush():
+            rates = [r for r, _, _ in cur]
+            blocks.append({"nTx": len(cur), "blockVSize": size, "medianFee": round(percentiles(rates)[3], 2),
+                           "feeRange": [round(x, 2) for x in percentiles(rates)], "totalFees": round(sum(b for _, _, b in cur))})
+        for it in items:
+            if size + it[1] > 1_000_000 and cur:
+                flush()
+                cur, size = [], 0
+                if len(blocks) >= 8:
+                    break
+            cur.append(it)
+            size += it[1]
+        if cur and len(blocks) < 8:
+            flush()
+        return blocks, len(pool)
+
+    def refresh_live(self):
+        blocks = self.refresh_live_blocks()
+        try:
+            mb, count = self.refresh_live_mempool()
+        except Exception as exc:           # blocks are still worth showing when the mempool cannot be read right now
+            log(self.name + " mempool: " + str(exc))
+            mb, count = (self.live or {}).get("mempoolBlocks", []), 0
+        with self.lock:
+            self.live = {"blocks": blocks, "mempoolBlocks": mb, "mempoolCount": count, "tip": blocks[0]["height"], "updated": int(time.time())}
 
     def hashrate(self, period):
         with self.lock:
@@ -562,6 +662,19 @@ def chain_worker(stats):
         time.sleep(600)
 
 
+def live_worker(stats):
+    while True:
+        try:
+            stats.refresh_live()
+            stats.error = ""
+        except Exception as exc:
+            stats.error = str(exc)
+            with stats.lock:
+                stats.live = None          # a node that stopped answering is not shown as live
+            log(stats.name + " live: " + str(exc))
+        time.sleep(15)
+
+
 def start_chains():
     configured = {n: v for n, v in CHAIN_NODES.items() if v[0]}
     if not configured:
@@ -571,6 +684,7 @@ def start_chains():
     for name, (host, port, user, password) in configured.items():
         CHAINS[name] = ChainStats(name, BtcRpc(host, port, user, password))
         threading.Thread(target=chain_worker, args=(CHAINS[name],), daemon=True).start()
+        threading.Thread(target=live_worker, args=(CHAINS[name],), daemon=True).start()
         log(name + " node: " + host + ":" + str(port))
 
 
@@ -655,6 +769,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     chain, _, rest = path[len("/api/v1/mining/node/"):].partition("/")
                     m = re.fullmatch(r"api/v1/mining/(hashrate|pools)/(24h|14d|1w|1m|3m|6m|1y)", rest)
                     stats = CHAINS.get(chain)
+                    if rest == "live" and stats:
+                        with stats.lock:
+                            live = stats.live
+                        if not live:
+                            return self.send_error_json(503, stats.error or "no data yet")
+                        return self.send_json(live, 5)
                     if not m or not stats:
                         return self.send_error_json(404, "no node for this chain")
                     kind, period = m.groups()

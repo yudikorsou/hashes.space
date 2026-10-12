@@ -2507,8 +2507,66 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     }, 60_000);
     poll();
   }
+  // one message of the live stream (a websocket frame, or an answer of your own node): blocks, new block, mempool blocks
+  function applyLive(id, c, msg, onLive) {
+    let newBlock = false;
+    if (Array.isArray(msg.blocks) && msg.blocks.length) {
+      c.blocks = msg.blocks.map(mapBlock).sort((a, b) => b.height - a.height).slice(0, 8);
+      c.tipHeight = c.blocks[0].height;
+    }
+    if (msg.block && !c.blocks.some((b) => b.hash === msg.block.id)) {
+      c.blocks = [mapBlock(msg.block), ...c.blocks].slice(0, 8);
+      c.tipHeight = Math.max(c.tipHeight, msg.block.height);
+      newBlock = true;
+    }
+    if (Array.isArray(msg['mempool-blocks'])) {
+      c.projected = padProjected(msg['mempool-blocks'].slice(0, 6).map((b, index) => ({ index, nTx: b.nTx, vsize: c.doge ? b.blockSize : b.blockVSize, bytes: c.doge ? b.blockSize : undefined, medianFee: b.medianFee,
+        feeRange: b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee], totalFees: b.totalFees })), c);
+    }
+    if (!c.live && c.blocks.length && c.projected.length) { c.live = true; c.connecting = false; onLive(); }
+    if (!c.live || id !== netId) return;
+    if (newBlock) sharesThisBlock = 0;
+    if (msg['mempool-blocks'] || newBlock) renderProjected();
+    if (msg.blocks || newBlock) renderMined(newBlock);
+  }
+  // Bitcoin SHA-256: the blocks and the mempool of the Bitcoin Node app on the Umbrel that serves this page
+  // (site.py works out the fees and the pool of every block from the node, and the blocks the mempool would build).
+  // Without that node (or in a preview) it falls back to the mempool.space websocket below.
+  const NODE_LIVE = { sha256: '/api/v1/mining/node/sha256/live' };
+  function connectNode(id) {
+    const c = chains[id]; c.connecting = true;
+    let fails = 0, lastTip = null;
+    const poll = async () => {
+      try {
+        const r = await fetch(NODE_LIVE[id], { signal: AbortSignal.timeout(15000) });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const j = await r.json(); if (!Array.isArray(j.blocks) || !j.blocks.length) throw new Error('empty');
+        fails = 0;
+        const fresh = lastTip !== null && j.tip > lastTip; lastTip = j.tip;
+        const was = c.live, blocks = j.blocks.map(mapBlock).sort((a, b) => b.height - a.height).slice(0, 8);
+        const isNew = was && blocks[0].height > c.tipHeight;
+        c.blocks = blocks; c.tipHeight = blocks[0].height;
+        if (j.mempoolBlocks?.length) c.projected = padProjected(j.mempoolBlocks.slice(0, 6).map((b, index) => ({ index, nTx: b.nTx, vsize: b.blockVSize, medianFee: b.medianFee, feeRange: b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee], totalFees: b.totalFees })), c);
+        if (!c.live && c.projected.length) {
+          c.live = true; c.connecting = false;
+          const n = NETWORKS.find((x) => x.id === id); if (n) { n.source = 'your own Bitcoin node'; if (id === netId) renderNetworks(); }
+        }
+        if (c.live && id === netId) { if (isNew || fresh) sharesThisBlock = 0; renderProjected(); renderMined(!!(isNew || fresh)); }
+      } catch {
+        fails++;
+        if (!c.live) { c.connecting = false; return connectWs(id); }         // never answered: no node here, use the public explorer
+        if (fails >= 4) { c.live = false; c.connecting = false; const n = NETWORKS.find((x) => x.id === id); if (n) { n.source = 'mempool.space'; if (id === netId) renderNetworks(); } return connectWs(id); }   // the node went quiet
+      }
+      setTimeout(poll, 10_000);
+    };
+    poll();
+  }
   function connectLive(id) {
     if (id === 'monero') return connectXmr(id);
+    if (NODE_LIVE[id] && /^https?:$/.test(location.protocol)) return connectNode(id);
+    return connectWs(id);
+  }
+  function connectWs(id) {
     const c = chains[id];
     let ws;
     c.connecting = true;
@@ -2521,25 +2579,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     };
     ws.onmessage = (ev) => {
       let msg; try { msg = JSON.parse(ev.data); } catch { return; }
-      let newBlock = false;
-      if (Array.isArray(msg.blocks) && msg.blocks.length) {
-        c.blocks = msg.blocks.map(mapBlock).sort((a, b) => b.height - a.height).slice(0, 8);
-        c.tipHeight = c.blocks[0].height;
-      }
-      if (msg.block && !c.blocks.some((b) => b.hash === msg.block.id)) {
-        c.blocks = [mapBlock(msg.block), ...c.blocks].slice(0, 8);
-        c.tipHeight = Math.max(c.tipHeight, msg.block.height);
-        newBlock = true;
-      }
-      if (Array.isArray(msg['mempool-blocks'])) {
-        c.projected = padProjected(msg['mempool-blocks'].slice(0, 6).map((b, index) => ({ index, nTx: b.nTx, vsize: c.doge ? b.blockSize : b.blockVSize, bytes: c.doge ? b.blockSize : undefined, medianFee: b.medianFee,
-          feeRange: b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee], totalFees: b.totalFees })), c);
-      }
-      if (!c.live && c.blocks.length && c.projected.length) { c.live = true; c.connecting = false; clearTimeout(giveUp); }
-      if (!c.live || id !== netId) return;
-      if (newBlock) sharesThisBlock = 0;
-      if (msg['mempool-blocks'] || newBlock) renderProjected();
-      if (msg.blocks || newBlock) renderMined(newBlock);
+      applyLive(id, c, msg, () => clearTimeout(giveUp));
     };
     ws.onclose = () => {
       clearInterval(c.ping);
