@@ -70,11 +70,16 @@ FALLBACK_POOLS = [
     ("OCEAN", ["OCEAN\\.XYZ"]), ("Braiins Pool", ["/slush/", "Braiins"]), ("NiceHash", ["NiceHash"]), ("BTC.com", ["BTC\\.COM"]),
     ("Binance Pool", ["binance"]), ("CONVOY", ["convoy"]), ("BTCB2", ["btcb2"]), ("B2Pool", ["b2pool"]),
 ]
-# pools that mine the BLAKE2b chain (named in its blocks the way mempool.guide shows them), asked before the SHA-256 list
-B2_POOLS = [("CONVOY", ["convoy"]), ("BTCB2", ["btcb2"]), ("B2Pool", ["b2pool"]), ("AlphaPool", ["alphapool"]), ("Lazarus", ["lazarus"]),
-            ("DxPool", ["dxpool"]), ("Omega Pool", ["omega ?pool"]), ("Legata", ["legata"]), ("Rabid Pool", ["rabid ?pool"]),
-            ("RIPTIDE", ["riptide"]), ("PyBLOCK", ["pyblock"]), ("Quai Network", ["quai"]), ("Pow.re", ["pow\\.re"]),
-            ("Paperclip Pool", ["paperclip"]), ("Blockvase", ["blockvase"])]
+# The pools of the BLAKE2b chain, named the way mempool.guide names them, by the text each puts in its coinbase (read from the
+# chain's last 600 blocks). The first tag that matches wins, so a pool's own name comes before the generic "DATUM Gateway" tag:
+# the blocks of a pool whose miners use a DATUM Gateway read "<pool> DATUM User". The SHA-256 pool list is not used for this chain.
+B2_POOLS = [("AlphaPool", ["alphapool"]), ("Lazarus", ["lazarus"]), ("B2Pool", ["b2pool"]), ("CONVOY", ["convoy"]),
+            ("DxPool", ["dxpool"]), ("Omega Pool", ["omegapool"]), ("RIPTIDE", ["riptide"]), ("PyBLOCK", ["pyblock"]),
+            ("Rabid Pool", ["rabid pool"]), ("sobig solo", ["sobig solo"]), ("Paperclip Pool", ["paperclippool"]),
+            ("Blockvase", ["blockvase"]), ("Bitcoin Xor", ["bitcoin xor"]), ("PCAA", ["pcaa"]), ("YUMM-SOLO", ["yumm-solo"]),
+            ("Pow.re", ["pow\\.re"]), ("Legata", ["legata"]), ("Quai Network", ["quai network"]), ("Tower7", ["tower7"]),
+            ("TrueNorth", ["truenorth"]), ("Tyger Pool", ["tyger pool"]), ("Mining-Dutch", ["mining-dutch"]),
+            ("In the name of God", ["in the name of god"]), ("555", ["deride and conquer"]), ("BTCB2", ["btcb2"]), ("DATUM User", ["datum gateway"])]
 
 
 class BtcRpc:
@@ -138,19 +143,20 @@ class PoolList:
 
     def load(self):
         entries = []
-        try:
-            req = urllib.request.Request(POOLS_URL, headers={"User-Agent": "hashes.space"})
-            with urllib.request.urlopen(req, timeout=30) as r:
-                for e in json.loads(r.read()):
-                    entries.append((e["name"], e.get("tags") or [], e.get("addresses") or []))
-            self.loaded = True
-        except Exception as exc:
-            log("pool list: " + str(exc) + " (using the short built-in list)")
-            entries = [(n, t, []) for n, t in FALLBACK_POOLS]
-        known = {n.lower() for n, _, _ in entries}
-        entries += [(n, t, []) for n, t in FALLBACK_POOLS if n.lower() not in known]   # pools of the BLAKE2b chain and friends
         if CHAIN == "blake2b":
-            entries = [(n, t, []) for n, t in B2_POOLS] + entries
+            self.loaded, entries = True, [(n, t, []) for n, t in B2_POOLS]
+        else:
+            try:
+                req = urllib.request.Request(POOLS_URL, headers={"User-Agent": "hashes.space"})
+                with urllib.request.urlopen(req, timeout=30) as r:
+                    for e in json.loads(r.read()):
+                        entries.append((e["name"], e.get("tags") or [], e.get("addresses") or []))
+                self.loaded = True
+            except Exception as exc:
+                log("pool list: " + str(exc) + " (using the short built-in list)")
+                entries = [(n, t, []) for n, t in FALLBACK_POOLS]
+            known = {n.lower() for n, _, _ in entries}
+            entries += [(n, t, []) for n, t in FALLBACK_POOLS if n.lower() not in known]
         self.addresses, self.tags = {}, []
         for name, tags, addrs in entries:
             for a in addrs:
@@ -161,14 +167,33 @@ class PoolList:
                 except re.error:
                     pass
 
-    def find(self, coinbase_text, addresses):
+    @staticmethod
+    def miner_after(text, m):
+        """The miner a pool names in its coinbase: the printable text right after the pool's own tag ("AlphaPool", "Grumpy Pickle")."""
+        runs = [x for x in re.finditer(r"[\x20-\x7e]+", text)]
+        for k, run in enumerate(runs):
+            if run.start() <= m.start() < run.end():
+                if k + 1 < len(runs):
+                    cand = runs[k + 1].group().strip()
+                    if 2 <= len(cand) <= 40 and re.search(r"[A-Za-z0-9]{2}", cand) and cand.lower() not in run.group().lower() and m.group().lower() not in cand.lower():
+                        return cand
+                break
+        return ""
+
+    def find_full(self, coinbase_text, addresses):
+        """(pool, miner) of a coinbase"""
         for a in addresses:
             if a in self.addresses:
-                return self.addresses[a]
+                return self.addresses[a], ""
         for rx, name in self.tags:
-            if rx.search(coinbase_text):
-                return name
-        return "Unknown"
+            m = rx.search(coinbase_text)
+            if m:
+                miner = self.miner_after(coinbase_text, m)
+                return name, ("" if miner.lower() == name.lower() else miner)
+        return "Unknown", ""
+
+    def find(self, coinbase_text, addresses):
+        return self.find_full(coinbase_text, addresses)[0]
 
 
 POOLS = PoolList()
@@ -179,6 +204,7 @@ class ChainStats:
         self.name, self.rpc, self.lock = name, rpc, threading.Lock()
         self.headers = {}                  # height -> (time, chainwork, hashes per block, difficulty)
         self.pool_of = {}                  # height -> pool name
+        self.miner_of = {}                 # height -> the miner the pool names in the coinbase ("" when it names none)
         self.tip, self.fine, self.coarse, self.now = None, [], [], (0, 0)
         self.ready, self.pruned_at, self.error = False, None, ""
         self.live_blocks, self.live = {}, None     # block hash -> the block as shown; the latest live view
@@ -232,7 +258,7 @@ class ChainStats:
             sp = o.get("scriptPubKey", {})
             addrs += [sp["address"]] if sp.get("address") else (sp.get("addresses") or [])
         self.header(h)
-        return POOLS.find(text, addrs)
+        return POOLS.find_full(text, addrs)
 
     def refresh_pools(self):
         tip = self.tip
@@ -240,7 +266,7 @@ class ChainStats:
             if h in self.pool_of:
                 continue
             try:
-                self.pool_of[h] = self.classify(h)
+                self.pool_of[h], self.miner_of[h] = self.classify(h)
             except Exception as exc:
                 if self.pruned_at is None:
                     log(self.name + ": block " + str(h) + " cannot be read (" + str(exc) + "): the pool split covers the blocks from " + str(h + 1))
@@ -248,6 +274,7 @@ class ChainStats:
                 break
         for h in [h for h in self.pool_of if h < tip - POOL_BLOCKS]:
             del self.pool_of[h]
+            self.miner_of.pop(h, None)
 
     # ---- the live block stream: the newest blocks and the blocks the mempool would build, straight from the node ----
     # The same shape as mempool.space's websocket ("blocks" and "mempool-blocks"), so the page reads either one.
@@ -355,36 +382,40 @@ class ChainStats:
                 "hashrates": [{"timestamp": t, "avgHashrate": v} for t, v in keep],
                 "difficulty": [{"time": t, "difficulty": d} for t, d in before + [x for x in ds if x[0] >= cut]]}
 
+    def pool_split(self, rows):
+        """rows: [(pool, miner)] -> the pools with their blocks and, inside each pool, the miners it names"""
+        count, miners = {}, {}
+        for pool, miner in rows:
+            count[pool] = count.get(pool, 0) + 1
+            if miner:
+                m = miners.setdefault(pool, {})
+                m[miner] = m.get(miner, 0) + 1
+        out = []
+        for n, c in sorted(count.items(), key=lambda x: -x[1]):
+            e = {"name": n, "slug": re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-"), "blockCount": c}
+            if n in miners:
+                e["miners"] = [{"name": k, "blockCount": v} for k, v in sorted(miners[n].items(), key=lambda x: -x[1])]
+            out.append(e)
+        return out
+
     def pools(self, period):
         with self.lock:
-            heights = list(self.pool_of.items())
+            heights = [(h, p, self.miner_of.get(h, "")) for h, p in self.pool_of.items()]
         if not heights:
             raise RuntimeError("no data yet")
-        times = {h: self.headers[h][0] for h, _ in heights if h in self.headers}
+        times = {h: self.headers[h][0] for h, _, _ in heights if h in self.headers}
         if period == "14d":                # the last difficulty period: the last 2016 blocks, as far as they have been read
-            top = max(h for h, _ in heights)
-            if min(h for h, _ in heights) <= top - EPOCH + 1:
-                count = {}
-                for h, pool in heights:
-                    if h > top - EPOCH:
-                        count[pool] = count.get(pool, 0) + 1
-                return {"window": "14d", "blockCount": sum(count.values()),
-                        "pools": [{"name": n, "slug": re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-"), "blockCount": c}
-                                  for n, c in sorted(count.items(), key=lambda x: -x[1])]}
+            top = max(h for h, _, _ in heights)
+            if min(h for h, _, _ in heights) <= top - EPOCH + 1:
+                rows = [(p, m) for h, p, m in heights if h > top - EPOCH]
+                return {"window": "14d", "blockCount": len(rows), "pools": self.pool_split(rows)}
         newest = max(times.values()), min(times.values())
         # the nearest period (not longer than asked for) that the blocks read so far reach back to
         want = POOL_WINDOWS.get(period, POOL_WINDOWS["1m"])
         fits = [(sec, name) for name, sec in POOL_WINDOWS.items() if sec <= want and newest[1] <= newest[0] - sec + 3600]
         sec, name = max(fits) if fits else (min(POOL_WINDOWS.values()), "24h")
-        count = {}
-        for h, pool in heights:
-            if h in times and times[h] >= newest[0] - sec:
-                count[pool] = count.get(pool, 0) + 1
-        total = sum(count.values())
-        return {"window": name, "blockCount": total,
-                "pools": [{"name": n, "slug": re.sub(r"[^a-z0-9]+", "-", n.lower()).strip("-"), "blockCount": c}
-                          for n, c in sorted(count.items(), key=lambda x: -x[1])]}
-
+        rows = [(p, m) for h, p, m in heights if h in times and times[h] >= newest[0] - sec]
+        return {"window": name, "blockCount": len(rows), "pools": self.pool_split(rows)}
 
 
 NODE = BtcRpc(os.environ["RPC_HOST"], os.environ.get("RPC_PORT", "8332"), os.environ["RPC_USER"], os.environ["RPC_PASS"])
