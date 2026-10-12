@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.8.0"
+version: "1.9.0"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -33,4 +33,4 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  Block animation: each transaction's full TXID resolves in a packet, the coins it spends slide in and merge into it, the packet dives into the block and its outputs (txid:index) resolve in the middle.
+  Block animation: no boxes around the hashes, larger readable text on the block, spent coins glide in one line each, the TXID packet dives in and the outputs emerge from the middle of the block.

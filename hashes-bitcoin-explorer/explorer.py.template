@@ -805,12 +805,12 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{c
 .txt{height:100%;display:grid;grid-template-rows:auto auto 1fr auto auto;justify-items:center;align-items:center;padding:30px 8px 12px;font:400 14px/1.25 system-ui,sans-serif;color:#fff;text-align:center}
 .txt .fee{font-weight:600;font-size:17px}.txt .range{color:rgba(255,255,255,.8);font-size:13px}.txt .txs,.txt .time{font-size:13px}
 .mid{position:relative;width:100%;height:100%;display:grid;align-content:center;gap:5px;justify-items:center}.rlabel{font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:rgba(255,255,255,.75);opacity:0}
-.achip{display:grid;gap:2px;text-align:left;padding:7px 10px;border-radius:9px;background:rgba(14,16,30,.78);border:1px solid rgba(255,255,255,.22);box-shadow:0 4px 14px rgba(0,0,0,.35);opacity:0}
-.achip b{font:600 12.5px/1.2 ui-monospace,Menlo,monospace;color:#1bd8f4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.achip span{font:12px/1.2 system-ui,sans-serif;color:#e8ebf5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.achip.in{position:absolute;box-sizing:border-box;height:50px;border-color:rgba(27,216,244,.5)}
-.packet{position:absolute;box-sizing:border-box;padding:9px 12px;border-radius:12px;background:rgba(14,16,30,.94);border:1px solid #f7931a;opacity:0;text-align:left}
-.packet i{display:block;font:600 10.5px/1 ui-monospace,Menlo,monospace;letter-spacing:.14em;color:#f7931a;font-style:normal;margin-bottom:6px}
-.packet code{display:block;white-space:pre;font:12px/1.35 ui-monospace,Menlo,monospace;color:#fff;overflow:hidden}.packet small{display:block;margin-top:6px;font:12px/1.2 system-ui,sans-serif;color:#9ea4bc}
+.achip{display:flex;gap:9px;align-items:baseline;text-align:left;white-space:nowrap;opacity:0;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 10px rgba(0,0,0,.55)}
+.achip b{font:600 13px/1.2 ui-monospace,Menlo,monospace;color:#7fe9ff;flex:none}.achip span{font:13px/1.2 system-ui,sans-serif;color:#f1f3fb;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.achip.in{position:absolute;box-sizing:border-box}.achip.out{width:94%;box-sizing:border-box;justify-content:center}.achip.out b{color:#7dff9f}
+.packet{position:absolute;box-sizing:border-box;opacity:0;text-align:center;text-shadow:0 1px 3px rgba(0,0,0,.85),0 0 12px rgba(0,0,0,.6)}
+.packet i{display:block;font:600 11px/1 ui-monospace,Menlo,monospace;letter-spacing:.16em;color:#ffb95c;font-style:normal;margin-bottom:6px}
+.packet code{display:block;white-space:pre;font:600 13.5px/1.4 ui-monospace,Menlo,monospace;color:#fff;letter-spacing:.01em}.packet small{display:block;margin-top:6px;font:12.5px/1.2 system-ui,sans-serif;color:#d5d9ea}
 .hexbit{position:absolute;font:600 12px/1 ui-monospace,Menlo,monospace;color:#f7931a;opacity:0;text-shadow:0 0 8px rgba(247,147,26,.9)}.achip.out{width:88%;box-sizing:border-box}.achip.out b{color:#3ce26b}
 .cube.hit{animation:hit .45s ease-out}@keyframes hit{0%{box-shadow:0 0 0 0 rgba(60,226,107,.7)}100%{box-shadow:0 0 0 12px rgba(60,226,107,0)}}summary{cursor:pointer;color:var(--muted);font-weight:600}details table{margin-top:10px}
 .err{color:#ff6b6b}.ok{color:#3ce26b}footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
@@ -1035,7 +1035,7 @@ var EMPTY="#2d3348",M1="#9339f4",M2="#105fb0";
 function setFill(n){var done=n>0?cum[n-1]/Math.max(1,D.totalVs):0,pct=Math.max(4,Math.min(100,D.full*done)),e=100-pct;
  front.style.background="repeating-linear-gradient("+EMPTY+","+EMPTY+" "+e+"%,"+M1+" "+e+"%,"+M2+" 100%)";
  cTx.textContent=n.toLocaleString()+" / "+D.total.toLocaleString()+" transactions · "+(D.size*done/1e6).toFixed(2)+" MB"}
-var geo=null;function measure(){var a=layer.getBoundingClientRect(),f=front.getBoundingClientRect(),m=mid.getBoundingClientRect();geo={cx:f.left+f.width/2-a.left,cy:m.top+m.height/2-a.top,pw:Math.min(300,a.width-16),cw:Math.min(230,f.width*0.72),fw:f.width}}
+var geo=null;function measure(){var a=layer.getBoundingClientRect(),f=front.getBoundingClientRect(),m=mid.getBoundingClientRect();geo={cx:f.left+f.width/2-a.left,cy:m.top+m.height/2-a.top,pw:Math.min(330,f.width*0.94),cw:Math.min(340,f.width*0.94),fw:f.width}}
 var pos=0,playing=false,last=0,shown=-1,hitAt=-1,lastTxt="";
 function render(){
  if(!geo)measure();
@@ -1051,30 +1051,30 @@ function render(){
  var txt=p<0.16?resolve(full,p/0.14):full;
  if(txt!==lastTxt){pkCode.textContent=txt;lastTxt=txt}
  pkMeta.textContent=t.nin+" in → "+t.nout+" out · "+(t.cb?"coinbase":t.r+" sat/vB")+" · "+t.vs+" vB";
- pk.style.width=pw+"px";pk.style.left=(g.cx-pw/2)+"px";pk.style.top=(g.cy-48)+"px";
+ pk.style.width=pw+"px";pk.style.left=(g.cx-pw/2)+"px";pk.style.top=(g.cy-30)+"px";
  var abs=0;for(var j=0;j<3;j++){var s=clamp((p-(0.12+0.07*j))/0.2);abs=Math.max(abs,Math.max(0,1-Math.abs(s-0.9)/0.12))}
  pk.style.transform="translateY("+(-18*(1-ease(show))+10*dive)+"px) scale("+(1-0.88*dive)+")";
  pk.style.opacity=ease(show)*(1-clamp((dive-0.55)/0.45));
- pk.style.boxShadow="0 0 "+(10+22*abs)+"px rgba(247,147,26,"+(0.25+0.55*abs)+")";
+ pk.style.filter="brightness("+(1+0.5*abs)+")";
  // the coins it spends slide in from the left and merge into the packet
  for(var j=0;j<3;j++){var e=ins[j],x=t.ins[j];
   if(!x||p>0.5){e.style.opacity=0;continue}
-  fill(e,["spends "+x[0],x[1]]);var a=0.1+0.07*j,s=clamp((p-a)/0.26),k=ease(s),w=g.cw,end=g.cx-pw/2-w*0.2,start=-w-12;
-  e.style.width=w+"px";e.style.left=(end+(start-end)*(1-k))+"px";e.style.top=(g.cy-48+(j-1)*50+26)+"px";
-  e.style.transform="scale("+(1-0.5*clamp((s-0.7)/0.3))+")";e.style.opacity=clamp(s/0.15)*(1-clamp((s-0.78)/0.22))}
+  fill(e,["spends "+x[0],x[1]]);var a=0.04+0.07*j,s=clamp((p-a)/0.34),k=ease(s),w=g.cw,sx=-w-20,ex=g.cx-w/2,lane=g.cy-96+j*22,ey=g.cy-14;
+  e.style.width=w+"px";e.style.left=(sx+(ex-sx)*k)+"px";e.style.top=(lane+(ey-lane)*Math.pow(k,2.2))+"px";
+  e.style.transform="scale("+(1-0.45*clamp((s-0.6)/0.4))+")";e.style.opacity=clamp(s/0.18)*(1-clamp((s-0.72)/0.28))}
  // hex digits of the id stream from the packet into the block
  var q=clamp((p-0.42)/0.22);
  for(var k=0;k<bits.length;k++){var b=bits[k],f=clamp(q*1.3-k*0.025);
   if(q<=0||q>=1||f<=0){b.style.opacity=0;continue}
-  var sx=g.cx-pw/2+((k*37)%100)/100*pw,sy=g.cy-48+10+(k%3)*12,e2=ease(f);
+  var sx=g.cx-pw/2+((k*37)%100)/100*pw,sy=g.cy-30+10+(k%3)*12,e2=ease(f);
   b.textContent=id.charAt((k*5)%64)+id.charAt((k*5+1)%64);
   b.style.left=(sx+(g.cx-sx)*e2)+"px";b.style.top=(sy+(g.cy-sy)*e2)+"px";b.style.opacity=Math.sin(f*Math.PI);b.style.transform="scale("+(1.1-0.6*e2)+")"}
  // the outputs it creates resolve in the middle of the block, each as txid:index
  for(var j=0;j<3;j++){var e=outs[j],x=t.outs[j];
   if(!x){e.style.opacity=0;continue}
-  var a=0.64+0.07*j,s=clamp((p-a)/0.12),idx=/^\+/.test(x[0])?x[0]:id.slice(0,12)+"…:"+j;
+  var a=0.64+0.07*j,s=clamp((p-a)/0.16),k=ease(s),idx=/^\+/.test(x[0])?x[0]:id.slice(0,12)+"…:"+j;
   fill(e,[s<1&&!/^\+/.test(x[0])?resolve(idx,s):idx,x[1]?x[0]+" · "+x[1]:x[0]]);
-  e.style.opacity=ease(s)*(1-clamp((p-0.94)/0.06));e.style.transform="translateY("+(14*(1-ease(s)))+"px) scale("+(0.9+0.1*ease(s))+")"}
+  e.style.opacity=Math.min(1,s*1.6)*(1-clamp((p-0.94)/0.06));e.style.transform="translateY("+(-26*(1-k)+0)+"px) scale("+(0.55+0.45*k)+")"}
 }
 function tick(now){var dt=now-last;last=now;if(playing){pos+=dt/DUR;if(pos>=N-0.001){pos=N-0.001;playing=false;btn.textContent="Replay"}render()}requestAnimationFrame(tick)}
 btn.onclick=function(){if(playing){playing=false;btn.textContent="Play";return}if(pos>=N-0.01)pos=0;playing=true;btn.textContent="Pause"};
@@ -1118,7 +1118,7 @@ def block_animation(b, h):
                 continue
             po = i.get("prevout") or {}
             who = short_addr(po.get("scriptPubKey", {}).get("address") or "")
-            ins.append([i["txid"][:8] + "…:" + str(i["vout"]), ((who + " · " if who else "") + (btc(round(float(po["value"]) * 1e8)) if "value" in po else "")) or "an output of an earlier transaction"])
+            ins.append([i["txid"][:8] + "…:" + str(i["vout"]), ((who + " · " if who else "") + (btc(round(float(po["value"]) * 1e8)) if "value" in po else "")) or "earlier output"])
         if len(t["vin"]) > 3:
             ins[2] = ["+" + str(len(t["vin"]) - 2) + " more inputs", ""]
         outs = [[short_addr(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")), btc(round(float(o["value"]) * 1e8))] for o in t["vout"][:3]]
