@@ -420,6 +420,20 @@ class ChainStats:
 
 NODE = BtcRpc(os.environ["RPC_HOST"], os.environ.get("RPC_PORT", "8332"), os.environ["RPC_USER"], os.environ["RPC_PASS"])
 STATS = ChainStats(CHAIN, NODE)
+
+
+def check_node():
+    """Refuse a node of the other chain: the Bitcoin Explorer reads the regular Bitcoin Node app (Bitcoin Core), the BLAKE2b
+    Explorer the Bitcoin Knots app. Umbrel lets you choose the Bitcoin app per app, so a wrong choice would otherwise show
+    the wrong chain without a word. Set STRICT_NODE=0 to switch the check off."""
+    if os.environ.get("STRICT_NODE", "1") == "0":
+        return
+    sub = NODE.call("getnetworkinfo").get("subversion", "")
+    knots = "knots" in sub.lower() or "libre" in sub.lower()
+    if CHAIN == "blake2b" and not knots:
+        raise RuntimeError("this explorer is connected to " + sub + ", not to the Bitcoin Knots app: in Umbrel, choose Bitcoin Knots for it")
+    if CHAIN == "sha256" and knots:
+        raise RuntimeError("this explorer is connected to " + sub + ", not to the regular Bitcoin Node app: in Umbrel, choose Bitcoin Node for it")
 STATE = {"blocks": [], "mempool": [], "mempool_json": "", "error": "starting", "info": {}, "mempool_count": 0, "at": 0}
 STATE_LOCK = threading.Lock()
 
@@ -428,6 +442,7 @@ def stats_worker():
     """hashrate and pool statistics: recomputed every 10 minutes (the first run reads the pool of every block of the period)"""
     while True:
         try:
+            check_node()
             STATS.refresh_hashrate()
             STATS.refresh_pools()
             log("mining statistics ready (tip " + str(STATS.tip) + ")")
@@ -479,6 +494,7 @@ def poller():
     last_mempool = 0
     while True:
         try:
+            check_node()
             info = NODE.call("getblockchaininfo")
             if not POOLS.tags:
                 raise RuntimeError("the list of mining pools is still loading")
