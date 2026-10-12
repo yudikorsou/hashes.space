@@ -1121,7 +1121,7 @@ def block_animation(b, h):
         data.append({"id": t["txid"], "idf": t["txid"], "cb": cb, "nin": len(t["vin"]), "nout": len(t["vout"]), "vs": t.get("vsize", 0), "r": rate, "ins": ins, "outs": outs})
     blob = json.dumps({"height": "{:,}".format(b["height"]), "hash": h, "total": len(txs), "size": b["size"], "full": min(100.0, b["weight"] / 40000.0),
                            "totalVs": sum(t.get("vsize", 0) for t in txs), "txs": data}, separators=(",", ":")).replace("</", "<\\/")
-    return ("<section class=card><h2>Every transaction going into block " + "{:,}".format(b["height"]) + "</h2><div class=animbar>"
+    return ("<section class=card><h2>Every transaction hash going into block " + "{:,}".format(b["height"]) + "</h2><div class=animbar>"
             "<input id=anim-seek type=range min=0 value=0 aria-label='Transaction'><span id=anim-label class=muted></span><a id=anim-link class=mono href='#'></a></div>"
             "<div class=animwrap id=anim-wrap>" + FAN_HTML + cube_html(b, st, pool) + "</div>"
             "<p class=muted>Each transaction in turn: the coins it spends (sending) travel into the block, then the outputs it creates (receiving) resolve in the middle of it, and the block fills.</p>"
