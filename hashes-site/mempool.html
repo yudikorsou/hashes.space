@@ -108,6 +108,9 @@
   .front { inset: 0; }
   .top { left: 0; top: calc(var(--d) * -1); width: var(--s); height: var(--d); transform-origin: bottom left; transform: skewX(45deg); background: #232838; }
   .side { left: calc(var(--d) * -1); top: 0; width: var(--d); height: var(--s); transform-origin: top right; transform: skewY(45deg); background: #191c27; }
+  /* the blocks being built, before the fan, show their shaded side on the right */
+  #projected .cube { margin: var(--d) var(--d) 0 0; }
+  #projected .side { left: var(--s); transform-origin: top left; transform: skewY(-45deg); }
   .txt { height: 100%; display: grid; grid-template-rows: auto auto 1fr auto auto; justify-items: center; align-items: center; padding: 12px 6px 10px; font: 400 12px/1.25 var(--sans); color: #fff; text-align: center; }
   .txt .fee { font-weight: 600; font-size: calc(13px * var(--k, 1)); }
   .txt .range { color: rgba(255,255,255,.8); font-size: calc(11px * var(--k, 1)); }
