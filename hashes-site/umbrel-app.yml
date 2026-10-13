@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.32"
+version: "1.9.33"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The Candidate block of Bitcoin and Bitcoin BLAKE2b now follows on from the Block assembly: it shows the finished header (version, previous block, merkle root, time, bits and nonce), slides in again when the assembly is ready and keeps trying nonces. The assembly now also shows the merkle root being built.
   On the Bitcoin and Bitcoin BLAKE2b chains the Block assembly animation now shows how the block template is made: the coinbase transaction and block reward first, then the best packages are selected one after the other, each is checked against the block limits (one is skipped because it does not fit), and the selection is finalized.
   On the Dogecoin chain the Candidate block follows on from the Block assembly: the finished 80-byte header (version, previous block, merkle root, time, bits) is shown ready, slides in again each time the assembly completes, and the nonce and its scrypt result keep changing while it is hashed.
   On the Dogecoin chain the Block assembly animation now builds the 80-byte block header: version, previous block, merkle root, time, bits and nonce fly in one after the other and fill the 80 bytes.

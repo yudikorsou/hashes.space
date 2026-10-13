@@ -718,7 +718,7 @@
   .hdrasm .hf { will-change: transform, opacity; } .hdrasm .hf u { text-decoration: none; opacity: .6; font-size: .85em; }
   .txt.hdr.hdrasm { padding-top: 22px; align-items: stretch; } .hdrasm .hf { width: 100%; font-size: 8px; line-height: 1.2; } .hdrasm .hb { position: absolute; top: 9px; right: 8px; font-size: 9px; transition: color .2s; }
   .txt.hdr.candasm { padding-top: 19px; gap: 0; } .candasm .hf { font-size: 7.8px; line-height: 1.15; }
-  .candasm .hb.ready { color: #2fb585; } .candasm .miss b { color: #ff8a80; } .candasm .hf { will-change: transform, opacity; }
+  .candasm .hb.ready { color: #fff; opacity: .9; } .candasm .miss b { color: #ff8a80; } .candasm .hf { will-change: transform, opacity; }
   .hseg { position: absolute; left: 8px; right: 8px; bottom: 6px; display: flex; gap: 2px; height: 9px; }
   .hseg i { display: block; border-radius: 2px; opacity: .25; transform-origin: bottom; }
   .baasm .ba-ph { justify-content: center; } .baasm .ba-ph b { font-size: 1.05em; letter-spacing: .02em; } .baasm .ba-dt { justify-content: center; min-height: 1.3em; } .baasm .ba-dt i { color: rgba(255,255,255,.8); }
@@ -2053,7 +2053,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       else { const k = (ru - BA_REJ.check) / 500; ro = 0.8 * (1 - k); rx = 5 + k * 12; phase = '3 Check limits'; detail = 'skipped, next one'; bad = true; }
     }
     rej.style.opacity = String(ro * out); rej.style.transform = `translateX(${rx.toFixed(1)}px)`;
-    if (t >= 6900) { phase = '4 Finalize'; detail = t < 8200 ? 'selection is final' : 'template ready ✓'; }
+    if (t >= 6900) { phase = '4 Finalize'; detail = t < 7700 ? 'selection is final' : t < 8800 ? 'merkle root built' : 'template ready ✓'; }
     const fin = t >= 6900 ? Math.min(1, (t - 6900) / 600) : 0;
     bricks.forEach((e) => { if (fin) e.style.boxShadow = `0 0 0 1px rgba(27,216,244,${(0.9 * fin * out).toFixed(2)})`; else e.style.boxShadow = ''; });
     const prog = Math.min(1, acc / 4);
@@ -2090,7 +2090,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   setInterval(() => fetchTemplate(), 10000);
   const hex8 = (n) => (n >>> 0).toString(16).padStart(8, '0');
   function candidateCube(b) {
-    if (chain().doge) return dogeCandidateCube(b);
+    if (!chain().xmr) return headerCandidateCube(b);
     const c = chain(), tip = c.blocks[0] ?? {}, t = templateFor(c), prev = tip.hash ?? '', time = new Date((t?.time ?? Date.now() / 1000) * 1000).toISOString().slice(11, 19);
     const version = t?.version ?? tip.version, bits = t?.bits ?? (typeof tip.bits === 'number' ? hex8(tip.bits) : undefined);
     const rows = [['Height', fmt((tip.height ?? c.tipHeight) + 1)], ['Prev', shortHash(prev)], ['Time', time]];
@@ -2105,24 +2105,33 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
         ${rows.map(([k, v]) => `<div class="${opt.has(k) ? 'opt' : ''}"${k === 'Nonce' ? ' title="The nonce is only known once a block is found: this is the search through the 32-bit range"' : ''}><i>${k}</i><b${k === 'Time' ? ' id="cand-time"' : ''}>${v}</b></div>`).join('')}</div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
-  // Dogecoin Candidate block: the 80-byte header that the Block assembly finished is now ready and being hashed. Every row is a field of that header
+  // Candidate block (every chain with an 80-byte header): the header that the Block assembly finished is now ready and being hashed. Every row is a field of that header
   // (the same values as the assembly), the nonce counts through its 32-bit range and every try gives a scrypt result that is compared with the target.
   // When the assembly completes the header slides in again, as the miners receive it. The scrypt results shown are only an impression: your browser does not hash.
-  function dogeCandidateCube(b) {
-    const c = chain(), tip = c.blocks[0] ?? {}, v = headerValues();
-    const rows = [['Version', v[0], ''], ['Prev', v[1], ''], ['Merkle', v[2], ' id="cand-merkle"'], ['Time', v[3], ' id="cand-time"'], ['Bits', v[4], ''], ['Nonce', '<span id="cand-nonce">' + hex8(nonceCtr) + '</span>', ''], ['Scrypt', '<span id="cand-hash">—</span>', '']];
-    return `<div class="cube" id="mining-block" title="The 80-byte header from Block assembly, being hashed: the nonce is tried one value after the other, and a block is found when the scrypt result falls under the target" style="--fill:${frontBg(b, false)}"><div class="face front" style="background:${frontBg(b, false)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr hdrasm candasm">
+  function candidateValues() {
+    const c = chain(); if (c.doge) return headerValues();
+    const tip = c.blocks[0] ?? {}, t = templateFor(c), version = t?.version ?? tip.version, bits = t?.bits ?? tip.bits;
+    // the merkle root of the node's template when the page has it; otherwise a stand-in worked out from the block that is being built on
+    let x = 0x811c9dc5; for (const ch of (tip.hash ?? '') + (c.projected[0]?.nTx ?? 0)) x = Math.imul(x ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+    const stand = hex8(x) + hex8(Math.imul(x, 0x9e3779b1) >>> 0) + hex8(Math.imul(x, 0x85ebca6b) >>> 0) + hex8(Math.imul(x, 0xc2b2ae35) >>> 0);
+    return [typeof version === 'number' ? '0x' + hex8(version) : '—', sh4(tip.hash), sh4(t?.merkleroot ?? stand), new Date((t?.time ?? Date.now() / 1000) * 1000).toISOString().slice(11, 19),
+      typeof bits === 'number' ? hex8(bits) : typeof bits === 'string' ? bits : '—', '00000000'];
+  }
+  function headerCandidateCube(b) {
+    const c = chain(), tip = c.blocks[0] ?? {}, v = candidateValues(), algo = network()?.label ?? 'Hash';
+    const rows = [['Version', v[0], ''], ['Prev', v[1], ''], ['Merkle', v[2], ' id="cand-merkle"'], ['Time', v[3], ' id="cand-time"'], ['Bits', v[4], ''], ['Nonce', '<span id="cand-nonce">' + hex8(nonceCtr) + '</span>', ''], [algo, '<span id="cand-hash">—</span>', '']];
+    return `<div class="cube" id="mining-block" title="The 80-byte header from Block assembly, being hashed: the nonce is tried one value after the other, and a block is found when the result falls under the target" style="--fill:${frontBg(b, false)}"><div class="face front" style="background:${frontBg(b, false)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr hdrasm candasm">
         <b class="hb ready">ready · 80 B</b>${rows.map(([k, val, at]) => `<div class="hf"><i>${k}</i><b${at}>${val}</b></div>`).join('')}</div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
   function candFrame(now) {
     const rows = document.querySelectorAll('.candasm .hf'); if (!rows.length) return;
-    const t = STILL.matches ? 0 : (now - asmT0) % HDR_P, vals = headerValues();
+    const doge = chain().doge, P = doge ? HDR_P : BA_P, at = doge ? 5300 : 8800, t = STILL.matches ? 0 : (now - asmT0) % P;
     rows.forEach((r, i) => {
-      const u = t - 5300 - i * 70, k = u < 0 ? (u > -150 ? 1 + u / 150 : 1) : easeOut(Math.min(1, u / 500));
+      const u = t - at - i * 70, k = u < 0 ? (u > -150 ? 1 + u / 150 : 1) : easeOut(Math.min(1, u / 500));
       r.style.opacity = String(Math.max(0, k)); r.style.transform = u >= 0 && u < 500 ? `translateX(${(-(1 - k) * 40).toFixed(1)}px)` : '';
     });
-    const m = $('cand-merkle'); if (m && MK.nodes?.rootFull) { const w = sh4(MK.nodes.rootFull); if (m.textContent !== w) m.textContent = w; }
+    const m = $('cand-merkle'); if (m) { const w = candidateValues()[2]; if (m.textContent !== w) m.textContent = w; }
   }
   requestAnimationFrame(function candLoop(now) { if (!document.hidden) candFrame(now); requestAnimationFrame(candLoop); });
   // the header's time moves on with the clock when there is no template; the nonce is the search itself, trying one value after the other
