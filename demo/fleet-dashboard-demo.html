@@ -1128,7 +1128,7 @@ function formatBtc(sats) {
     return `${(sats / 1e8).toFixed(3)} BTC`;
 }
 /**
- * mempool colour scheme.
+ * mempool.space colour scheme.
  * Projected blocks: fee colour of the median fee (green → orange → magenta),
  * empty part #554b45. Mined blocks: purple → blue, empty part #2d3348.
  */
@@ -1144,7 +1144,7 @@ const FEE_COLORS = [
     'bd5c28', 'bc552d', 'bc4f30', 'bc4a34', 'bb4339', 'bb3d3c', 'bb373f', 'ba3243', 'b92b48', 'b9254b',
     'b8214d', 'b71d4f', 'b61951', 'b41453', 'b30e55', 'b10857', 'b00259', 'ae005b',
 ];
-/** sat/vB → mempool fee colour */
+/** sat/vB → mempool.space fee colour */
 function feeColor(rate) {
     let i = FEE_LEVELS.findIndex((level) => rate < level);
     i = i === -1 ? FEE_COLORS.length - 1 : Math.max(0, i - 1);
@@ -1938,7 +1938,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     if (TEMPLATE_API[netId] && !templateTried.has(netId)) { templateTried.add(netId); fetchTemplate(netId); }
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
     el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
-      <div class="below"><span class="datum-badge plain">Fee Auction</span></div></div>
+      <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : 'Fee Auction'}</span></div></div>
       ${chain().xmr ? '' : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
       <div class="below"><span class="datum-badge plain">Create new block</span></div></div>`}
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
