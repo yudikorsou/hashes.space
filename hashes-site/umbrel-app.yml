@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.4"
+version: "1.9.5"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The hashrate section now has a fleet of spaceships, one per mining pool, sized by hashrate: hover one for its name and the hashrate it contributes. Built from your own nodes' pool statistics on all four chains. The View hashrate mining pools page is gone and the calculator button is now More insights.
   The hashrate section now shows the combined hashrate of the mining pools (14 days, 1 month, 6 months, 1 year) with their share of the network, read from the Bitcoin, Bitcoin Knots, Dogecoin and Monero explorers on your Umbrel. Update those apps too.
   Fee Auction is now only data on the page, without a block around it, and Block assembly animates the block being built up: the coinbase first, then the transactions flying in by fee rate while the totals count up.
   Two headlines on the Find Mempool strip: Inside the miners (the blocks before the fan) and The Blockchain (the mined blocks). The block being hashed is labelled with its proof of work, and the three blocks before the fan show the real data of the block being hashed.

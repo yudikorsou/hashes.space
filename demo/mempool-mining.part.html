@@ -83,6 +83,11 @@
   .back-link:hover svg { color: var(--text); transform: translateX(-2px); }
   .back-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   @media (max-width: 1239px) { .mcard .calc-link { position: static; order: 99; align-self: flex-start; } }   /* the corner is only free of "View more »" when the card is wide */
+  /* the fleet: one little spaceship per mining pool, flying over the chart; hover one for its name and hashrate */
+  .pool-sky { position: relative; width: 100%; height: 210px; margin: -2px 0 6px; border-radius: 28px; overflow: hidden; background: radial-gradient(ellipse 80% 90% at 50% 50%, rgba(60, 70, 140, .16), rgba(60, 70, 140, 0) 75%); }
+  .pool-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .pool-sky .sky-cap { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; color: var(--muted); font: 400 11.5px/1.3 var(--sans); pointer-events: none; }
+  @media (max-width: 520px) { .pool-sky { height: 180px; } }
   .mcard .hrsub { margin: 4px 0 0; text-align: center; color: var(--muted); font: 400 12px/1.35 var(--sans); }
   .mstats .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
   .mcard svg { width: 100%; height: auto; display: block; overflow: visible; }
@@ -150,6 +155,7 @@
   <article class="mcard m-hr" aria-labelledby="hr-title">
     <a class="calc-link" id="calc-link" href="#calc">More insights<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate of the mining pools</h2>
+    <div class="pool-sky" id="pool-sky" role="img" aria-label="A spaceship for every mining pool; hover one to see its hashrate"><canvas id="pool-sky-cv"></canvas><p class="sky-cap" id="sky-cap"></p></div>
     <p class="hrsub" id="ms-hash-sub"></p>
     <div class="mrange" id="mrange" role="group" aria-label="Period shown in the pool hashrate chart">
     <button type="button" data-range="14d">14 days</button><button type="button" data-range="1m">1 month</button><button type="button" data-range="6m">6 months</button><button type="button" data-range="1y">1 year</button>
@@ -496,6 +502,14 @@
       : `Snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
     if (!sec.hidden && netId !== 'sha256') drawPie(rp);
     if (!sec.hidden) drawChart(phv, range);
+    { // the fleet flies only on what your own node reported
+      const own = m.live && (m.node || netId === 'dogecoin' || netId === 'monero');
+      skyStart();
+      skySet(own ? rp.pools.map((x) => ({ name: x.name, blocks: x.blocks })) : null, own ? (rp.blockCount || rp.pools.reduce((a, x) => a + x.blocks, 0)) : 0, own ? m.hash : 0, rp.window,
+        m.live ? 'Waiting for your node: the ships are built from its pool statistics.' : 'Your node does not answer: the ships are built from its pool statistics.');
+      $('sky-cap').textContent = own && sky.ships.length ? `${sky.ships.length} ${netId === 'monero' ? 'payout kinds' : 'mining pools'} · size follows hashrate · ${windowSpoken(rp.window)}` : '';
+      if (sky.still) skyDraw(performance.now());
+    }
     renderCalc(); fillPools(); renderPoolCalc();
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
@@ -748,6 +762,89 @@
         svg.appendChild(svgEl('text', { x: right ? xe + 5 : xe - 5, y: l.y + 4, 'text-anchor': right ? 'start' : 'end', fill: 'var(--muted)', 'font-size': 14 }, l.name.length > 19 ? l.name.slice(0, 18) + '…' : l.name));
       });
     }
+  }
+  // ---------- the fleet: a spaceship per mining pool ----------
+  // From your own node's pool split (the pools endpoint of the explorer on your Umbrel): a pool's hashrate is its share of the blocks
+  // found in the period times the chain's hashrate. Mempool sites and built-in snapshots are never used for it.
+  var sky = { ships: [], names: '', last: 0, hover: null, w: 0, h: 0, dpr: 1, on: false, still: false, msg: '', colors: {} };
+  const SKY_MAX = 14;
+  const skyColor = (name) => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 70% 64%)`; };
+  function skySet(list, total, hashNow, win, note) {
+    sky.msg = list ? '' : (note || 'Waiting for your node…');
+    const ranked = (list || []).filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
+    const top = ranked.slice(0, SKY_MAX - 1), rest = ranked.slice(SKY_MAX - 1), items = ranked.length > SKY_MAX ? [...top, { name: `${rest.length} smaller pools`, blocks: rest.reduce((a, x) => a + x.blocks, 0) }] : ranked;
+    const sig = items.map((x) => x.name + ':' + x.blocks).join('|') + '|' + Math.round(hashNow || 0);
+    if (sig === sky.names) return;
+    sky.names = sig;
+    const old = Object.fromEntries(sky.ships.map((sh) => [sh.name, sh])), n = items.length;
+    const stride = n > 2 ? [5, 3, 7, 2].find((k) => k < n && gcd(k, n) === 1) || 1 : 1;
+    sky.ships = items.map((x, i) => {
+      const share = total ? x.blocks / total : 0, prev = old[x.name];
+      return { name: x.name, share, blocks: x.blocks, hash: share * (hashNow || 0), win, len: 26 + 78 * Math.sqrt(Math.min(1, share)),
+        lane: ((i * stride) % n + 0.5) / n, x: prev ? prev.x : ((i * 0.61803) % 1) * 640, speed: 10 + 26 * (1 - Math.min(1, share * 2.2)), phase: (i * 1.7) % 6.28, color: skyColor(x.name) };
+    });
+  }
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  function skySize() {
+    const cv = $('pool-sky-cv'), r = cv.parentNode.getBoundingClientRect();
+    sky.dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (r.width !== sky.w || r.height !== sky.h) { sky.w = r.width; sky.h = r.height; cv.width = Math.round(r.width * sky.dpr); cv.height = Math.round(r.height * sky.dpr); }
+  }
+  function skyPos(sh, t) {
+    const pad = 26, span = sky.h - 2 * pad - 20;
+    return { x: sh.x, y: pad + sh.lane * span + Math.sin(t / 900 + sh.phase) * 7 };
+  }
+  function skyDraw(t) {
+    const cv = $('pool-sky-cv'), g = cv.getContext('2d');
+    g.setTransform(sky.dpr, 0, 0, sky.dpr, 0, 0); g.clearRect(0, 0, sky.w, sky.h);
+    const muted = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#9aa3c7';
+    if (sky.msg) { g.fillStyle = muted; g.font = '14px sans-serif'; g.textAlign = 'center'; g.fillText(sky.msg, sky.w / 2, sky.h / 2); return; }
+    for (const sh of sky.ships) {
+      const { x, y } = skyPos(sh, t), L = sh.len, W = L * 0.34, hot = sky.hover === sh;
+      g.save(); g.translate(x, y);
+      // engine trail and flame
+      const fl = L * (0.32 + 0.1 * Math.sin(t / 70 + sh.phase));
+      const tr = g.createLinearGradient(-L / 2 - L * 1.6, 0, -L / 2, 0); tr.addColorStop(0, 'rgba(255,255,255,0)'); tr.addColorStop(1, sh.color.replace(')', ' / .28)'));
+      g.fillStyle = tr; g.fillRect(-L / 2 - L * 1.6, -W * 0.1, L * 1.6, W * 0.2);
+      g.beginPath(); g.moveTo(-L / 2, -W * 0.22); g.quadraticCurveTo(-L / 2 - fl, 0, -L / 2, W * 0.22); g.fillStyle = '#ffb347'; g.fill();
+      // wings, hull, cockpit
+      g.fillStyle = sh.color; g.globalAlpha = .85;
+      g.beginPath(); g.moveTo(-L * 0.28, 0); g.lineTo(-L * 0.46, -W * 0.95); g.lineTo(L * 0.02, -W * 0.38); g.closePath(); g.fill();
+      g.beginPath(); g.moveTo(-L * 0.28, 0); g.lineTo(-L * 0.46, W * 0.95); g.lineTo(L * 0.02, W * 0.38); g.closePath(); g.fill();
+      g.globalAlpha = 1;
+      const hull = g.createLinearGradient(0, -W / 2, 0, W / 2); hull.addColorStop(0, '#f2f5ff'); hull.addColorStop(1, '#8a93b8');
+      g.fillStyle = hull; g.beginPath(); g.moveTo(L / 2, 0); g.quadraticCurveTo(L * 0.22, -W * 0.62, -L / 2, -W * 0.3); g.lineTo(-L / 2, W * 0.3); g.quadraticCurveTo(L * 0.22, W * 0.62, L / 2, 0); g.fill();
+      g.fillStyle = sh.color; g.beginPath(); g.ellipse(L * 0.14, 0, L * 0.12, W * 0.2, 0, 0, 6.3); g.fill();
+      if (hot) { g.strokeStyle = sh.color; g.lineWidth = 1.5; g.globalAlpha = .9; g.beginPath(); g.ellipse(0, 0, L * 0.62, W * 1.25, 0, 0, 6.3); g.stroke(); }
+      g.restore();
+    }
+  }
+  function skyStep(t) {
+    if (!sky.on) return;
+    const dt = Math.min(0.05, (t - (sky.last || t)) / 1000); sky.last = t;
+    skySize();
+    if (!sky.still) for (const sh of sky.ships) { sh.x += sh.speed * dt * (sky.hover === sh ? 0.15 : 1); if (sh.x - sh.len * 2 > sky.w) sh.x = -sh.len * 2; }
+    else sky.ships.forEach((sh, i) => { sh.x = (i + 0.5) / sky.ships.length * sky.w; });
+    skyDraw(t);
+    requestAnimationFrame(skyStep);
+  }
+  function skyStart() {
+    const el = $('pool-sky'); if (!el || sky.started) return; sky.started = true;
+    sky.still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const run = (on) => { if (on && !sky.on) { sky.on = true; sky.last = 0; requestAnimationFrame(skyStep); } else if (!on) sky.on = false; };
+    if ('IntersectionObserver' in window) new IntersectionObserver((es) => run(es.some((e) => e.isIntersecting))).observe(el); else run(true);
+    const find = (e) => {
+      const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, t = performance.now();
+      let best = null, bd = 1e9;
+      for (const sh of sky.ships) { const p = skyPos(sh, t), dx = (px - p.x) / (sh.len * 0.62 + 6), dy = (py - p.y) / (sh.len * 0.34 * 1.25 + 6), d = dx * dx + dy * dy; if (d <= 1 && d < bd) { best = sh; bd = d; } }
+      return best;
+    };
+    el.addEventListener('pointermove', (e) => {
+      const sh = find(e); sky.hover = sh; el.style.cursor = sh ? 'pointer' : '';
+      if (sh) tip(e, `<b>${esc(sh.name)}</b><br>${si(sh.hash, 1)}H/s · ${(sh.share * 100).toFixed(1)}% of the chain<br>${sh.blocks.toLocaleString('en')} blocks in ${windowSpoken(sh.win)}`); else tip(e, null);
+      if (sky.still) skyDraw(performance.now());
+    });
+    el.addEventListener('pointerleave', (e) => { sky.hover = null; tip(e, null); if (sky.still) skyDraw(performance.now()); });
   }
   // how the chain stands against where it was a year ago, in words under the headline figure
   function hashrateThen(m, info, period) {
