@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.42"
+version: "1.9.43"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The Monero chain no longer shows the "Mining pool calculator" button in the mining pools section.
   On the Dogecoin chain the mining pools section now has a little spaceship with a Shiba Inu pilot that flies between the black holes (only on Dogecoin; it is decoration, not data).
   On the Monero chain the four clickable blocks (Fee-Per-Byte Ranking, Dynamic Block Size, Block assembly, Candidate block) now show a small arrow on their label, and rise and light up when you hover over them.
   On the Monero chain the Candidate block is now clickable: it opens the block candidate page of your Monero Explorer.

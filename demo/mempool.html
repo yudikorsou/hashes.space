@@ -4383,7 +4383,7 @@ window.__coins = COIN_LOGOS;
         ? `Difficulty live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
         : m ? `Difficulty from a snapshot of ${site}/mining (${site} is not reachable from this page)` : '';
     }
-    $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
+    $('pcalc-link').hidden = netId === 'monero' || !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
     { const so = ['sha256', 'blake2b', 'dogecoin'].includes(netId) && !!m; $('solo-wrap').hidden = !so; $('solo-head').hidden = !so; sec.classList.toggle('has-solo', so); sec.classList.toggle('swap', netId === 'monero'); if (so) renderSolo(); }   // miners without a pool, next to the pools' hashrate
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
