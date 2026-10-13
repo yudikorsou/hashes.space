@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.10"
+version: "1.9.11"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  On wide desktop screens the blocks are bigger and spaced further apart, so Fee Auction, Block assembly and Candidate block fill their side of the fan.
   On a wide desktop screen the block row grows with the window, so the blocks fill the page instead of sitting small in the middle.
   The site now fetches its newest page straight from the repository, past GitHub's five-minute cache, so a new version shows up right after the app starts.
   The black holes on the next pages of mining pools are drawn as big as on the first page, so every page is easy to read. The hashrate under each name is still the real figure.
