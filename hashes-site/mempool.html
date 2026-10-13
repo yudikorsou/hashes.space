@@ -721,16 +721,6 @@
   .mstats.calcpage.both { grid-template-columns: repeat(2, minmax(0, 560px)); grid-template-areas: 'head head' 'one two' 'src src'; align-items: start; column-gap: 36px; }
   @media (max-width: 1000px) { .mstats.calcpage.both { grid-template-columns: minmax(0, 640px); grid-template-areas: 'head' 'one' 'two' 'src'; } }
   .mstats.calcpage.both .mcard.m-pcalc { grid-area: two; }
-  .poolspage .m-pools .calc-link { display: none; }   /* each calculator has a page of its own */
-  .poolspage { max-width: 1180px; margin: 0 auto; padding: 28px 20px 40px; display: grid; gap: 18px; }
-  .poolspage[hidden] { display: none !important; }
-  .poolspage .calchead { text-align: center; max-width: 60ch; margin: 0 auto; display: grid; gap: 8px; }
-  .poolspage .calchead h1 { margin: 0; font: 600 24px/1.2 var(--display); letter-spacing: .01em; color: var(--text); }
-  .poolspage .mcard.m-pools { max-width: 760px; width: 100%; margin: 0 auto; }
-  .poolspage .mcard.m-pools::before { display: none; }
-  .poolspage .m-pools .more { display: none; }
-  .poolspage .m-pools .calc-link { position: static; align-self: center; order: 2; }
-  .poolspage .m-pools .plot { order: 1; } .poolspage .m-pools .pnote { order: 3; }
   .mrange { align-self: center; }
   .calc-link[hidden] { display: none !important; }
   @media (max-width: 900px) {
@@ -1283,7 +1273,7 @@
     <h2 class="mtitle"><span id="pools-title">Hashrate mining pools</span> <span class="mperiod" id="pools-period"></span></h2>
   </header>
   <article class="mcard m-hr" aria-labelledby="hr-title">
-    <a class="calc-link" id="calc-link" href="#calc">Hashrate calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    <a class="calc-link" id="calc-link" href="#calc">More insights<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate of the mining pools</h2>
     <p class="hrsub" id="ms-hash-sub"></p>
     <div class="mrange" id="mrange" role="group" aria-label="Period shown in the pool hashrate chart">
@@ -1291,13 +1281,12 @@
     </div>
     <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Hashrate of the mining pools and their share of the network"></svg>
     <ul class="key"><li><i style="background:#f6c177"></i>Pool hashrate</li><li><i style="background:#e8862a"></i><span id="ms-key-avg">Pool hashrate (7-day average)</span></li><li><i style="background:#d6336c"></i>Share of the network</li></ul></div>
-    <a class="more" id="ms-more-hr" href="#pools">View more »</a>
+    <a class="more" id="ms-more-hr" href="#dashboard">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
     <a class="calc-link" id="pcalc-link" href="#poolcalc" hidden>Mining pool calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 344" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <p class="pnote" id="ms-pools-note" hidden></p>
-    <a class="more" id="ms-more-pools" href="#pools">View more »</a>
   </article>
   <article class="mcard m-globe" id="gl-wrap" aria-labelledby="gl-title" hidden>
     <canvas id="globe-canvas" role="img" aria-label="A spinning globe showing the countries that mine Bitcoin, with the estimated hashrate of each"></canvas>
@@ -1305,15 +1294,6 @@
     <p class="globe-note" id="globe-note"></p>
   </article>
   <p class="msource" id="ms-source"></p>
-</section>
-
-<!-- Hashrate mining pools: its own page, reached from "View more" in the pools section -->
-<section class="poolspage" id="pools-page" aria-labelledby="poolspage-title" hidden>
-  <header class="calchead">
-    <h1 id="poolspage-title">Hashrate mining pools</h1>
-    <a class="back-link" href="#dashboard"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 6h-7M5.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Return to Mempool</a>
-  </header>
-  <div id="pools-slot"></div>
 </section>
 
 <!-- a mining pool's page, reached by searching its name in the bar above -->
@@ -3544,7 +3524,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
 
   function showView(v) {
     if (v === 'learn-blocks') v = 'blocks';
-    view = ['calc', 'poolcalc', 'pools', 'blocks', 'learn', 'pool'].includes(v) ? v : 'dashboard';
+    view = ['calc', 'poolcalc', 'blocks', 'learn', 'pool'].includes(v) ? v : 'dashboard';
     ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
     $('chain-area').hidden = view === 'learn' || view === 'blocks';            // the proof-of-work bar stands on the mempool and calculator pages
     document.querySelector('.strip').hidden = view !== 'dashboard';
@@ -4033,14 +4013,11 @@ window.__coins = COIN_LOGOS;
         : m ? `Difficulty from a snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining (${site} is not reachable from this page)` : '';
     }
     $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
-    const onPools = typeof view !== 'undefined' && view === 'pools', art = document.querySelector('.m-pools'), slot = $('pools-slot');
-    $('pools-page').hidden = !onPools;                   // the pools section moves onto its own page and back
-    if (art.parentNode !== (onPools ? slot : sec)) { if (onPools) slot.appendChild(art); else sec.insertBefore(art, $('ms-source')); }
     { const gl = netId === 'sha256' && !!m; $('gl-wrap').hidden = !gl; $('gl-head').hidden = !gl; sec.classList.toggle('has-globe', gl); }   // Bitcoin hashrate by country, next to the global hashrate
     if (netId === 'sha256' && window.globeSet) window.globeSet((miningBy.sha256 || {}).hash || 0);
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
-    { const g = netId === 'sha256'; $('ms-more-hr').href = g ? '#pools' : (MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`); if (g) $('ms-more-hr').removeAttribute('target'); else $('ms-more-hr').target = '_blank'; $('ms-more-hr').textContent = g ? 'View hashrate mining pools' : 'View more »'; }   // Bitcoin: the pools page; the other chains keep their own pools section
+    { const g = netId === 'sha256', more = $('ms-more-hr'); more.style.display = g ? 'none' : ''; if (!g) { more.href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`; more.target = '_blank'; more.textContent = 'View more »'; } }   // Bitcoin has no link here; the other chains open their own mining page
     setUnits('calc-unit'); setUnits('pcalc-unit');
     // the two charts follow the period chosen above; the calculators and pool pages keep working from the base data
     const rv = rangeView(netId, range, m), info = RANGE_INFO[range];
@@ -4057,7 +4034,6 @@ window.__coins = COIN_LOGOS;
     loadPoolHashFor(netId, range);
     const ph = phBy[netId + ':' + range], phv = ph && ph.ok ? { pool: true, ok: true, hashrates: ph.hashrates, difficulty: ph.share, hash: ph.hash } : { pool: true, ok: false, hashrates: [], difficulty: [], hash: 0, failed: !!ph };
     $('ms-pie').setAttribute('aria-label', `Hashrate per mining pool, ${windowSpoken(rp.window)}`);
-    $('poolspage-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
     const note = $('ms-pools-note'); note.hidden = false;
     note.textContent = (POOLS_NOTE[netId] ? POOLS_NOTE[netId] + ' ' : '')
       + `Each pool's hashrate is an estimate: its share of the blocks found in ${windowSpoken(rp.window)} times the chain's average hashrate.`
@@ -4069,7 +4045,7 @@ window.__coins = COIN_LOGOS;
     $('ms-source').textContent = m.live
       ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
-    if (onPools || (!sec.hidden && netId !== 'sha256')) drawPie(rp);
+    if (!sec.hidden && netId !== 'sha256') drawPie(rp);
     if (!sec.hidden) drawChart(phv, range);
     renderCalc(); fillPools(); renderPoolCalc();
   }
