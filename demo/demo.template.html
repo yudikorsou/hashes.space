@@ -664,6 +664,12 @@
   /* Fee Priority: the unconfirmed transactions, sorting themselves by fee rate (bars tall to short) */
   .txt.fp { grid-template-rows: auto auto 1fr auto; }
   .txt.fp .txs { font-size: calc(10.5px * var(--k, 1)); line-height: 1.2; padding-top: 4px; }
+  .dbsvg { display: block; width: 100%; height: 100%; min-height: 0; overflow: visible; }
+  .dbsvg text { font: 600 5.6px var(--mono); fill: #fff; text-anchor: end; dominant-baseline: auto; } .dbsvg .db-ro { text-anchor: middle; font-size: 5.4px; }
+  .dbsvg .db-bar { fill: #7a6cd6; } .dbsvg .db-base, .dbsvg .db-ax { stroke: rgba(255,255,255,.4); stroke-width: .7; fill: none; }
+  .dbsvg .db-med { stroke: #1bd8f4; stroke-width: 1; } .dbsvg .db-ml { fill: #1bd8f4; }
+  .dbsvg .db-lim { stroke: #d9a21b; stroke-width: 1; stroke-dasharray: 3 2; } .dbsvg .db-ll { fill: #d9a21b; }
+  .dbsvg .db-curve { fill: none; stroke: #ff8a80; stroke-width: 1.4; } .dbsvg .db-dot { fill: #fff; stroke: #ff8a80; stroke-width: 1; }
   .xrank { position: relative; width: 100%; align-self: center; }
   .xr { position: absolute; left: 0; right: 0; top: 0; height: 7px; display: flex; align-items: center; gap: 4px; font: 600 7px var(--mono); will-change: transform; }
   .xr u { text-decoration: none; width: 14px; text-align: right; color: rgba(255,255,255,.65); }
@@ -1278,6 +1284,47 @@
     });
   }
   requestAnimationFrame(function xrLoop(now) { if (!document.hidden) xrFrame(now); requestAnimationFrame(xrLoop); });
+  // Monero: Dynamic Block Size. There is no fixed block size. The median of the sizes of the last 100 blocks (never below 300 kB) is the effective median, a block may be
+  // up to twice that, and a block bigger than the median has its reward cut by the penalty ((B / M) - 1)^2 (B the block size, M the median).
+  // A transaction that makes the block bigger is only worth adding when its fee is more than the extra penalty it causes. The page shows the sizes of the blocks it knows.
+  const DB_P = 10500;
+  function dynamicCube() {
+    const bars = Array.from({ length: 8 }, (_, i) => `<rect class="db-bar" data-i="${i}" x="${8 + i * 14}" y="70" width="9" height="0" rx="1"/>`).join('');
+    const pts = Array.from({ length: 21 }, (_, i) => { const q = 1 + i / 20; return `${(12 + (q - 1) * 108).toFixed(1)} ${(18 + (1 - (1 - (q - 1) ** 2)) * 52).toFixed(1)}`; });
+    return `<div class="cube bare"><div class="txt fp">
+        <span class="fee">Block size limit</span><span class="range" id="db-dt">last blocks</span>
+        <svg class="dbsvg" viewBox="0 0 130 82" aria-hidden="true" focusable="false">
+          <g class="dbA">${bars}<line class="db-base" x1="4" y1="70.5" x2="126" y2="70.5"/>
+            <line class="db-med" x1="4" x2="126" y1="44.6" y2="44.6"/>
+            <line class="db-lim" x1="4" x2="126" y1="17.3" y2="17.3"/></g>
+          <g class="dbC"><path class="db-ax" d="M12 14V70.5H122"/><path class="db-curve" pathLength="1" d="M${pts.join('L')}"/>
+            <circle class="db-dot" r="3" cx="12" cy="18"/></g></svg>
+        <span class="txs" id="db-cap">median calculation</span></div></div>`;
+  }
+  function dbFrame(now) {
+    const svg = document.querySelector('.dbsvg'); if (!svg) return;
+    const c = chain(), sizes = c.blocks.map((b) => b.size).filter((x) => x > 0).slice(0, 8).reverse();
+    const sorted = [...sizes].sort((a, b) => a - b), med = sorted.length ? (sorted[sorted.length >> 1] + sorted[(sorted.length - 1) >> 1]) / 2 : XMR_MEDIAN, M = Math.max(XMR_MEDIAN, med);
+    const t = STILL.matches ? 9000 : (now - asmT0) % DB_P, out = t > DB_P - 600 ? 1 - (t - (DB_P - 600)) / 600 : 1, clamp = (x) => Math.max(0, Math.min(1, x));
+    const Y = (v) => 70 - (v / (2.2 * M)) * 58, abOp = t < 5800 ? 1 : 1 - clamp((t - 5800) / 400), cOp = clamp((t - 6000) / 400);
+    svg.querySelector('.dbA').style.opacity = String(abOp * out); svg.querySelector('.dbC').style.opacity = String(cOp * out);
+    svg.querySelectorAll('.db-bar').forEach((e, i) => {
+      const v = sizes[i] ?? 0, k = easeOut(clamp((t - 200 - i * 150) / 500)), h = Math.max(0, 70 - Y(v)) * k;
+      e.setAttribute('y', (70 - h).toFixed(1)); e.setAttribute('height', h.toFixed(1)); e.style.opacity = t > 3400 ? '.45' : '1';
+    });
+    const medK = easeOut(clamp((t - 2000) / 700)), limK = easeOut(clamp((t - 3600) / 700));
+    const ml = svg.querySelector('.db-med'), ll = svg.querySelector('.db-lim');
+    ml.setAttribute('y1', Y(M)); ml.setAttribute('y2', Y(M)); ml.style.opacity = String(medK); ll.setAttribute('y1', Y(2 * M)); ll.setAttribute('y2', Y(2 * M)); ll.style.opacity = String(limK);
+    const curve = svg.querySelector('.db-curve'), ck = easeOut(clamp((t - 6000) / 900)); curve.style.strokeDasharray = '1'; curve.style.strokeDashoffset = String(1 - ck);
+    const q = 1 + 0.45 * easeOut(clamp((t - 7000) / 1800)), keep = 1 - (q - 1) ** 2, dot = svg.querySelector('.db-dot');
+    dot.setAttribute('cx', (12 + (q - 1) * 108).toFixed(1)); dot.setAttribute('cy', (18 + (1 - keep) * 52).toFixed(1)); dot.style.opacity = String(clamp((t - 6900) / 200));
+    const done = t > 8900, dt = $('db-dt'),
+      txt = t < 2000 ? `${sizes.length} recent blocks` : t < 3600 ? `median ${sizeLabel(M)}` : t < 6000 ? `limit ${sizeLabel(2 * M)}` : t < 7000 ? 'penalty (B/M − 1)²' : `B ${sizeLabel(q * M)} · ${Math.round(keep * 100)}%`;
+    if (dt && dt.textContent !== txt) dt.textContent = txt; if (dt) dt.style.color = done ? '#2fb585' : '';
+    const cap = t < 3400 ? 'median calculation' : t < 5800 ? 'effective limit' : t < 8900 ? 'penalty function' : 'fee > penalty ✓';
+    const cp = $('db-cap'); if (cp && cp.textContent !== cap) cp.textContent = cap;
+  }
+  requestAnimationFrame(function dbLoop(now) { if (!document.hidden) dbFrame(now); requestAnimationFrame(dbLoop); });
   // Create new block: Bitcoin Core builds the block template from packages. A transaction is taken together with the ancestors it needs,
   // a package is ranked by the fee rate of the whole (a cheap parent rides along with a child that pays well), and the best packages fill the block first.
   function packageCube() {
@@ -1541,7 +1588,8 @@
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
     el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
       <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : chain().xmr ? 'Fee-Per-Byte Ranking' : 'Fee Auction'}</span></div></div>
-      ${chain().xmr ? '' : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
+      ${chain().xmr ? `<div class="block-wrap fee-priority"><div class="above"></div>${dynamicCube()}
+      <div class="below"><span class="datum-badge plain">Dynamic Block Size</span></div></div>` : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
       <div class="below"><span class="datum-badge plain">Coinbase &amp; Merkle Root</span></div></div>` : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
       <div class="below"><span class="datum-badge plain">Create new block</span></div></div>`}
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
