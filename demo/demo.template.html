@@ -711,6 +711,10 @@
   .txt.hdr div { display: flex; justify-content: space-between; gap: 6px; white-space: nowrap; }
   .txt.hdr.asm { justify-content: flex-start; padding-top: 24px; }
   .front:has(.cube-coin) .txt.hdr.asm { padding-top: 24px; }
+  .hdrasm .hf { will-change: transform, opacity; } .hdrasm .hf u { text-decoration: none; opacity: .6; font-size: .85em; }
+  .txt.hdr.hdrasm { padding-top: 22px; align-items: stretch; } .hdrasm .hf { width: 100%; font-size: 8px; line-height: 1.2; } .hdrasm .hb { position: absolute; top: 9px; right: 8px; font-size: 9px; transition: color .2s; }
+  .hseg { position: absolute; left: 8px; right: 8px; bottom: 6px; display: flex; gap: 2px; height: 9px; }
+  .hseg i { display: block; border-radius: 2px; opacity: .25; transform-origin: bottom; }
   .asm-stack { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 3px; }
   .asm-b { display: block; height: calc(6px * var(--k, 1)); border-radius: 2px; opacity: 0; will-change: transform, opacity; }
   .cube.bare { display: block; }
@@ -1267,7 +1271,7 @@
       const leaves = [await sha256d(cb), ...ids.slice(0, 3).map((i) => rev(hexBytes(i)))];
       const pair = async (a, b) => sha256d(Uint8Array.from([...a, ...b]));
       const a = await pair(leaves[0], leaves[1]), b = await pair(leaves[2], leaves[3]), root = await pair(a, b);
-      if (MK.key === key) MK.nodes = { leaves: leaves.map((x) => bytesHex(rev(x)).slice(0, 5)), l1: [a, b].map((x) => bytesHex(rev(x)).slice(0, 5)), root: bytesHex(rev(root)).slice(0, 8) };
+      if (MK.key === key) MK.nodes = { leaves: leaves.map((x) => bytesHex(rev(x)).slice(0, 5)), l1: [a, b].map((x) => bytesHex(rev(x)).slice(0, 5)), root: bytesHex(rev(root)).slice(0, 8), rootFull: bytesHex(rev(root)) };
     } catch { /* no SubtleCrypto: the shortened ids are shown */ }
   }
   function mkIds() {
@@ -1321,6 +1325,7 @@
   // Block assembly: the block is built up from nothing. The coinbase goes in first, then the transactions in the order of their fee rate,
   // flying in one after the other and stacking up, while the totals count up to what the node's template holds. Then it starts over.
   function assemblyCube(b) {
+    if (chain().doge) return headerCube(b);
     const c = chain(), tk = network()?.ticker ?? 'BTC', unit = c.feeUnit ?? 'sat/vB', btc = !c.xmr && !c.doge && netId !== 'scrypt';
     const t = templateFor(c), height = (c.blocks[0]?.height ?? c.tipHeight) + 1, fees = t ? t.fees : b.totalFees, hasFees = typeof fees === 'number' && fees > 0;
     const fill = Math.max(0, Math.min(100, Math.round(b.vsize / 1e4)));
@@ -1334,6 +1339,39 @@
         <div class="asm-stack" aria-hidden="true">${bricks}</div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
+  // Dogecoin Block assembly: the 80-byte block header is put together field by field (version 4, previous block 32, merkle root 32, time 4, bits 4, nonce 4),
+  // each field filling its share of the 80 bytes. The nonce is still zero here: the search through it is the Candidate block.
+  const HDR_FIELDS = [['Version', 4, '#4a78c9'], ['Prev', 32, '#7a6cd6'], ['Merkle', 32, '#1bd8f4'], ['Time', 4, '#2fb585'], ['Bits', 4, '#d9a21b'], ['Nonce', 4, '#e8ebf5']];
+  const sh4 = (h) => (h && h.length > 9 ? h.slice(0, 4) + '…' + h.slice(-4) : h || '—');
+  function headerValues() {
+    const c = chain(), tip = c.blocks[0] ?? {}, t = new Date().toISOString().slice(11, 19);
+    return [typeof tip.version === 'number' ? '0x' + hex8(tip.version) : '—', sh4(tip.hash), MK.nodes?.rootFull ? sh4(MK.nodes.rootFull) : '—', t,
+      typeof tip.bits === 'number' ? hex8(tip.bits) : typeof tip.bits === 'string' ? tip.bits : '—', '00000000'];
+  }
+  function headerCube(b) {
+    const rows = HDR_FIELDS.map(([k, n]) => `<div class="hf" style="opacity:0"><i>${k}</i><b></b></div>`).join('');
+    const seg = HDR_FIELDS.map(([, n, col]) => `<i style="flex:${n};background:${col}"></i>`).join('');
+    return `<div class="cube" title="The 80-byte Dogecoin block header: version, previous block, merkle root, time, bits and nonce" style="--fill:${MEMPOOL_COLORS.projectedEmpty}"><div class="face front" style="background:${MEMPOOL_COLORS.projectedEmpty}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr asm hdrasm">
+        <b class="hb">0 / 80 B</b>${rows}</div>
+        <div class="hseg" aria-hidden="true">${seg}</div>
+      </div><div class="face top"></div><div class="face side"></div></div>`;
+  }
+  const HDR_P = 8000;
+  function hdrFrame(now) {
+    const rows = document.querySelectorAll('.hdrasm .hf'); if (!rows.length) return;
+    const t = STILL.matches ? HDR_P * 0.8 : (now - asmT0) % HDR_P, out = t > HDR_P - 700 ? 1 - (t - (HDR_P - 700)) / 700 : 1, vals = headerValues(), segs = document.querySelectorAll('.hseg i');
+    let bytes = 0;
+    rows.forEach((r, i) => {
+      const k = easeOut(Math.max(0, Math.min(1, (t - 400 - i * 850) / 600)));
+      r.style.opacity = String(k * out); r.style.transform = `translateX(${(-(1 - k) * 60).toFixed(1)}px)`;
+      const bv = r.querySelector('b'); if (bv.textContent !== vals[i]) bv.textContent = vals[i];
+      if (segs[i]) { segs[i].style.opacity = String((0.25 + 0.75 * k) * out); segs[i].style.transform = `scaleY(${(0.4 + 0.6 * k).toFixed(2)})`; }
+      bytes += HDR_FIELDS[i][1] * k;
+    });
+    const hb = document.querySelector('.hdrasm .hb'), txt = Math.round(bytes) + ' / 80 B'; if (hb.textContent !== txt) hb.textContent = txt;
+    hb.style.color = bytes > 79.5 ? '#1bd8f4' : '';
+  }
+  requestAnimationFrame(function hdrLoop(now) { if (!document.hidden) hdrFrame(now); requestAnimationFrame(hdrLoop); });
   const ASM_P = 7600, asmT0 = performance.now(), easeOut = (x) => 1 - (1 - x) ** 3;
   function asmFrame(now) {
     const bricks = document.querySelectorAll('.asm-b'); if (!bricks.length) return;
