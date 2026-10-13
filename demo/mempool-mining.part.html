@@ -35,6 +35,9 @@
   @media (max-width: 900px) { .mcard.m-pools::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); } }
   /* a chart's headline: the same voice as the page's own headings, not a link */
   .mstats .mtitle, .mstats .kpis dt { margin: 0; text-align: center; font: 600 17px/1.25 var(--display); letter-spacing: .01em; color: var(--text); text-transform: none; }
+  /* the headline of the pools section is set like "Inside the miners" above */
+  .mstats .mhead .kpis dt { font: 600 12.5px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; }
+  @media (max-width: 720px) { .mstats .mhead .kpis dt { font-size: 10px; letter-spacing: .1em; } }
   .mstats .mperiod { font-weight: 500; color: var(--muted); font-size: .82em; letter-spacing: 0; white-space: nowrap; }
   .mstats .mperiod::before { content: '· '; }
   .mstats .mperiod:empty { display: none; }
@@ -137,7 +140,7 @@
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <header class="mhead m-hr-head">
     <dl class="kpis">
-      <div><dt><span id="ms-hash-title">Mining pool hashrate</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
+      <div><dt><span id="ms-hash-title">Mining pools</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
     </dl>
   </header>
   <header class="mhead m-globe-head" id="gl-head" hidden>
@@ -390,7 +393,7 @@
   // Bitcoin and Bitcoin Knots read the pool of every block (and keep the daily share on disk, so a pruned node's history keeps growing);
   // Dogecoin reads an evenly spread sample of the blocks; Monero names no pool, so there it is the P2Pool miners, whose blocks the chain shows.
   var PH_HOST = { sha256: MINING_NODE.sha256, blake2b: MINING_NODE.blake2b, dogecoin: MINING_SITES.dogecoin, monero: MINING_SITES.monero };
-  var PH_TITLE = { monero: 'P2Pool hashrate' };
+  var PH_TITLE = { monero: 'P2Pool hashrate' };   // Monero names no pool: its figure is the P2Pool miners'
   var phBy = {}, phBusy = {};
   async function loadPoolHashFor(net, rng) {
     const key = net + ':' + rng, cur = phBy[key];
@@ -466,8 +469,8 @@
     // each headline carries the period its chart shows; the pools say so honestly when the source can't give the chosen one
     $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
     $('pools-period').textContent = WINDOW_NAME[rp.window] ?? rp.window;
-    $('ms-hash-period').textContent = 'right now';
-    $('ms-hash-title').textContent = PH_TITLE[netId] ?? 'Mining pool hashrate';
+    $('ms-hash-period').textContent = '';
+    $('ms-hash-title').textContent = 'Mining pools';
     loadPoolHashFor(netId, range);
     const ph = phBy[netId + ':' + range], phv = ph && ph.ok ? { pool: true, ok: true, hashrates: ph.hashrates, difficulty: ph.share, hash: ph.hash } : { pool: true, ok: false, hashrates: [], difficulty: [], hash: 0, failed: !!ph };
     $('ms-pie').setAttribute('aria-label', `Hashrate per mining pool, ${windowSpoken(rp.window)}`);
@@ -477,7 +480,7 @@
       + (rp.window !== pr ? ` ${windowSpoken(rp.window).replace(/^the /, 'The ')} is the nearest period this source offers for ${pinfo.label}.` : '')
       + (rp.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '')
       + (rp.summed ? ' The 14 days are summed from the daily hashrate of each pool.' : '');
-    $('ms-hash').textContent = ph && ph.ok ? si(ph.hash, 1) + 'H/s' : '–';   // the pools' hashrate right now
+    $('ms-hash').textContent = ph && ph.ok ? `${PH_TITLE[netId] ?? 'Hashrate'} ${si(ph.hash, 1)}H/s` : '–';   // the pools' hashrate right now
     $('ms-hash-sub').textContent = poolHashSub(ph, info, range, netId);
     $('ms-source').textContent = m.live
       ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
