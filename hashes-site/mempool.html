@@ -4372,7 +4372,7 @@ window.__coins = COIN_LOGOS;
   function skySet(list, total, hashNow, win, note) {
     sky.args = [list, total, hashNow, win, note];
     sky.msg = list ? '' : (note || 'Waiting for your node…');
-    const ranked = (list || []).filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
+    const ranked = (list || []).filter((x) => x.name && x.name !== 'Unknown' && !/^btcb2$/i.test(x.name) && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
     const pages = Math.max(1, Math.ceil(ranked.length / SKY_PAGE)); sky.page = Math.min(sky.page || 0, pages - 1); sky.pages = pages; sky.total = ranked.length;
     if (sky.refS == null || sky.page === 0) sky.refS = ranked.slice(0, SKY_PAGE).reduce((a, x) => a + Math.sqrt(total ? x.blocks / total : 0), 0) || 1;
     const items = ranked.slice(sky.page * SKY_PAGE, sky.page * SKY_PAGE + SKY_PAGE);
