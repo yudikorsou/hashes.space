@@ -83,6 +83,9 @@
   .pool-sky { position: relative; width: 100%; flex: 1 1 340px; min-height: 340px; margin: -2px 0 6px; background: none; }
   .pool-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .pool-sky .sky-cap { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; color: var(--muted); font: 400 11.5px/1.3 var(--sans); pointer-events: none; }
+  .sky-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line, rgba(255,255,255,.18)); background: rgba(20,22,40,.55); color: var(--text); font: 400 24px/1 var(--sans); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 0 3px; z-index: 2; }
+  .sky-arrow.prev { left: 4px; } .sky-arrow.next { right: 4px; }
+  .sky-arrow:hover:not(:disabled) { border-color: var(--text); } .sky-arrow:disabled { opacity: .25; cursor: default; }
   @media (max-width: 520px) { .pool-sky { min-height: 260px; flex-basis: 260px; } }
   .mcard .hrsub { margin: 4px 0 0; text-align: center; color: var(--muted); font: 400 12px/1.35 var(--sans); }
   .mstats .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
@@ -153,7 +156,7 @@
   <article class="mcard m-hr" aria-labelledby="hr-title">
     <a class="calc-link" id="calc-link" href="#calc">More insights<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate of the mining pools</h2>
-    <div class="pool-sky" id="pool-sky" role="img" aria-label="A black hole for every mining pool, sized by the hashrate it adds to the chain; hover one for details"><canvas id="pool-sky-cv"></canvas><p class="sky-cap" id="sky-cap"></p></div>
+    <div class="pool-sky" id="pool-sky" role="group" aria-label="A black hole for every mining pool, sized by the hashrate it adds to the chain; hover one for details"><canvas id="pool-sky-cv"></canvas><button type="button" class="sky-arrow prev" id="sky-prev" aria-label="Previous six pools" hidden>&#8249;</button><button type="button" class="sky-arrow next" id="sky-next" aria-label="Next six pools" hidden>&#8250;</button><p class="sky-cap" id="sky-cap"></p></div>
     <p class="hrsub" id="ms-hash-sub"></p>
     <a class="more" id="ms-more-hr" href="#dashboard">View more »</a>
   </article>
@@ -489,10 +492,12 @@
     if (!sec.hidden && netId !== 'sha256') drawPie(rp);
     { // the fleet flies only on what your own node reported
       const own = m.live && (m.node || netId === 'dogecoin' || netId === 'monero');
-      skyStart();
+      skyStart(); if (sky.net !== netId) { sky.net = netId; sky.page = 0; sky.refS = null; }
       skySet(own ? rp.pools.map((x) => ({ name: x.name === 'Single payout (pool or solo miner)' ? 'Other pools & solo' : x.name, blocks: x.blocks })) : null, own ? (rp.blockCount || rp.pools.reduce((a, x) => a + x.blocks, 0)) : 0, own ? m.hash : 0, rp.window,
         m.live ? 'Waiting for your node: the ships are built from its pool statistics.' : 'Your node does not answer: the ships are built from its pool statistics.');
-      $('sky-cap').textContent = own && sky.ships.length ? `${sky.ships.length} ${netId === 'monero' ? 'payout kinds' : 'mining pools'} · size follows hashrate · ${windowSpoken(rp.window)}` : '';
+      sky.cap = () => { const netId2 = sky.net, own = !!sky.args[0], a = sky.page * SKY_PAGE + 1, b = a + sky.ships.length - 1, kind = netId2 === 'monero' ? 'payout kinds' : 'mining pools';
+        $('sky-cap').textContent = own && sky.ships.length ? `${sky.total > SKY_PAGE ? `${a}–${b} of ${sky.total}` : sky.total} ${kind} · biggest first · size follows hashrate · ${windowSpoken(sky.args[3])}` : '';
+        $('sky-prev').hidden = $('sky-next').hidden = !(own && sky.pages > 1); $('sky-prev').disabled = sky.page <= 0; $('sky-next').disabled = sky.page >= sky.pages - 1; }; sky.cap();
       if (sky.still) skyDraw(performance.now());
     }
     renderCalc(); fillPools(); renderPoolCalc();
@@ -753,16 +758,19 @@
   // found in the period times the chain's hashrate. Mempool sites and built-in snapshots are never used for it.
   // Every pool is a black hole: its size follows the hashrate it adds to the chain, and matter circles it in an accretion disc.
   var sky = { ships: [], names: '', last: 0, hover: null, w: 0, h: 0, dpr: 1, on: false, still: false, msg: '', laid: '' };
-  const SKY_MAX = 14;
+  const SKY_PAGE = 6;
   const skyColor = (name) => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 78% 62%)`; };
   const skyA = (c, a) => c.replace(')', ` / ${a})`);
   const gcd = (a, b) => (b ? gcd(b, a % b) : a);
   const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
   function skySet(list, total, hashNow, win, note) {
+    sky.args = [list, total, hashNow, win, note];
     sky.msg = list ? '' : (note || 'Waiting for your node…');
     const ranked = (list || []).filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
-    const PIN = /^(OCEAN|CONVOY)$/i, head = ranked.slice(0, SKY_MAX - 1), top = [...head, ...ranked.slice(SKY_MAX - 1).filter((x) => PIN.test(x.name))], rest = ranked.slice(SKY_MAX - 1).filter((x) => !PIN.test(x.name)), items = rest.length ? [...top, { name: `${rest.length} smaller pools`, blocks: rest.reduce((a, x) => a + x.blocks, 0) }] : ranked;
-    const sig = items.map((x) => x.name + ':' + x.blocks).join('|') + '|' + Math.round(hashNow || 0);
+    const pages = Math.max(1, Math.ceil(ranked.length / SKY_PAGE)); sky.page = Math.min(sky.page || 0, pages - 1); sky.pages = pages; sky.total = ranked.length;
+    if (sky.refS == null || sky.page === 0) sky.refS = ranked.slice(0, SKY_PAGE).reduce((a, x) => a + Math.sqrt(total ? x.blocks / total : 0), 0) || 1;
+    const items = ranked.slice(sky.page * SKY_PAGE, sky.page * SKY_PAGE + SKY_PAGE);
+    const sig = sky.page + '#' + items.map((x) => x.name + ':' + x.blocks).join('|') + '|' + Math.round(hashNow || 0);
     if (sig === sky.names) return;
     sky.names = sig; sky.laid = '';
     const old = Object.fromEntries(sky.ships.map((sh) => [sh.name, sh]));
@@ -780,7 +788,7 @@
   // sizes follow the hashrate; the holes are pushed apart until they (and the label under each) stand clear of each other
   function skyLayout() {
     const key = sky.names + '|' + sky.w + 'x' + sky.h; if (sky.laid === key || !sky.ships.length || !sky.w) return; sky.laid = key;
-    const n = sky.ships.length, area = sky.w * (sky.h - 30) * 0.26, sumS = sky.ships.reduce((a, x) => a + Math.sqrt(x.share), 0) || 1;
+    const n = sky.ships.length, area = sky.w * (sky.h - 30) * 0.26, sumS = sky.refS || sky.ships.reduce((a, x) => a + Math.sqrt(x.share), 0) || 1;
     const k = Math.min(Math.max(30, Math.min(58, (sky.h - 90) / 5)), Math.max(10, Math.sqrt(area / Math.PI) * Math.sqrt(n > 1 ? 1 : 1) / Math.max(1.6, Math.sqrt(sumS * 0.9))));
     sky.ships.forEach((sh, i) => {
       sh.r = Math.max(9, k * Math.sqrt(Math.min(1, sh.share * 2.4)) + 4);
@@ -850,6 +858,8 @@
   }
   function skyStart() {
     const el = $('pool-sky'); if (!el || sky.started) return; sky.started = true;
+    const turn = (d) => () => { sky.page = Math.max(0, Math.min(sky.pages - 1, (sky.page || 0) + d)); skySet(...sky.args); sky.cap(); if (sky.still) skyDraw(performance.now()); };
+    $('sky-prev').addEventListener('click', turn(-1)); $('sky-next').addEventListener('click', turn(1));
     sky.still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
     const run = (on) => { if (on && !sky.on) { sky.on = true; requestAnimationFrame(skyStep); } else if (!on) sky.on = false; };
     if ('IntersectionObserver' in window) new IntersectionObserver((es) => run(es.some((e) => e.isIntersecting))).observe(el); else run(true);
