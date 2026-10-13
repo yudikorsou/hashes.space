@@ -1221,9 +1221,9 @@
     el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
       <div class="below"><span class="datum-badge plain">Fee Auction</span></div></div>
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
-      <div class="below"><span class="datum-badge plain">Candidate block</span></div></div>
+      <div class="below"><span class="datum-badge plain">Block assembly</span></div></div>
       <div class="block-wrap mining"><div class="above">Hashing now</div>${candidateCube(b)}
-      <div class="below"><span class="datum-badge plain">${network()?.label ?? 'SHA-256'} PoW</span><span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span></div></div>`;
+      <div class="below"><span class="datum-badge plain">Candidate block</span><span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span></div></div>`;
     pinProjected();
     scheduleClip();
   }
