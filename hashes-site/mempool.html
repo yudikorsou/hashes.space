@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
 <style>
-  /* Single dark theme using the mempool colour palette (as on mempool.guide) */
+  /* Single dark theme using the mempool colour palette */
   :root {
     color-scheme: dark;
     --bg: #11131f; --surface: #1d1f31;
@@ -2286,7 +2286,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   const coinImg = (id) => (COIN_LOGOS[id] ? `<img class="coin" src="${COIN_LOGOS[id]}" alt="" width="26" height="26">` : '');
   const NETWORKS = [
     { id: 'sha256', algo: 'sha256', label: 'SHA-256', chain: 'Bitcoin', ticker: 'BTC', source: 'btc.hashes.space' },
-    { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool.guide' },
+    { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'btcb2.hashes.space' },
     { id: 'dogecoin', algo: 'scrypt', label: 'Scrypt', chain: 'Dogecoin', ticker: 'DOGE', source: 'doge.hashes.space' },
     { id: 'monero', algo: 'randomx', label: 'RandomX', chain: 'Monero', ticker: 'XMR', source: 'xmr.hashes.space' },
   ];
@@ -2370,7 +2370,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // ---------- render: chain strip ----------
   const fmt = (n, d = 0) => n.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
   let sharesThisBlock = 0;
-  // mempool colours (as on mempool.guide): projected = median-fee colour over #554b45, mined = purple→blue over #2d3348
+  // mempool colours: projected = median-fee colour over #554b45, mined = purple→blue over #2d3348
   function frontBg(b, mined) {
     if (mined) {
       const e = 100 - Math.max(4, Math.min(100, b.weight / 4e4));
@@ -2628,10 +2628,10 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   // Works when this file is opened in a normal browser tab; inside a sandboxed
   // preview the connection is blocked and the chain stays simulated.
   // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and nothing else (no mempool.space);
-  // Bitcoin BLAKE2b: the Bitcoin BLAKE2b Explorer app on your Bitcoin Knots node (btcb2.hashes.space), and mempool.guide when that does not answer
-  const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: 'wss://btc.hashes.space/api/v1/ws', scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: ['wss://btcb2.hashes.space/api/v1/ws', 'wss://mempool.guide/api/v1/ws'] };
+  // Bitcoin BLAKE2b: the Bitcoin BLAKE2b Explorer app on your Bitcoin Knots node (btcb2.hashes.space), and nothing else (no mempool.guide)
+  const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: 'wss://btc.hashes.space/api/v1/ws', scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: ['wss://btcb2.hashes.space/api/v1/ws'] };
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
-  const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://btc.hashes.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmr.hashes.space/block/' };
+  const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://btc.hashes.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://btcb2.hashes.space/block/', monero: 'https://xmr.hashes.space/block/' };
   const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,
     medianFee: b.extras?.medianFee ?? 0, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0], totalFees: b.extras?.totalFees ?? 0, pool: b.extras?.pool?.name ?? '', version: b.version, bits: b.bits, difficulty: b.difficulty,
     coinbase: typeof b.extras?.coinbaseRaw === 'string' ? (b.extras.coinbaseRaw.match(/../g) ?? []).map((h) => String.fromCharCode(parseInt(h, 16))).join('') : '' });
