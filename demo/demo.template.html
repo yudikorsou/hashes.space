@@ -1212,7 +1212,7 @@
     if (TEMPLATE_API[netId] && !templateTried.has(netId)) { templateTried.add(netId); fetchTemplate(netId); }
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
     el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
-      <div class="below"><span class="datum-badge plain">Fee Priority</span></div></div>
+      <div class="below"><span class="datum-badge plain">Fee Auction</span></div></div>
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
       <div class="below"><span class="datum-badge plain">Candidate block</span></div></div>
       <div class="block-wrap mining"><div class="above">Hashing now</div>${candidateCube(b)}
