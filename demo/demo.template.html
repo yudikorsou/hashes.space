@@ -717,6 +717,10 @@
   .candasm .hb.ready { color: #2fb585; } .candasm .miss b { color: #ff8a80; } .candasm .hf { will-change: transform, opacity; }
   .hseg { position: absolute; left: 8px; right: 8px; bottom: 6px; display: flex; gap: 2px; height: 9px; }
   .hseg i { display: block; border-radius: 2px; opacity: .25; transform-origin: bottom; }
+  .baasm .ba-ph { justify-content: center; } .baasm .ba-ph b { font-size: 1.05em; letter-spacing: .02em; } .baasm .ba-dt { justify-content: center; min-height: 1.3em; } .baasm .ba-dt i { color: rgba(255,255,255,.8); }
+  .ba-stack { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 2px; --bh: calc(4.5px * var(--k, 1)); }
+  .ba-b { display: block; height: var(--bh); border-radius: 2px; opacity: 0; will-change: transform, opacity; }
+  .ba-rej { position: absolute; left: 0; width: 92%; height: var(--bh); bottom: calc(3 * (var(--bh) + 2px)); border-radius: 2px; background: #ff6b5e; opacity: 0; }
   .asm-stack { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 3px; }
   .asm-b { display: block; height: calc(6px * var(--k, 1)); border-radius: 2px; opacity: 0; will-change: transform, opacity; }
   .cube.bare { display: block; }
@@ -1333,6 +1337,7 @@
     const fill = Math.max(0, Math.min(100, Math.round(b.vsize / 1e4)));
     const coinbase = btc && t ? t.coinbasevalue / 1e8 : btc && hasFees ? subsidy(height) + fees / 1e8 : null;
     const col = feeColor(b.medianFee * (c.feeScale ?? 1)), widths = [100, 94, 98, 90, 96];
+    if (btc) return btcAssemblyCube({ b, c, tk, height, coinbase, fees, hasFees, fill, col, widths });
     const bricks = widths.map((w, i) => `<i class="asm-b" style="width:${w}%;background:${i === 0 ? '#e8ebf5' : col};${i === 0 ? '' : `filter:brightness(${(1.25 - i * 0.07).toFixed(2)})`}"></i>`).join('');
     const feeRow = hasFees && btc ? `<div><i>Fees</i><b class="asm-n" data-f="btc" data-v="${fees / 1e8}" data-u="${tk}">0</b></div>` : `<div><i>Fee</i><b>~${fmt(b.medianFee)} ${unit}</b></div>`;
     const tip = `Coinbase ${coinbase === null ? '1 tx' : fmt(coinbase, 4) + ' ' + tk} · ${c.xmr || c.doge ? sizeLabel(b.bytes ?? b.vsize) : fmt(b.vsize / 1e6, 2) + ' MvB'}`;
@@ -1374,6 +1379,57 @@
     hb.style.color = bytes > 79.5 ? '#1bd8f4' : '';
   }
   requestAnimationFrame(function hdrLoop(now) { if (!document.hidden) hdrFrame(now); requestAnimationFrame(hdrLoop); });
+  // Bitcoin (and BLAKE2b) Block assembly, in the order the node's block template is made:
+  //   1 Coinbase     the coinbase transaction and the block reward (subsidy + the fees of what will be selected)
+  //   2 Select       the best package of the mempool is picked, one after the other
+  //   3 Check limits each pick is held against the block's limits (weight, sigops): it is added, or it does not fit and is skipped
+  //   4 Finalize     the selection is final: transactions, weight filled, the template is ready
+  function btcAssemblyCube({ b, c, tk, height, coinbase, fees, hasFees, fill, col, widths }) {
+    const bricks = widths.map((w, i) => `<i class="ba-b" style="width:${w}%;background:${i === 0 ? '#e0b43c' : col};${i === 0 ? '' : `filter:brightness(${(1.25 - i * 0.07).toFixed(2)})`}"></i>`).join('');
+    const sub = subsidy(height), reward = coinbase ?? sub;
+    return `<div class="cube" data-sub="${sub}" data-reward="${reward}" data-tk="${tk}" data-ntx="${b.nTx}" data-fill="${fill}" title="${esc(`Block template: coinbase with the block reward${coinbase === null ? '' : ' of ' + fmt(coinbase, 4) + ' ' + tk}, the best packages are selected one after the other, each is checked against the weight and sigop limits, then the selection is final`)}" style="--fill:${MEMPOOL_COLORS.projectedEmpty}"><div class="face front" style="background:${MEMPOOL_COLORS.projectedEmpty}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr asm baasm">
+        <div class="ba-ph"><b>1 Coinbase</b></div><div class="ba-dt"><i></i></div>
+        <div><i>Transactions</i><b class="ba-tx">0</b></div><div><i>Filled</i><b class="ba-fl">0%</b></div></div>
+        <div class="ba-stack" aria-hidden="true">${bricks}<i class="ba-rej"></i></div>
+      </div><div class="face top"></div><div class="face side"></div></div>`;
+  }
+  const BA_P = 11000;
+  // when each brick (coinbase, then the picks that fit) is picked, checked and lands; the rejected pick comes between the second and third
+  const BA_EV = [{ t: 300, pick: 0, check: 0, land: 0, dur: 700 }, { t: 1800, pick: 350, check: 700, land: 1000 }, { t: 2900, pick: 350, check: 700, land: 1000 },
+    { t: 4800, pick: 350, check: 700, land: 1000 }, { t: 5900, pick: 350, check: 700, land: 1000 }], BA_REJ = { t: 4000, pick: 300, check: 700 };
+  function baFrame(now) {
+    const root = document.querySelector('.baasm'); if (!root) return;
+    const cube = root.closest('.cube'), d = cube.dataset, bricks = cube.querySelectorAll('.ba-b'), rej = cube.querySelector('.ba-rej');
+    const t = STILL.matches ? 9000 : (now - asmT0) % BA_P, out = t > BA_P - 700 ? 1 - (t - (BA_P - 700)) / 700 : 1;
+    let phase = '1 Coinbase', detail = '', bad = false, acc = 0;
+    bricks.forEach((e, i) => {
+      const ev = BA_EV[i], u = t - ev.t; let o = 0, x = 90, ol = false;
+      if (i === 0) { const k = easeOut(Math.max(0, Math.min(1, u / 600))); o = k; x = (1 - k) * 90; if (u >= 0 && u < 1500) detail = u < 700 ? `subsidy ${fmt(+d.sub, 4)}` : `reward ${fmt(+d.reward, 4)} ${d.tk}`; }
+      else if (u >= 0) {
+        if (u < ev.check) { o = 0.35; x = 12; phase = '2 Select'; detail = 'best package next'; }
+        else if (u < ev.land) { o = 0.75; x = 5; ol = true; phase = '3 Check limits'; detail = 'weight ✓ sigops ✓'; }
+        else { const k = easeOut(Math.min(1, (u - ev.land) / 450)); o = 0.75 + 0.25 * k; x = 5 * (1 - k); if (u < ev.land + 450) { phase = '3 Check limits'; detail = 'fits · added ✓'; } acc += k; }
+      }
+      e.style.opacity = String(o * out); e.style.transform = `translateX(${x.toFixed(1)}px)`; e.style.outline = ol ? '1px solid #1bd8f4' : '';
+    });
+    const ru = t - BA_REJ.t; let ro = 0, rx = 12;
+    if (ru >= 0 && ru < BA_REJ.check + 500) {
+      if (ru < BA_REJ.pick) { ro = 0.35; phase = '2 Select'; detail = 'best package next'; }
+      else if (ru < BA_REJ.check) { ro = 0.8; rx = 5; phase = '3 Check limits'; detail = 'weight ✗ too big'; bad = true; }
+      else { const k = (ru - BA_REJ.check) / 500; ro = 0.8 * (1 - k); rx = 5 + k * 12; phase = '3 Check limits'; detail = 'skipped, next one'; bad = true; }
+    }
+    rej.style.opacity = String(ro * out); rej.style.transform = `translateX(${rx.toFixed(1)}px)`;
+    if (t >= 6900) { phase = '4 Finalize'; detail = t < 8200 ? 'selection is final' : 'template ready ✓'; }
+    const fin = t >= 6900 ? Math.min(1, (t - 6900) / 600) : 0;
+    bricks.forEach((e) => { if (fin) e.style.boxShadow = `0 0 0 1px rgba(27,216,244,${(0.9 * fin * out).toFixed(2)})`; else e.style.boxShadow = ''; });
+    const prog = Math.min(1, acc / 4);
+    const ph = root.querySelector('.ba-ph b'), dt = root.querySelector('.ba-dt i');
+    if (ph.textContent !== phase) ph.textContent = phase; if (dt.textContent !== detail) dt.textContent = detail;
+    ph.style.color = bad ? '#ff8a80' : t >= 6900 ? '#1bd8f4' : ''; dt.style.color = bad ? '#ff8a80' : '';
+    root.querySelector('.ba-tx').textContent = fmt(Math.round(+d.ntx * prog));
+    root.querySelector('.ba-fl').textContent = Math.round(+d.fill * prog) + '%';
+  }
+  requestAnimationFrame(function baLoop(now) { if (!document.hidden) baFrame(now); requestAnimationFrame(baLoop); });
   const ASM_P = 7600, asmT0 = performance.now(), easeOut = (x) => 1 - (1 - x) ** 3;
   function asmFrame(now) {
     const bricks = document.querySelectorAll('.asm-b'); if (!bricks.length) return;
