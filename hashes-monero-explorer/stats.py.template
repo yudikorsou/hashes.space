@@ -410,6 +410,89 @@ def tx_page(txid):
     return page("Transaction " + txid[:12], body)
 
 
+# ---------- the block template of your node: header fields and the merkle root (Monero's tree hash) ----------
+# Monero hashes with the original Keccak-256 (not the SHA-3 that hashlib offers), so it is written out here.
+_RC = [0x0000000000000001, 0x0000000000008082, 0x800000000000808A, 0x8000000080008000, 0x000000000000808B, 0x0000000080000001, 0x8000000080008081, 0x8000000000008009,
+       0x000000000000008A, 0x0000000000000088, 0x0000000080008009, 0x000000008000000A, 0x000000008000808B, 0x800000000000008B, 0x8000000000008089, 0x8000000000008003,
+       0x8000000000008002, 0x8000000000000080, 0x000000000000800A, 0x800000008000000A, 0x8000000080008081, 0x8000000000008080, 0x0000000080000001, 0x8000000080008008]
+_ROT = [[0, 36, 3, 41, 18], [1, 44, 10, 45, 2], [62, 6, 43, 15, 61], [28, 55, 25, 21, 56], [27, 20, 39, 8, 14]]
+_M64 = (1 << 64) - 1
+
+
+def _keccak_f(a):
+    for rc in _RC:
+        c = [a[x][0] ^ a[x][1] ^ a[x][2] ^ a[x][3] ^ a[x][4] for x in range(5)]
+        d = [c[(x - 1) % 5] ^ (((c[(x + 1) % 5] << 1) | (c[(x + 1) % 5] >> 63)) & _M64) for x in range(5)]
+        a = [[a[x][y] ^ d[x] for y in range(5)] for x in range(5)]
+        b = [[0] * 5 for _ in range(5)]
+        for x in range(5):
+            for y in range(5):
+                v, n = a[x][y], _ROT[x][y]
+                b[y][(2 * x + 3 * y) % 5] = ((v << n) | (v >> (64 - n))) & _M64 if n else v
+        a = [[b[x][y] ^ ((~b[(x + 1) % 5][y]) & b[(x + 2) % 5][y]) for y in range(5)] for x in range(5)]
+        a[0][0] ^= rc
+    return a
+
+
+def keccak256(data):
+    rate = 136
+    data = bytearray(data) + b"\x01"
+    data += b"\x00" * (-len(data) % rate)
+    data[-1] |= 0x80
+    a = [[0] * 5 for _ in range(5)]
+    for off in range(0, len(data), rate):
+        for i in range(rate // 8):
+            a[i % 5][i // 5] ^= int.from_bytes(data[off + 8 * i:off + 8 * i + 8], "little")
+        a = _keccak_f(a)
+    return b"".join(a[i % 5][i // 5].to_bytes(8, "little") for i in range(4))
+
+
+def tree_hash(hashes):
+    """the merkle root of a block's transaction hashes, as Monero builds it (the miner transaction first)"""
+    count = len(hashes)
+    if count == 1:
+        return hashes[0]
+    if count == 2:
+        return keccak256(hashes[0] + hashes[1])
+    cnt = 2
+    while cnt < count:
+        cnt <<= 1
+    cnt >>= 1
+    ints = list(hashes[:2 * cnt - count]) + [b""] * (count - cnt)
+    i = 2 * cnt - count
+    for j in range(2 * cnt - count, cnt):
+        ints[j] = keccak256(hashes[i] + hashes[i + 1])
+        i += 2
+    ints = ints[:cnt]
+    while cnt > 2:
+        cnt >>= 1
+        ints = [keccak256(ints[2 * k] + ints[2 * k + 1]) for k in range(cnt)]
+    return keccak256(ints[0] + ints[1])
+
+
+_template = {"at": 0, "data": None}
+
+
+def block_template():
+    """what your node would put in the next block: the header fields and the tree hash of the miner transaction and the best-paying pool transactions.
+    The miner transaction pays whoever finds the block, which only the miner knows: a stand-in transaction hash takes its place, as the Block assembly shows it."""
+    if _template["data"] and time.time() - _template["at"] < 8:
+        return _template["data"]
+    info = rpc("get_info")
+    hdr = rpc("get_last_block_header")["block_header"]
+    pool = NODE_RPC.post("/get_transaction_pool", b"{}", 20).get("transactions") or []
+    best = sorted((t for t in pool if not t.get("double_spend_seen") and not t.get("do_not_relay")), key=lambda t: t["fee"] / max(1, t["weight"]), reverse=True)
+    ids = [t["id_hash"] for t in best[:60]]
+    height = int(info["height"])
+    coinbase = keccak256(("miner_tx|%d|hashes.space" % height).encode())
+    root = tree_hash([coinbase] + [bytes.fromhex(i) for i in ids])
+    data = {"height": height, "majorVersion": int(hdr["major_version"]), "minorVersion": int(hdr["minor_version"]), "timestamp": int(time.time()),
+            "prevId": info["top_block_hash"], "nonce": None, "merkleroot": root.hex(), "nTx": len(ids) + 1, "txids": ids[:3],
+            "reward": int(hdr.get("reward") or 0), "difficulty": int(info.get("difficulty") or 0)}
+    _template["data"], _template["at"] = data, time.time()
+    return data
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "hashes.space"
@@ -468,6 +551,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path.startswith("/api/v1/mining/") and self.command in ("GET", "HEAD"):
             return self.mining(path)
+        if path == "/api/v1/block-template" and self.command in ("GET", "HEAD") and NODE:
+            try:
+                return self.send_json(200, block_template(), 8)
+            except Exception as exc:
+                return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
         m = re.fullmatch(r"/block/([0-9]{1,9}|[0-9a-fA-F]{64})", path)
         t = re.fullmatch(r"/tx/([0-9a-fA-F]{64})", path)
         if (m or t) and self.command == "GET" and NODE and "classic=1" not in self.path:

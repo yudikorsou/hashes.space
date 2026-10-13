@@ -727,6 +727,7 @@
   .txt.hdr div { display: flex; justify-content: space-between; gap: 6px; white-space: nowrap; }
   .txt.hdr.asm { justify-content: flex-start; padding-top: 24px; }
   .front:has(.cube-coin) .txt.hdr.asm { padding-top: 24px; }
+  .xmrasm .hf { will-change: transform, opacity; width: 100%; font-size: 8px; line-height: 1.2; } .txt.hdr.xmrasm { padding-top: 22px; align-items: stretch; } .xmrasm .hb { position: absolute; top: 9px; right: 8px; font-size: 9px; transition: color .2s; } .xmrasm .hf.cbrow i { color: #e0b43c; }
   .hdrasm .hf { will-change: transform, opacity; } .hdrasm .hf u { text-decoration: none; opacity: .6; font-size: .85em; }
   .txt.hdr.hdrasm { padding-top: 22px; align-items: stretch; } .hdrasm .hf { width: 100%; font-size: 8px; line-height: 1.2; } .hdrasm .hb { position: absolute; top: 9px; right: 8px; font-size: 9px; transition: color .2s; }
   .txt.hdr.candasm { padding-top: 19px; gap: 0; } .candasm .hf { font-size: 7.8px; line-height: 1.15; }
@@ -2047,6 +2048,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     const fill = Math.max(0, Math.min(100, Math.round(b.vsize / 1e4)));
     const coinbase = btc && t ? t.coinbasevalue / 1e8 : btc && hasFees ? subsidy(height) + fees / 1e8 : null;
     const col = feeColor(b.medianFee * (c.feeScale ?? 1)), widths = [100, 94, 98, 90, 96];
+    if (c.xmr) return xmrAssemblyCube(b);
     if (btc) return btcAssemblyCube({ b, c, tk, height, coinbase, fees, hasFees, fill, col, widths });
     const bricks = widths.map((w, i) => `<i class="asm-b" style="width:${w}%;background:${i === 0 ? '#e8ebf5' : col};${i === 0 ? '' : `filter:brightness(${(1.25 - i * 0.07).toFixed(2)})`}"></i>`).join('');
     const feeRow = hasFees && btc ? `<div><i>Fees</i><b class="asm-n" data-f="btc" data-v="${fees / 1e8}" data-u="${tk}">0</b></div>` : `<div><i>Fee</i><b>~${fmt(b.medianFee)} ${unit}</b></div>`;
@@ -2140,6 +2142,46 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     root.querySelector('.ba-fl').textContent = Math.round(+d.fill * prog) + '%';
   }
   requestAnimationFrame(function baLoop(now) { if (!document.hidden) baFrame(now); requestAnimationFrame(baLoop); });
+  // Monero Block assembly: the coinbase (miner) transaction is made first, then the block header is put together from what your Monero node says:
+  // major and minor version, the timestamp, the hash of the previous block, the nonce (still zero) and the merkle root, the tree hash of the miner transaction
+  // and the best-paying transactions of the node's pool (hashes Monero Explorer, /api/v1/block-template). Together they are the 76 bytes that miners hash.
+  const XMT = { data: null };
+  async function fetchXmrTemplate() {
+    if (netId !== 'monero' || XMR_BASE !== XMR_EXPLORERS[0]) return;
+    try { const r = await fetch(XMR_BASE + '/api/v1/block-template', { signal: AbortSignal.timeout(8000) }); if (r.ok) XMT.data = await r.json(); } catch { /* simulated until your node answers */ }
+  }
+  setInterval(fetchXmrTemplate, 10000); setTimeout(fetchXmrTemplate, 3000);
+  const XMR_FIELDS = [['Version', 2, '#4a78c9'], ['Time', 5, '#2fb585'], ['Prev', 32, '#7a6cd6'], ['Nonce', 4, '#e8ebf5'], ['Merkle', 33, '#1bd8f4']];
+  function xmrValues() {
+    const c = chain(), tip = c.blocks[0] ?? {}, d = XMT.data;
+    let x = 0x811c9dc5; for (const ch of (tip.hash ?? '') + (c.projected[0]?.nTx ?? 0)) x = Math.imul(x ^ ch.charCodeAt(0), 0x01000193) >>> 0;
+    const stand = hex8(x) + hex8(Math.imul(x, 0x9e3779b1) >>> 0) + hex8(Math.imul(x, 0x85ebca6b) >>> 0) + hex8(Math.imul(x, 0xc2b2ae35) >>> 0);
+    const reward = d?.reward ? fmt(d.reward / 1e12, 4) + ' XMR' : '0.6+ XMR';
+    return { reward, cells: [d ? `${d.majorVersion}.${d.minorVersion}` : typeof tip.version === 'number' ? String(tip.version) : '—', new Date().toISOString().slice(11, 19), sh4(d?.prevId ?? tip.hash), '00000000', sh4(d?.merkleroot ?? stand)] };
+  }
+  function xmrAssemblyCube(b) {
+    const rows = [['Miner tx', 'cbrow'], ...XMR_FIELDS.map(([k]) => [k, ''])].map(([k, cls]) => `<div class="hf ${cls}" style="opacity:0"><i>${k}</i><b></b></div>`).join('');
+    const seg = XMR_FIELDS.map(([, n, col]) => `<i style="flex:${n};background:${col}"></i>`).join('');
+    return `<div class="cube" title="Block assembly: the miner (coinbase) transaction, then the block header: major and minor version, timestamp, previous block, nonce and the merkle root of the transactions, 76 bytes that miners hash" style="--fill:${MEMPOOL_COLORS.projectedEmpty}"><div class="face front" style="background:${MEMPOOL_COLORS.projectedEmpty}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr xmrasm">
+        <b class="hb">coinbase</b>${rows}</div>
+        <div class="hseg" aria-hidden="true">${seg}</div>
+      </div><div class="face top"></div><div class="face side"></div></div>`;
+  }
+  const XA_P = 10000;
+  function xaFrame(now) {
+    const rows = document.querySelectorAll('.xmrasm .hf'); if (!rows.length) return;
+    const t = STILL.matches ? XA_P * 0.8 : (now - asmT0) % XA_P, out = t > XA_P - 700 ? 1 - (t - (XA_P - 700)) / 700 : 1, v = xmrValues(), segs = document.querySelectorAll('.hseg i');
+    let bytes = 0;
+    rows.forEach((r, i) => {
+      const t0 = i === 0 ? 300 : 1900 + (i - 1) * 800, k = easeOut(Math.max(0, Math.min(1, (t - t0) / 600)));
+      r.style.opacity = String(k * out); r.style.transform = `translateX(${(-(1 - k) * 60).toFixed(1)}px)`;
+      const want = i === 0 ? v.reward : v.cells[i - 1], bv = r.querySelector('b'); if (bv.textContent !== want) bv.textContent = want;
+      if (i > 0) { if (segs[i - 1]) { segs[i - 1].style.opacity = String((0.25 + 0.75 * k) * out); segs[i - 1].style.transform = `scaleY(${(0.4 + 0.6 * k).toFixed(2)})`; } bytes += XMR_FIELDS[i - 1][1] * k; }
+    });
+    const hb = document.querySelector('.xmrasm .hb'), txt = t < 1700 ? 'coinbase' : Math.round(bytes) + ' / 76 B'; if (hb.textContent !== txt) hb.textContent = txt;
+    hb.style.color = bytes > 75.5 ? '#1bd8f4' : '';
+  }
+  requestAnimationFrame(function xaLoop(now) { if (!document.hidden) xaFrame(now); requestAnimationFrame(xaLoop); });
   const ASM_P = 7600, asmT0 = performance.now(), easeOut = (x) => 1 - (1 - x) ** 3;
   function asmFrame(now) {
     const bricks = document.querySelectorAll('.asm-b'); if (!bricks.length) return;

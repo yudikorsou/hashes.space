@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-monero-explorer
 category: crypto
 name: Monero Explorer
-version: "0.18.5.1-7"
+version: "0.18.5.1-8"
 tagline: A Monero block explorer on your own Monero node
 description: >-
   An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
@@ -31,6 +31,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  New /api/v1/block-template: the next block as your Monero node sees it (major and minor version, previous block, timestamp and the merkle root, Monero tree hash, of a stand-in miner transaction and the best-paying transactions of the pool). The Find Mempool page builds its Monero Block assembly animation from it.
   Transaction pages (for example the miner reward transaction of a block) are in the same design: hash and block in a title row, key figures as tiles, and Details, Inputs and Outputs cards. The classic page with Decode outputs and Prove sending is one link away.
   The block page is rebuilt in the design of the other hashes.space explorers: a title row with the payout type, time, confirmations and previous/next buttons, key figures as tiles, and Mining and Header cards. The transaction list is left out; every other page is still the Onion Monero Blockchain Explorer.
   New /api/v1/mining/pool-hashrate/<period>: Monero blocks name no pool, so this is the hashrate of the P2Pool miners (the only pool whose blocks show on the chain): the network's hashrate times the share of P2Pool blocks.
