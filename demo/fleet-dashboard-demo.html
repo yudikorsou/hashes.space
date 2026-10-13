@@ -2255,8 +2255,10 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   function renderProjected() {
     if (TEMPLATE_API[netId] && !templateTried.has(netId)) { templateTried.add(netId); fetchTemplate(netId); }
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
-    el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
-      <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : chain().xmr ? 'Fee-Per-Byte Ranking' : 'Fee Auction'}</span></div></div>
+    // on Monero the ranking opens its own page on the Monero Explorer: the transactions of the block being mined, from the highest fee rate down
+    const rankTag = chain().xmr ? `a href="${XMR_EXPLORERS[0]}/fee-ranking" target="_blank" rel="noopener" title="Open the fee-per-byte ranking of the block being mined" style="color:inherit;text-decoration:none;cursor:pointer"` : 'div';
+    el.innerHTML = `<${rankTag} class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
+      <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : chain().xmr ? 'Fee-Per-Byte Ranking' : 'Fee Auction'}</span></div></${rankTag.split(' ')[0]}>
       ${chain().xmr ? `<div class="block-wrap fee-priority"><div class="above"></div>${dynamicCube()}
       <div class="below"><span class="datum-badge plain">Dynamic Block Size</span></div></div>` : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
       <div class="below"><span class="datum-badge plain">Coinbase &amp; Merkle Root</span></div></div>` : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
