@@ -297,6 +297,7 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 .rank tr.cut td,.rank tr.gap td{padding:12px 0;text-align:center;border-bottom:0;background:linear-gradient(var(--line),var(--line)) center/100% 1px no-repeat}.rank tr.cut td span,.rank tr.gap td span{display:inline-block;padding:3px 14px;border-radius:999px;background:var(--surface);border:1px solid var(--line);color:var(--muted);font-size:12.5px;white-space:normal}
 .rank tr.cut td{background-image:linear-gradient(rgba(242,104,34,.45),rgba(242,104,34,.45))}.rank tr.cut td span{border-color:rgba(242,104,34,.55);color:var(--gold);background:#2a2230}
 .finder{display:flex;gap:8px;max-width:none;margin:0 0 10px}.finder input{font-size:13.5px}.hit{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 12px;background:#0b0d17}.hit.in{border-color:var(--link)}.hit.out{border-color:#5d6280}.hit.miss{color:var(--muted);display:block}.hit .hn{font:700 22px/1 system-ui;min-width:56px;color:var(--text)}.hit.in .hn{color:var(--link)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2fb585;box-shadow:0 0 0 0 rgba(47,181,133,.6);animation:pulse 2s infinite}@keyframes pulse{70%{box-shadow:0 0 0 7px rgba(47,181,133,0)}100%{box-shadow:0 0 0 0 rgba(47,181,133,0)}}@media(prefers-reduced-motion:reduce){.dot{animation:none}}
 details{margin-top:14px}summary{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text);font-size:13.5px;font-weight:600;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#0b0d17;list-style:none}summary::-webkit-details-marker{display:none}summary::before{content:'▸';color:var(--link);transition:transform .15s}details[open] summary::before{transform:rotate(90deg)}summary:hover{border-color:var(--link)}details[open] summary{margin-bottom:10px}
 """
 
@@ -418,8 +419,8 @@ def tx_page(txid):
     return page("Transaction " + txid[:12], body)
 
 
-def ranking_page():
-    """the Fee-Per-Byte Ranking of the block that is being mined: the node's pool of waiting transactions, from the highest fee rate down"""
+def ranking_parts():
+    """the Fee-Per-Byte Ranking of the block that is being mined, as the pieces of the page that change: the node's pool of waiting transactions, from the highest fee rate down"""
     info = rpc("get_info")
     height = int(info["height"])
     pool = NODE_RPC.post("/get_transaction_pool", b"{}", 20).get("transactions") or []
@@ -441,12 +442,7 @@ def ranking_page():
     rates = [r[0] for r in rows]
     top = rates[0] if rates else 0
     med = rates[len(rates) // 2] if rates else 0
-    head = ("<div class=bhero><h1>Fee-per-byte ranking</h1><span class=chip>Block being mined <b>" + "{:,}".format(height) + "</b></span><span class=chip><b>" + "{:,}".format(total) + "</b> waiting</span></div>")
-    how = ("<section class=card><h2>What is this?</h2>"
-           "<p class=lead>Miners fill a block with the transactions that pay the most <b>per byte</b>, not the most in total. The ranking below is that order, for the block being mined now.</p>"
-           "<div class=steps><div class=step><span class=n>1</span><b>Fee</b> the sender pays the miner</div><div class=step><span class=n>2</span><b>÷ Bytes</b> the space it takes in the block</div>"
-           "<div class=step><span class=n>3</span><b>= Rate</b> highest rate goes first</div></div>"
-           "<p class=eg1>Example: A pays 0.00004 XMR for 2,000 B = 20 nXMR/B. B pays 0.00003 XMR for 1,000 B = <b>30 nXMR/B</b>, so B goes first although it pays less.</p></section>")
+    chips = ("<span class=chip>Block being mined <b>" + "{:,}".format(height) + "</b></span><span class=chip><b>" + "{:,}".format(total) + "</b> waiting</span>")
     tiles = [("Highest rate", "{:,.0f}".format(top), "nXMR/B"), ("Median rate", "{:,.0f}".format(med), "nXMR/B"), ("In the next block", "{:,}".format(fit), "of {:,} waiting".format(total)), ("Waiting after", "{:,}".format(total - fit), "for a later block")]
     tl = "".join("<div class=tile><small>" + k + "</small><b style='font-size:20px'>" + v + "</b><em>" + sub + "</em></div>" for k, v, sub in tiles)
 
@@ -468,27 +464,50 @@ def ranking_page():
     first = list(range(min(8, total)))
     if fit > 8:
         gap = "<tr class=gap><td colspan=5><span>" + "{:,}".format(fit - 8) + " more in the block, down to " + "{:,.0f}".format(rates[fit - 1]) + " nXMR/B</span></td></tr>"
-        tail = list(range(fit - 1, min(fit + 3, total)))
-        short = lines(first) + gap + lines(tail)
+        short = lines(first) + gap + lines(list(range(fit - 1, min(fit + 3, total))))
     else:
         short = lines(list(range(min(fit + 3, total))))
     full = lines(list(range(min(total, 200))))
-    legend = "<p class=legend><span class=k1></span> in the next block <span class=k2></span> waiting</p>"
-    data = json.dumps([[x[3], round(x[0], 1), x[1], x[2]] for x in rows[:5000]], separators=(",", ":"))
+    table = ("<table class=rank>" + th + short + "</table>" + ("<details><summary>Show all " + "{:,}".format(total) + (" (first 200)" if total > 200 else "") + "</summary><table class=rank>" + th + full + "</table></details>" if total > 12 else "")
+             if rows else "<p class=muted>No transactions are waiting right now: the next block is empty apart from its miner reward.</p>")
+    return {"chips": chips, "tiles": tl, "table": table, "height": height, "fit": fit, "used": used, "median": median, "total": total, "low": round(rates[fit - 1], 1) if fit else None,
+            "rows": [[x[3], round(x[0], 1), x[1], x[2]] for x in rows[:5000]]}
+
+
+RANK_JS = r"""(function(){
+var D=__DATA__,q=document.getElementById('q'),hit=document.getElementById('hit'),upd=document.getElementById('upd'),busy=false;
+function nx(v){return Number(v).toLocaleString(undefined,{maximumFractionDigits:1})}
+function run(){var v=q.value.trim().toLowerCase().replace(/^0x/,'');if(v.length<6){hit.hidden=true;return}
+var R=D.rows,m=R.map(function(r,i){return r[0].indexOf(v)===0||r[0].indexOf(v)>0&&v.length>=10?i:-1}).filter(function(i){return i>=0});
+hit.hidden=false;if(!m.length){hit.className='hit miss';hit.innerHTML='<b>Not in the ranking.</b> The transaction may already be mined, or this node has not seen it yet.'+(/^[0-9a-f]{64}$/.test(v)?' <a href="/tx/'+v+'">Look it up</a>':'');return}
+var i=m[0],r=R[i],inb=i<D.fit,w=r[3];hit.className='hit '+(inb?'in':'out');
+hit.innerHTML='<div class=hn>#'+(i+1)+'</div><div><b>'+(inb?'In the next block':'Waiting for a later block')+'</b><br>Rate <b>'+nx(r[1])+'</b> nXMR/B for '+nx(w)+' bytes. '+(inb?(i)+' transactions pay more per byte.':'The block is full after #'+D.fit+'; a rate of about '+nx(D.low)+' nXMR/B or more gets in.')+' <a href="/tx/'+r[0]+'">Open transaction</a>'+(m.length>1?' ('+m.length+' matches, first shown)':'')+'</div>';}
+function put(id,html){var e=document.getElementById(id);if(e&&e.innerHTML!==html)e.innerHTML=html}
+function tick(){if(busy||document.hidden)return;busy=true;
+fetch('/fee-ranking.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
+var det=document.querySelector('#rk details'),open=det&&det.open,top=det?det.getBoundingClientRect().top:0;
+var same=d.height===D.height&&d.total===D.total&&JSON.stringify(d.rows.slice(0,40))===JSON.stringify(D.rows.slice(0,40))&&d.fit===D.fit;
+D=d;if(!same){put('chips',d.chips+'<span class=chip id=upd></span>');put('tiles',d.tiles);put('rk',d.table);var nd=document.querySelector('#rk details');if(nd&&open)nd.open=true;run()}
+upd=document.getElementById('upd');if(upd)upd.innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=document.getElementById('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
+q.addEventListener('input',run);document.getElementById('go').addEventListener('click',run);q.addEventListener('keydown',function(e){if(e.key==='Enter')run()});
+setInterval(tick,5000);document.addEventListener('visibilitychange',tick);
+})();"""
+
+
+def ranking_page():
+    d = ranking_parts()
+    head = "<div class=bhero><h1>Fee-per-byte ranking</h1><span id=chips style='display:contents'>" + d["chips"] + "<span class=chip id=upd><i class=dot></i> live</span></span></div>"
+    how = ("<section class=card><h2>What is this?</h2>"
+           "<p class=lead>Miners fill a block with the transactions that pay the most <b>per byte</b>, not the most in total. The ranking below is that order, for the block being mined now, and it changes by itself as new transactions arrive.</p>"
+           "<div class=steps><div class=step><span class=n>1</span><b>Fee</b> the sender pays the miner</div><div class=step><span class=n>2</span><b>÷ Bytes</b> the space it takes in the block</div>"
+           "<div class=step><span class=n>3</span><b>= Rate</b> highest rate goes first</div></div>"
+           "<p class=eg1>Example: A pays 0.00004 XMR for 2,000 B = 20 nXMR/B. B pays 0.00003 XMR for 1,000 B = <b>30 nXMR/B</b>, so B goes first although it pays less.</p></section>")
     finder = ("<form class=finder onsubmit='return false'><input id=q placeholder='Find your transaction: paste its hash' aria-label='Find a transaction in the ranking' autocomplete=off spellcheck=false><button type=button id=go>Find</button></form>"
-              "<div id=hit class=hit hidden></div>"
-              "<script>(function(){var R=" + data + ",FIT=" + str(fit) + ",USED=" + str(used) + ",MED=" + str(median) + ",N=" + str(total) + ",LOW=" + json.dumps(round(rates[fit - 1], 1) if fit else None) + ";"
-              "var q=document.getElementById('q'),hit=document.getElementById('hit');"
-              "function nx(v){return Number(v).toLocaleString(undefined,{maximumFractionDigits:1})}"
-              "function run(){var v=q.value.trim().toLowerCase().replace(/^0x/,'');if(v.length<6){hit.hidden=true;return}"
-              "var m=R.map(function(r,i){return r[0].indexOf(v)===0||r[0].indexOf(v)>0&&v.length>=10?i:-1}).filter(function(i){return i>=0});"
-              "hit.hidden=false;if(!m.length){hit.className='hit miss';hit.innerHTML='<b>Not in the ranking.</b> The transaction may already be mined, or this node has not seen it yet.'+(/^[0-9a-f]{64}$/.test(v)?' <a href=\"/tx/'+v+'\">Look it up</a>':'');return}"
-              "var i=m[0],r=R[i],inb=i<FIT,w=r[3];hit.className='hit '+(inb?'in':'out');"
-              "hit.innerHTML='<div class=hn>#'+(i+1)+'</div><div><b>'+(inb?'In the next block':'Waiting for a later block')+'</b><br>Rate <b>'+nx(r[1])+'</b> nXMR/B for '+nx(w)+' bytes. '+(inb?(i)+' transactions pay more per byte.':'The block is full after #'+FIT+'; a rate of about '+nx(LOW)+' nXMR/B or more gets in.')+' <a href=\"/tx/'+r[0]+'\">Open transaction</a>'+(m.length>1?' ('+m.length+' matches, first shown)':'')+'</div>';}"
-              "q.addEventListener('input',run);document.getElementById('go').addEventListener('click',run);q.addEventListener('keydown',function(e){if(e.key==='Enter')run()})})();</script>")
-    table = ("<section class=card><h2>The ranking</h2>" + finder + legend + ("<table class=rank>" + th + short + "</table>" + ("<details><summary>Show all " + "{:,}".format(total) + (" (first 200)" if total > 200 else "") + "</summary><table class=rank>" + th + full + "</table></details>" if total > len(short) // 120 + 12 else "")
-             if rows else "<p class=muted>No transactions are waiting right now: the next block is empty apart from its miner reward.</p>") + "</section>")
-    return page("Fee-per-byte ranking", head + how + "<div class=tiles>" + tl + "</div>" + table)
+              "<div id=hit class=hit hidden></div>")
+    legend = "<p class=legend><span class=k1></span> in the next block <span class=k2></span> waiting</p>"
+    script = "<script>" + RANK_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>"
+    body = (head + how + "<div class=tiles id=tiles>" + d["tiles"] + "</div><section class=card><h2>The ranking</h2>" + finder + legend + "<div id=rk>" + d["table"] + "</div></section>" + script)
+    return page("Fee-per-byte ranking", body)
 
 
 # ---------- the block template of your node: header fields and the merkle root (Monero's tree hash) ----------
@@ -635,6 +654,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path == "/api/v1/block-template" and self.command in ("GET", "HEAD") and NODE:
             try:
                 return self.send_json(200, block_template(), 8)
+            except Exception as exc:
+                return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+        if path == "/fee-ranking.json" and self.command in ("GET", "HEAD") and NODE:
+            try:
+                return self.send_json(200, ranking_parts(), 0)
             except Exception as exc:
                 return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
         if path == "/fee-ranking" and self.command == "GET" and NODE:
