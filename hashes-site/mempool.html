@@ -333,6 +333,11 @@
     .tile .fan { width: 40px; }
   }
 
+  /* on a wide desktop the blocks grow with the window, so the row fills the page instead of sitting small in the middle */
+  @media (min-width: 1500px) { .strip { --s: 118px; --k: 0.944; --d: 15px; } }
+  @media (min-width: 1800px) { .strip { --s: 134px; --k: 1.072; --d: 17px; } }
+  @media (min-width: 2100px) { .strip { --s: 150px; --k: 1.200; --d: 20px; } }
+  @media (min-width: 2400px) { .strip { --s: 166px; --k: 1.328; --d: 22px; } }
   @media (max-width: 720px) {
     .strip { --s: 92px; --k: 1; }
     .strip-head { font-size: 10px; letter-spacing: .1em; gap: 8px; width: auto; }
