@@ -359,17 +359,17 @@
   /* search the proof-of-work networks: the coin you are watching sits in the field, typing filters the rest */
   /* the lining is always the Scrypt silver, whichever proof-of-work network is picked */
   /* the picker and the search are two parts: the network sits on a RAM module, the search bar is next to it, as tall as the module */
-  .netgroup { position: relative; display: flex; align-items: stretch; gap: 12px; min-width: 0; }
+  .netgroup { position: relative; display: flex; align-items: stretch; gap: 10px; min-width: 0; }
   .netsearch { --algo: #bfc8dc; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 5px 16px 5px 18px; border-radius: 999px; border: 1px solid var(--algo); background: var(--surface); transition: border-color .2s, box-shadow .2s; }
   .netsearch:hover { border-color: var(--algo); }
   .netsearch:focus-within { border-color: var(--algo); box-shadow: 0 0 0 3px color-mix(in srgb, var(--algo) 24%, transparent); }
   /* left half: the proof-of-work network. right half: the block you are looking for */
-  .ns-pick { display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; padding: 5px 12px 11px 10px; color: var(--text); cursor: pointer; }
-  /* RAM module: a green board with a row of gold contacts along the bottom edge, a notch in it, and the corner cut-outs of a DIMM */
-  .ns-pick.ram { position: relative; border: 1px solid #3f8f6b; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, #1a4a37, #12362a); box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 0 0 0 transparent; transition: border-color .2s, box-shadow .2s; }
-  .ns-pick.ram::before { content: ""; position: absolute; left: 6px; right: 6px; bottom: 0; height: 6px; background: repeating-linear-gradient(90deg, #e2b33c 0 3px, transparent 3px 5px); }
-  .ns-pick.ram::after { content: ""; position: absolute; left: calc(50% - 5px); bottom: -1px; width: 10px; height: 8px; border-radius: 5px 5px 0 0; background: var(--bg); border: 1px solid #3f8f6b; border-bottom: 0; }
-  .ns-pick.ram:hover, .ns-pick.ram[aria-expanded="true"] { border-color: #6fd6a4; box-shadow: 0 0 0 3px rgba(63,143,107,.28); }
+  .ns-pick { display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; padding: 5px 14px 5px 12px; color: var(--text); cursor: pointer; }
+  /* RAM module in the colours of the search bar next to it: same surface and silver lining, with gold contacts along the bottom edge and the DIMM notch */
+  .ns-pick.ram { position: relative; border: 1px solid #bfc8dc; border-radius: 10px 10px 4px 4px; background: var(--surface); transition: border-color .2s, box-shadow .2s; }
+  .ns-pick.ram::before { content: ""; position: absolute; left: 8px; right: 8px; bottom: 0; height: 5px; background: repeating-linear-gradient(90deg, #e2b33c 0 3px, transparent 3px 5px); opacity: .9; }
+  .ns-pick.ram::after { content: ""; position: absolute; left: calc(50% - 5px); bottom: -1px; width: 10px; height: 7px; border-radius: 5px 5px 0 0; background: var(--bg); border: 1px solid #bfc8dc; border-bottom: 0; }
+  .ns-pick.ram:hover, .ns-pick.ram[aria-expanded="true"] { background: #232843; box-shadow: 0 0 0 3px color-mix(in srgb, #bfc8dc 24%, transparent); }
   .ns-pick.ram .ns-chip .algo { box-shadow: inset 0 0 0 1px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.12); }   /* the hash function is a chip on the module */
   .ns-pick:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
   .ns-pick[aria-expanded="true"] .chev { transform: rotate(180deg); }
