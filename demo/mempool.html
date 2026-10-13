@@ -700,9 +700,9 @@
   .mhead .kpis { width: 100%; }
   .m-hr-head { grid-area: hrh; } .m-pools-head { grid-area: poolsh; }
   .mcard.m-hr { grid-area: hr; padding-bottom: 62px; } .mcard.m-pools { grid-area: pools; } .mcard.m-solo { grid-area: solo; } .m-solo-head { grid-area: soloh; }
-  .mstats.has-solo { grid-template-areas: 'hrh soloh' 'hr solo' 'src src'; }
+  .mstats.has-solo { grid-template-areas: 'soloh hrh' 'solo hr' 'src src'; }
   .mstats.has-solo > .m-pools, .mstats.has-solo > .m-pools-head { display: none; }   /* the solo miners take the place of the pools pie on Bitcoin, BLAKE2b and Dogecoin */
-  .mcard.m-solo::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
+  .mstats.has-solo .mcard.m-hr::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
   .m-solo-head[hidden] { display: none !important; } .msource { grid-area: src; }
   /* the calculators have a page to themselves */
   .mstats.calcpage { grid-template-areas: 'head' 'one' 'src'; grid-template-columns: minmax(0, 640px); justify-content: center; padding-top: 28px; }
@@ -716,8 +716,8 @@
   .calc-link[hidden] { display: none !important; }
   @media (max-width: 900px) {
     .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'poolsh' 'pools' 'src'; }
-    .mstats.has-solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'soloh' 'solo' 'src'; }
-    .mcard.m-solo::before { display: none; }
+    .mstats.has-solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'soloh' 'solo' 'hrh' 'hr' 'src'; }
+    .mstats.has-solo .mcard.m-hr::before { display: none; }
   }
   .mstats[hidden], .mcard[hidden] { display: none !important; }
   /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
