@@ -9,6 +9,10 @@
   .mstats.has-solo { grid-template-areas: 'soloh hrh' 'solo hr' 'src src'; }
   .mstats.has-solo > .m-pools, .mstats.has-solo > .m-pools-head { display: none; }   /* the solo miners take the place of the pools pie on Bitcoin, BLAKE2b and Dogecoin */
   .mstats.has-solo .mcard.m-hr::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
+  /* Monero: how blocks are paid out (the pie) on the left, the mining pools black holes on the right */
+  .mstats.swap { grid-template-areas: 'poolsh hrh' 'pools hr' 'src src'; }
+  .mstats.swap .mcard.m-pools::before { display: none; }
+  .mstats.swap .mcard.m-hr::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
   .m-solo-head[hidden] { display: none !important; } .msource { grid-area: src; }
   /* the calculators have a page to themselves */
   .mstats.calcpage { grid-template-areas: 'head' 'one' 'src'; grid-template-columns: minmax(0, 640px); justify-content: center; padding-top: 28px; }
@@ -23,6 +27,8 @@
   @media (max-width: 900px) {
     .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'poolsh' 'pools' 'src'; }
     .mstats.has-solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'soloh' 'solo' 'hrh' 'hr' 'src'; }
+    .mstats.swap { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'poolsh' 'pools' 'hrh' 'hr' 'src'; }
+    .mstats.swap .mcard.m-hr::before { left: 15%; right: 15%; top: -10px; bottom: auto; width: auto; height: 1px; background: linear-gradient(90deg, transparent, rgba(160, 170, 230, 0.22), transparent); }
     .mstats.has-solo .mcard.m-hr::before { display: none; }
   }
   .mstats[hidden], .mcard[hidden] { display: none !important; }
@@ -460,7 +466,7 @@
         : m ? `Difficulty from a snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining (${site} is not reachable from this page)` : '';
     }
     $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
-    { const so = ['sha256', 'blake2b', 'dogecoin'].includes(netId) && !!m; $('solo-wrap').hidden = !so; $('solo-head').hidden = !so; sec.classList.toggle('has-solo', so); if (so) renderSolo(); }   // miners without a pool, next to the pools' hashrate
+    { const so = ['sha256', 'blake2b', 'dogecoin'].includes(netId) && !!m; $('solo-wrap').hidden = !so; $('solo-head').hidden = !so; sec.classList.toggle('has-solo', so); sec.classList.toggle('swap', netId === 'monero'); if (so) renderSolo(); }   // miners without a pool, next to the pools' hashrate
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
     { const g = netId === 'sha256', more = $('ms-more-hr'); more.style.display = g ? 'none' : ''; if (!g) { more.href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`; more.target = '_blank'; more.textContent = 'View more »'; } }   // Bitcoin has no link here; the other chains open their own mining page
