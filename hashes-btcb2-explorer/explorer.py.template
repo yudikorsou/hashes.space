@@ -989,6 +989,11 @@ h1{font:600 20px/1.3 system-ui;margin:0}h2{font:600 15px/1.3 system-ui;margin:0 
 table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:500;font-size:12.5px}
 td.r,th.r{text-align:right}.mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}.muted{color:var(--muted)}.wrap{white-space:normal;word-break:break-all}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
+.bhero{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}.bhero h1{font-size:24px}.bhero .navbtns{margin-left:auto;display:flex;gap:8px}.navbtns a{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--text)}.navbtns a:hover{border-color:var(--gold);text-decoration:none}.navbtns span.off{border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted);opacity:.5}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:#0b0d17;border:1px solid var(--line);font-size:12.5px;color:var(--muted)}.chip b{color:var(--gold);font-weight:600}
+.bhash{display:grid;gap:2px}.bhash small{color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}.bhash .mono{word-break:break-all;font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:3px;align-content:start;min-width:0}.tile small{color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}.tile b{font:600 20px/1.2 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.tile em{font-style:normal;color:var(--muted);font-size:12.5px}.tile .meter{height:6px;border-radius:3px;background:#0b0d17;border:1px solid var(--line);overflow:hidden;margin-top:4px}.tile .meter i{display:block;height:100%;background:var(--gold)}
+.groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:14px}.groups .card h2{margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}.groups dl{grid-template-columns:minmax(96px,max-content) 1fr;gap:8px 16px}.groups dd{min-width:0}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.stat b{display:block;font:600 20px/1.2 ui-monospace,Menlo,monospace}
 .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:14px}.chart svg{width:100%;height:auto;color:var(--muted)}.chart h2{margin:0 0 4px}
 .chart.wide{grid-column:1/-1}.fill{display:flex;height:22px;border-radius:6px;background:#0b0d17;border:1px solid var(--line);overflow:hidden}.fill i{display:block;height:100%}
@@ -1386,6 +1391,19 @@ def header_rows(b):
     return rows
 
 
+def block_layout(height, nav_prev, nav_next, pool, mined, hash_, tiles, groups, extra="", conf=None):
+    """structured block page: title row (height, pool, time, previous/next), the hash, key figures as tiles, then the details grouped in cards"""
+    def btn(href, label):
+        return "<a href='/block/" + href + "'>" + label + "</a>" if href else "<span class=off>" + label + "</span>"
+    head = ("<div class=bhero><h1>Block " + "{:,}".format(height) + "</h1>" + ("<span class=chip>Mined by <b>" + html.escape(pool) + "</b></span>" if pool else "")
+            + "<span class=chip>" + mined + "</span>" + ("<span class=chip><b>" + "{:,}".format(conf) + "</b> confirmation" + ("" if conf == 1 else "s") + "</span>" if conf is not None else "") + "<div class=navbtns>" + btn(nav_prev, "← previous") + btn(nav_next, "next →") + "</div></div>"
+            + "<div class=bhash><small>Block hash</small><span class=mono>" + hash_ + "</span></div>")
+    tl = "".join("<div class=tile><small>" + k + "</small><b>" + v + "</b>" + (("<em>" + sub + "</em>") if sub else "") + (("<div class=meter><i style='width:" + "{:.1f}".format(min(100.0, bar)) + "%'></i></div>") if bar is not None else "") + "</div>"
+                 for k, v, sub, bar in tiles)
+    gr = "".join("<section class=card><h2>" + t + "</h2><dl>" + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in rows) + "</dl></section>" for t, rows in groups if rows)
+    return head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>" + extra
+
+
 def block_stats_card(h):
     try:
         st = block_statistics(h)
@@ -1408,17 +1426,15 @@ def block_page(ident):
         b = NODE.call("getblock", h, 2, timeout=120)
     except RuntimeError as exc:
         hd = NODE.call("getblockheader", h)       # the header is never pruned
-        nav = ("<a href='/block/" + hd["previousblockhash"] + "'>← previous</a>" if hd.get("previousblockhash") else "") + ("  ·  <a href='/block/" + hd["nextblockhash"] + "'>next →</a>" if hd.get("nextblockhash") else "")
-        rows = [("Hash", "<span class=mono>" + h + "</span>"), ("Mined", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(hd["time"])) + " (" + ago(hd["time"]) + ")"),
-                ("Transactions", "{:,}".format(hd.get("nTx", 0))), ("Difficulty", "{:,.0f}".format(hd.get("difficulty", 0))),
-                ("Confirmations", "{:,}".format(hd.get("confirmations", 0)))] + header_rows(hd)
-        return page("Block " + str(hd["height"]), "<h1>Block " + "{:,}".format(hd["height"]) + "</h1><p>" + nav + "</p><section class=card><dl>"
-                    + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in rows) + "</dl></section><section class=card><p class=muted>This node is pruned: it has deleted the transactions of this block ("
-                    + html.escape(str(exc)) + "), but a node never prunes a block's header, which is shown above.</p></section>")
+        tiles = [("Transactions", "{:,}".format(hd.get("nTx", 0)), "", None), ("Difficulty", "{:,.0f}".format(hd.get("difficulty", 0)), "", None)]
+        note = ("<section class=card><p class=muted>This node is pruned: it has deleted the transactions of this block (" + html.escape(str(exc))
+                + "), but a node never prunes a block's header, which is shown above.</p></section>")
+        return page("Block " + str(hd["height"]), block_layout(hd["height"], hd.get("previousblockhash"), hd.get("nextblockhash"), "",
+                    time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(hd["time"])) + " (" + ago(hd["time"]) + ")", h,
+                    tiles, [("Header", header_rows(hd))], note, conf=hd.get("confirmations", 0)))
     txs = b["tx"]
     fees = sum(round(float(t.get("fee", 0)) * 1e8) for t in txs[1:])
     cb = txs[0]
-    nav = ("<a href='/block/" + b["previousblockhash"] + "'>← previous</a>" if b.get("previousblockhash") else "") + ("  ·  <a href='/block/" + b["nextblockhash"] + "'>next →</a>" if b.get("nextblockhash") else "")
     text = bytes.fromhex(cb["vin"][0].get("coinbase", "")).decode("latin-1")
     addrs = [o.get("scriptPubKey", {}).get("address") for o in cb.get("vout", []) if o.get("scriptPubKey", {}).get("address")]
     pool = POOLS.find(text, addrs)
@@ -1429,16 +1445,19 @@ def block_page(ident):
         rows += ("<tr><td class=mono><a href='/tx/" + t["txid"] + "?b=" + h + "'>" + t["txid"][:16] + "…</a></td><td>" + ("coinbase" if t is cb else str(len(t["vin"])) + " in")
                  + "</td><td class='mono wrap'>" + outs + "</td><td class=r>" + btc(round(sum(float(o["value"]) for o in t["vout"]) * 1e8)) + "</td><td class=r>" + rate + "</td></tr>")
     more = "<p class=muted>Showing the first 500 of " + "{:,}".format(len(txs)) + " transactions.</p>" if len(txs) > 500 else ""
-    return page("Block " + str(b["height"]), "<h1>Block " + "{:,}".format(b["height"]) + "</h1><p>" + nav + "</p><section class=card><dl>"
-                + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in [
-                    ("Hash", "<span class=mono>" + h + "</span>"), ("Mined", time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["time"])) + " (" + ago(b["time"]) + ")"),
-                    ("Pool", html.escape(pool)), ("Transactions", "{:,}".format(len(txs))), ("Size", "{:,} bytes · {:,} weight units".format(b["size"], b["weight"])),
-                    ("Fees", btc(fees)), ("Reward", btc(fees + (SUBSIDY0 >> (b["height"] // 210000))) + " (subsidy " + btc(SUBSIDY0 >> (b["height"] // 210000)) + " + fees)"),
-                    ("Fullness", "{:.1f}% of the weight limit".format(b["weight"] / 40000) + (" · stripped size {:,} bytes".format(b["strippedsize"]) if "strippedsize" in b else "")),
-                    ("Difficulty", "{:,.0f}".format(b.get("difficulty", 0))), ("Confirmations", "{:,}".format(b.get("confirmations", 0))),
-                    ("Coinbase text", "<span class=mono>" + html.escape("".join(c if 32 <= ord(c) < 127 else "·" for c in text)) + "</span>"),
-                    ("Paid to", "<span class='mono'>" + html.escape(", ".join(dict.fromkeys(addrs)) or "-") + "</span>")] + header_rows(b))
-                + "</dl></section>" + block_animation(b, h) + block_diagrams(b) + block_stats_card(h) + "<details class=card><summary>Show the transaction list</summary><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
+    subsidy = SUBSIDY0 >> (b["height"] // 210000)
+    full = b["weight"] / 40000
+    tiles = [("Transactions", "{:,}".format(len(txs)), "", None), ("Fees", btc(fees), "", None),
+             ("Reward", btc(fees + subsidy), "subsidy " + btc(subsidy) + " + fees", None),
+             ("Fullness", "{:.1f}%".format(full), "of the weight limit", full),
+             ("Size", "{:,} B".format(b["size"]), "{:,} weight units".format(b["weight"]) + (" · {:,} B stripped".format(b["strippedsize"]) if "strippedsize" in b else ""), None)]
+    mining = [("Pool", html.escape(pool)), ("Coinbase text", "<span class=mono>" + html.escape("".join(c if 32 <= ord(c) < 127 else "·" for c in text)) + "</span>"),
+              ("Paid to", "<span class=mono>" + html.escape(", ".join(dict.fromkeys(addrs)) or "-") + "</span>")]
+    hdr = [("Difficulty", "{:,.0f}".format(b.get("difficulty", 0)))] + header_rows(b)
+    return page("Block " + str(b["height"]), block_layout(b["height"], b.get("previousblockhash"), b.get("nextblockhash"), pool,
+                time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["time"])) + " (" + ago(b["time"]) + ")", h, tiles,
+                [("Mining", mining), ("Header", hdr)], conf=b.get("confirmations", 0))
+                + block_animation(b, h) + block_diagrams(b) + block_stats_card(h) + "<details class=card><summary>Show the transaction list</summary><table><tr><th>Txid</th><th>Inputs</th><th>To</th><th class=r>Out</th><th class=r>Fee rate</th></tr>"
                 + rows + "</table>" + more + "</details>")
 
 

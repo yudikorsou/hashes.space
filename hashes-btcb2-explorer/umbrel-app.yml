@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.15.1"
+version: "1.15.2"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
@@ -36,6 +36,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The block page has a structured layout: title row with the pool, time, confirmations and previous/next buttons, key figures as tiles (transactions, fees, reward, fullness, size), then the details grouped in Mining and Header cards.
   Housekeeping: the explorer no longer mentions any outside site; while it syncs the page shows simulated blocks.
   New /api/v1/mining/solo/<period>: the hashrate of miners that use no pool, estimated from the blocks of solo services and the blocks with no known pool, times the network's hashrate (an upper bound).
   The Find Mempool page's hashrate section now shows the combined hashrate of the mining pools (14 days, 1 month, 6 months, 1 year) instead of the whole network's: new /api/v1/mining/pool-hashrate/<period>, the network's hashrate times the share of blocks that pools mined. The share of blocks per day is kept on disk, so on a pruned node the 6-month and 1-year charts keep growing beyond the 30 days it can read.
