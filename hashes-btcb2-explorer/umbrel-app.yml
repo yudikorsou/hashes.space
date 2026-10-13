@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.17.3"
+version: "1.17.4"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
@@ -36,6 +36,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The block animation is no longer shown on the Bitcoin BLAKE2b explorer or on blocks mined by OCEAN on the Bitcoin explorer.
   Get verified now applies to every pool on the Bitcoin BLAKE2b explorer, and on the Bitcoin explorer only to blocks mined by OCEAN; other Bitcoin blocks show their payout addresses and the whole block to everyone.
   The Get verified box has new wording (only DATUM Verified pool contributors see the transaction information of the pool they hash on) and a boxed layout that no longer breaks words.
   The block page shows the difficulty of Bitcoin BLAKE2b blocks (the hashes a block takes, worked out from its bits) instead of 0.
