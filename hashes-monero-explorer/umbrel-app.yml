@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-monero-explorer
 category: crypto
 name: Monero Explorer
-version: "0.18.5.1-17"
+version: "0.18.5.1-18"
 tagline: A Monero block explorer on your own Monero node
 description: >-
   An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
@@ -31,6 +31,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The /block-assembly page now opens with an animated block being put together from the live block template: the transactions are picked and fill the block, the merkle root is folded, the miner transaction is added and the 76-byte header is written byte by byte, beside the four steps.
   On the /block-candidate page the four steps lost their numbers: the text appears one step at a time, in step with the animated block, and starts over with every cycle.
   The four pages made for the Find Mempool page (/fee-ranking, /block-size, /block-assembly, /block-candidate) share one lighter design: glass panels on a soft glow, quiet uppercase labels, hairline tables, and the steps as a timeline of numbered rings.
   The /block-candidate page has a lighter glass design: the four steps beside the animated block are a quiet timeline (numbered rings joined by a line, the current step glowing) instead of dark boxes.
