@@ -324,6 +324,12 @@ input[type=range]:hover::-webkit-slider-thumb,input[type=range]:active::-webkit-
 .rank tr.miner td{background:rgba(242,104,34,.06)}
 .tag{display:inline-block;padding:1px 9px;border-radius:999px;background:#2a2230;border:1px solid rgba(242,104,34,.55);color:var(--gold);font-size:12px}.tag.in{background:#10262b;border-color:rgba(27,216,244,.5);color:var(--link)}
 @media(max-width:700px){.fld tr:first-child{display:none}.fld,.fld tbody{display:block}.fld tr{display:grid;grid-template-columns:14px 1fr auto;gap:2px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.fld td{display:block;padding:0;border:0;white-space:normal}.fld td.r{text-align:right;color:var(--muted);font-size:12.5px}.fld td.r:nth-of-type(3){display:none}.fld td.r:nth-of-type(4)::before{content:'byte ' attr(data-b) ' · ';}.fld td.mono,.fld td.why{grid-column:2/4;max-width:none;min-width:0}.fld td.why{font-size:12.5px}}
+.sts{display:grid;gap:10px}.st{display:grid;grid-template-columns:28px minmax(0,1fr) minmax(0,1.25fr);gap:6px 16px;align-items:center;background:#0b0d17;border:1px solid var(--line);border-radius:12px;padding:12px 14px}@media(max-width:760px){.st{grid-template-columns:28px 1fr}.st .stb{grid-column:1/3}}
+.st .n{width:26px;height:26px;border-radius:50%;background:var(--gold);color:#1a1406;font:700 13px/26px system-ui;text-align:center}.stt b{display:block;font-size:14.5px}.stt em{display:block;font-style:normal;color:var(--muted);font-size:12.5px}
+.big2{font:700 22px/1.2 system-ui}.big2 small{font:500 13px system-ui;color:var(--muted)}.big2.mono{font-size:17px;color:var(--link)}.sub{color:var(--muted);font-size:12.5px;margin-top:2px}
+.fill{height:8px;border-radius:99px;background:var(--surface);border:1px solid var(--line);overflow:hidden;margin:6px 0 4px}.fill i{display:block;height:100%;background:linear-gradient(90deg,#2fb585,var(--link));border-radius:99px}
+.st.s4 .bytebar{height:20px}.legend2{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px;font-size:12px;color:var(--muted)}.lg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}.lg em{font-style:normal;color:var(--text)}
+.st.flash{animation:flash 1.6s ease-out}@keyframes flash{0%{background:rgba(27,216,244,.25);border-color:var(--link)}100%{background:#0b0d17}}@media(prefers-reduced-motion:reduce){.st.flash{animation:none}}
 details{margin-top:14px}summary{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text);font-size:13.5px;font-weight:600;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#0b0d17;list-style:none}summary::-webkit-details-marker{display:none}summary::before{content:'▸';color:var(--link);transition:transform .15s}details[open] summary::before{transform:rotate(90deg)}summary:hover{border-color:var(--link)}details[open] summary{margin-bottom:10px}
 """
 
@@ -626,74 +632,75 @@ def assembly_parts():
     d = block_template()
     kb = lambda v: "{:,.0f} kB".format(v / 1000.0)
     blob = bytes.fromhex(d["blob"])
-    n_ver, n_ts, n_cnt = len(varint(d["majorVersion"])) + len(varint(d["minorVersion"])), len(varint(d["timestamp"])), len(varint(d["nTx"]))
-    fields = [("Major version", len(varint(d["majorVersion"])), str(d["majorVersion"]), "the consensus rules this block follows", "#4a78c9"),
-              ("Minor version", len(varint(d["minorVersion"])), str(d["minorVersion"]), "a vote for the next network upgrade", "#4a78c9"),
-              ("Timestamp", n_ts, time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(d["timestamp"])) + " UTC", "when the block is made (unix time {:,}); the miner updates it as it works".format(d["timestamp"]), "#2fb585"),
-              ("Previous block", 32, d["prevId"], "the hash of block {:,}: this is what chains the blocks together".format(d["height"] - 1), "#7a6cd6"),
-              ("Nonce", 4, "00000000", "the number the miner changes on every try, until the hash is low enough", "#e8ebf5"),
-              ("Merkle root", 32, d["merkleroot"], "one hash that stands for the miner transaction and all {:,} other transactions".format(d["nTx"] - 1), "#1bd8f4"),
-              ("Transaction count", n_cnt, str(d["nTx"]), "the miner transaction plus the transactions of the pool", "#9ad9e8")]
-    off, rows, bar, hexs = 0, "", "", ""
-    for name, size, val, why, col in fields:
+    n_cnt = len(varint(d["nTx"]))
+    fields = [("Major version", len(varint(d["majorVersion"])), str(d["majorVersion"]), "the consensus rules this block follows", "#4a78c9", "Version"),
+              ("Minor version", len(varint(d["minorVersion"])), str(d["minorVersion"]), "a vote for the next network upgrade", "#4a78c9", "Version"),
+              ("Timestamp", len(varint(d["timestamp"])), time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(d["timestamp"])) + " UTC", "when the block is made (unix time {:,}); the miner updates it as it works".format(d["timestamp"]), "#2fb585", "Time"),
+              ("Previous block", 32, d["prevId"], "the hash of block {:,}: this is what chains the blocks together".format(d["height"] - 1), "#7a6cd6", "Previous block"),
+              ("Nonce", 4, "00000000", "the number the miner changes on every try, until the hash is low enough", "#e8ebf5", "Nonce"),
+              ("Merkle root", 32, d["merkleroot"], "one hash that stands for the miner transaction and all {:,} other transactions".format(d["nTx"] - 1), "#1bd8f4", "Merkle root"),
+              ("Transaction count", n_cnt, str(d["nTx"]), "the miner transaction plus the transactions of the pool", "#9ad9e8", "Count")]
+    off, rows, bar, hexs, legend, seen = 0, "", "", "", "", set()
+    for name, size, val, why, col, grp in fields:
         chunk = blob[off:off + size].hex()
         span = str(off) if size == 1 else "{}–{}".format(off, off + size - 1)
         rows += ("<tr><td class=sw><i style='background:" + col + "'></i></td><td><b>" + name + "</b></td><td class=r>" + span + "</td><td class=r data-b='" + span + "'>" + str(size) + " B</td>"
                  "<td class='mono wrap'>" + esc(val) + "</td><td class=why>" + esc(why) + "</td></tr>")
         bar += "<i style='flex:" + str(size) + ";background:" + col + "' title='" + name + " · " + str(size) + " bytes'></i>"
         hexs += "<span style='color:" + col + "' title='" + name + "'>" + chunk + "</span>"
+        if grp not in seen:
+            seen.add(grp)
+            n = sum(f[1] for f in fields if f[5] == grp)
+            legend += "<span class=lg><i style='background:" + col + "'></i>" + grp + " <em>" + str(n) + " B</em></span>"
         off += size
     total = len(blob)
-    header = ("<div class=bytebar>" + bar + "</div><p class=muted style='margin:6px 0 14px'>" + str(total) + " bytes, drawn to scale. This is what every miner on the network hashes, over and over.</p>"
-              "<div class=tbl><table class='rank fld'><tr><th></th><th>Field</th><th class=r>Byte</th><th class=r>Size</th><th>Value</th><th>What it is</th></tr>" + rows + "</table></div>"
-              "<details><summary>Show the " + str(total) + " bytes as hex</summary><p class='mono hexblob'>" + hexs + "</p></details>")
     base = TAIL_REWARD
     pen = penalty(d["weight"], d["median"]) * base
-    total_reward = base - pen + d["fees"]
-    reward = ("<div class=kv><div><small>Base reward</small><b>" + xmr(base) + " XMR</b><em>the tail emission every block pays</em></div>"
-              "<div><small>Fees</small><b>" + xmr(d["fees"]) + " XMR</b><em>from the " + "{:,}".format(d["nTx"] - 1) + " transactions below</em></div>"
-              "<div><small>Size penalty</small><b>" + (xmr(pen) + " XMR" if pen else "none") + "</b><em>" + ("block is over the median" if pen else "block stays under the median") + " · <a href='/block-size'>how it works</a></em></div>"
-              "<div class=sum><small>Miner receives</small><b>" + xmr(total_reward) + " XMR</b><em>locked for 60 blocks (until height " + "{:,}".format(d["height"] + 60) + ")</em></div></div>"
-              "<p class=muted style='margin:12px 0 0'>The miner transaction pays whoever finds the block, to a one-time address only that miner knows. Until a miner builds it there is no real hash, so this preview uses a stand-in " + "<span class=mono>" + esc(d["minerTx"][:8]) + "…" + esc(d["minerTx"][-6:]) + "</span> for it.</p>")
-    txrows = "<tr class=miner><td class=n>0</td><td><span class=tag>miner tx</span> <span class='mono muted'>stand-in</span></td><td class=r>–</td><td class=r>" + xmr(base) + " (reward)</td></tr>"
-    for i, (tid, w, fee) in enumerate(d["txs"][:200]):
-        txrows += "<tr><td class=n>" + str(i + 1) + "</td><td><a class=mono href='/tx/" + esc(tid) + "'>" + esc(tid[:10]) + "…" + esc(tid[-6:]) + "</a></td><td class=r>" + "{:,}".format(w) + "</td><td class=r>" + xmr(fee) + "</td></tr>"
-    hd = "<tr><th>#</th><th>Transaction</th><th class=r>Bytes</th><th class=r>Fee (XMR)</th></tr>"
-    if d["txs"]:
-        first = "".join(txrows.split("</tr>")[:9]) + "</tr>" if len(d["txs"]) > 8 else txrows
-        txs = ("<table class=rank>" + hd + first + "</table>" + ("<details><summary>Show all " + "{:,}".format(len(d["txs"]) + 1) + " leaves of the tree</summary><table class=rank>" + hd + txrows + "</table></details>" if len(d["txs"]) > 8 else ""))
-    else:
-        txs = "<p class=muted style='margin:0'>No transactions are waiting right now: the projected block holds only the miner transaction.</p>"
+    got = base - pen + d["fees"]
     leaves = d["nTx"]
     levels = max(1, (leaves - 1).bit_length())
     pct = min(100, d["weight"] / d["median"] * 100)
+    st = lambda n, title, cap, body, cls="": ("<div class='st " + cls + "'><span class=n>" + n + "</span><div class=stt><b>" + title + "</b><em>" + cap + "</em></div><div class=stb>" + body + "</div></div>")
+    s1 = st("1", "Pick the transactions", "the best fee per byte that fit the block · <a href='/fee-ranking'>ranking</a>",
+            "<div class=big2>" + "{:,}".format(leaves - 1) + " <small>transactions</small></div><div class=fill><i style='width:" + "{:.0f}".format(pct) + "%'></i></div><div class=sub>" + kb(d["weight"]) + " of the " + kb(d["median"]) + " median · fees " + xmr(d["fees"]) + " XMR</div>", "s1")
+    s2 = st("2", "Fold them into a merkle root", "tree hash of " + "{:,}".format(leaves) + " hashes, the miner transaction first · " + str(levels) + " rounds",
+            "<div class='big2 mono' title='" + esc(d["merkleroot"]) + "'>" + esc(d["merkleroot"][:12]) + "…" + esc(d["merkleroot"][-8:]) + "</div><div class=sub>" + "{:,}".format(leaves) + " hashes → 1 root</div>", "s2")
+    s3 = st("3", "Add the miner transaction", "pays whoever finds the block · stand-in hash <span class=mono>" + esc(d["minerTx"][:6]) + "…</span> until a miner builds the real one",
+            "<div class=big2>" + xmr(got) + " <small>XMR</small></div><div class=sub>" + xmr(base) + " base + " + xmr(d["fees"]) + " fees − " + (xmr(pen) if pen else "0") + " penalty · <a href='/block-size'>size penalty</a></div>", "s3")
+    s4 = st("4", "Write the " + str(total) + "-byte header", "what every miner hashes, over and over, with a new nonce each time",
+            "<div class=bytebar>" + bar + "</div><div class=legend2>" + legend + "</div>", "s4")
+    steps = s1 + s2 + s3 + s4
+    header = ("<div class=tbl><table class='rank fld'><tr><th></th><th>Field</th><th class=r>Byte</th><th class=r>Size</th><th>Value</th><th>What it is</th></tr>" + rows + "</table></div>"
+              "<p class='mono hexblob'>" + hexs + "</p>")
+    txrows = "<tr class=miner><td class=n>0</td><td><span class=tag>miner tx</span> <span class='mono muted'>stand-in</span></td><td class=r>–</td><td class=r>" + xmr(base) + " (reward)</td></tr>"
+    for k, (tid, w, fee) in enumerate(d["txs"][:200]):
+        txrows += "<tr><td class=n>" + str(k + 1) + "</td><td><a class=mono href='/tx/" + esc(tid) + "'>" + esc(tid[:10]) + "…" + esc(tid[-6:]) + "</a></td><td class=r>" + "{:,}".format(w) + "</td><td class=r>" + xmr(fee) + "</td></tr>"
+    hd = "<tr><th>#</th><th>Transaction</th><th class=r>Bytes</th><th class=r>Fee (XMR)</th></tr>"
+    details = ("<details><summary>The header, field by field</summary>" + header + "</details>"
+               "<details><summary>The " + "{:,}".format(leaves) + " leaves of the merkle tree</summary><div class=tbl><table class=rank>" + hd + txrows + "</table></div></details>")
     chips = ("<span class=chip>Block being mined <b>" + "{:,}".format(d["height"]) + "</b></span><span class=chip>not mined yet</span>")
-    tiles = [("Transactions", "{:,}".format(leaves), "1 miner tx + {:,} from the pool".format(leaves - 1)), ("Block weight", kb(d["weight"]), "{:.0f}% of the {} median".format(pct, kb(d["median"]))),
-             ("Fees", xmr(d["fees"]) + " XMR", "paid to the miner on top of " + xmr(base)), ("Header", str(total) + " bytes", "what miners hash")]
-    tl = "".join("<div class=tile><small>" + k + "</small><b style='font-size:20px'>" + v + "</b><em>" + sub + "</em></div>" for k, v, sub in tiles)
-    tree = ("<p class=muted style='margin:0 0 10px'>The merkle root is Monero's tree hash: the " + "{:,}".format(leaves) + " transaction hashes, the miner transaction first, are hashed in pairs, " + str(levels) + " time" + ("s" if levels != 1 else "") + " over, until one hash is left. Change one transaction and the root, and so the block hash, changes.</p>")
-    return {"chips": chips, "tiles": tl, "header": header, "reward": reward, "tree": tree, "txs": txs, "height": d["height"], "root": d["merkleroot"]}
+    return {"chips": chips, "steps": steps, "details": details, "height": d["height"], "root": d["merkleroot"], "ntx": leaves}
 
 
 def assembly_page():
     d = assembly_parts()
     head = "<div class=bhero><h1>Block assembly</h1><span id=chips style='display:contents'>" + d["chips"] + "<span class=chip id=upd><i class=dot></i> live</span></span></div>"
-    what = ("<section class=card><h2>What is this?</h2><p class=lead>This is the block your node would build right now, before any miner has found it. A Monero block is a small <b>header</b> that miners hash, a <b>miner transaction</b> that pays the reward, and the <b>transactions</b> of the pool that pay the best fee per byte.</p>"
-            "<div class=steps><div class=step><span class=n>1</span><b>Pick</b> the best-paying transactions that fit the block (<a href='/fee-ranking'>ranking</a>)</div>"
-            "<div class=step><span class=n>2</span><b>Fold</b> their hashes into one merkle root</div><div class=step><span class=n>3</span><b>Write</b> the header around it: miners then hash it with new nonces</div></div></section>")
-    body = (head + "<div class=tiles id=tiles>" + d["tiles"] + "</div>"
-            "<section class='card main'><h2>The block header</h2><div id=header>" + d["header"] + "</div></section>"
-            "<section class=card><h2>The miner transaction</h2><div id=reward>" + d["reward"] + "</div></section>"
-            "<section class=card><h2>The transactions and the merkle root</h2><div id=tree>" + d["tree"] + "</div><div id=txs>" + d["txs"] + "</div></section>" + what
-            + "<script>" + AS_JS + "</script>")
+    body = (head + "<section class='card main'><h2>The block your node would build right now</h2>"
+            "<p class=muted style='margin:0 0 12px'>Nobody has mined it yet. Four steps, top to bottom, give the block miners will start hashing.</p>"
+            "<div class=sts id=steps>" + d["steps"] + "</div></section><section class=card id=details>" + d["details"] + "</section><script>" + AS_JS.replace("__NTX__", str(d["ntx"])).replace("__ROOT__", d["root"]) + "</script>")
     return page("Block assembly", body)
 
 
-AS_JS = r"""(function(){var busy=false;function put(id,h){var e=document.getElementById(id);if(e&&e.innerHTML!==h){var o=e.querySelector('details');var op=o&&o.open;e.innerHTML=h;if(op){var n=e.querySelector('details');if(n)n.open=true}}}
+AS_JS = r"""(function(){var busy=false,root=document.querySelector('.s2 .big2')&&null,last=null;
 function tick(){if(busy||document.hidden)return;busy=true;fetch('/block-assembly.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
-put('chips',d.chips+'<span class=chip id=upd></span>');put('tiles',d.tiles);put('header',d.header);put('reward',d.reward);put('tree',d.tree);put('txs',d.txs);
+var c=document.getElementById('chips');if(c)c.innerHTML=d.chips+'<span class=chip id=upd></span>';
+var dt=document.getElementById('details'),open=[].map.call(dt.querySelectorAll('details'),function(x){return x.open});
+document.getElementById('steps').innerHTML=d.steps;dt.innerHTML=d.details;[].forEach.call(dt.querySelectorAll('details'),function(x,i){x.open=!!open[i]});
+if(last&&last.ntx!==d.ntx){var a=document.querySelector('.st.s1');if(a)a.classList.add('flash')}
+if(last&&last.root!==d.root){var b=document.querySelector('.st.s2');if(b)b.classList.add('flash')}
+last={ntx:d.ntx,root:d.root};
 document.getElementById('upd').innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=document.getElementById('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
-setInterval(tick,5000);document.addEventListener('visibilitychange',tick)})();"""
+last={ntx:__NTX__,root:'__ROOT__'};setInterval(tick,5000);document.addEventListener('visibilitychange',tick)})();"""
 
 
 RANK_JS = r"""(function(){
