@@ -838,6 +838,79 @@
       g.textAlign = 'center'; g.fillStyle = hot ? '#fff' : '#e8ebf5'; g.font = font(sh.r > 24 ? 12 : 11, 600); g.fillText(sh.name.length > 20 ? sh.name.slice(0, 19) + '…' : sh.name, x, ly);
       g.fillStyle = muted; g.font = font(10.5, 500); g.fillText(si(sh.hash, 1) + 'H/s', x, ly + 13);
     }
+    if (netId === 'dogecoin') skyShip(g, t);
+  }
+  // Dogecoin only: a Shiba Inu pilot in a little spaceship that flies the gaps between the black holes (an original drawing, a simulation: it has no meaning in the data).
+  // The route is a smooth loop through the middle of the gap between neighbouring holes, pushed away from any hole it would touch.
+  function skyRoute() {
+    const key = sky.names + '|' + sky.w + 'x' + sky.h + '|' + sky.laid; if (sky.route && sky.route.key === key) return sky.route;
+    const hs = sky.ships.filter((sh) => sh.hx != null), n = hs.length; let wp;
+    if (n >= 3) {
+      const left = hs.slice(1), order = [hs[0]];
+      while (left.length) { const a = order[order.length - 1]; let bi = 0, bd = 1e12; left.forEach((c, i) => { const d = Math.hypot(c.hx - a.hx, c.hy - a.hy); if (d < bd) { bd = d; bi = i; } }); order.push(left.splice(bi, 1)[0]); }
+      wp = order.map((a, i) => { const b = order[(i + 1) % n]; return { x: (a.hx + b.hx) / 2, y: (a.hy + b.hy) / 2 }; });
+    } else { const w = sky.w, h = sky.h - 30; wp = [{ x: w * 0.12, y: h * 0.3 }, { x: w * 0.5, y: h * 0.62 }, { x: w * 0.88, y: h * 0.3 }, { x: w * 0.5, y: h * 0.1 }]; }
+    for (let it = 0; it < 6; it++) for (const q of wp) for (const sh of hs) {
+      const dx = q.x - sh.hx, dy = q.y - sh.hy, d = Math.hypot(dx, dy) || 0.01, need = sh.r * 2.1 + 22;
+      if (d < need) { q.x = sh.hx + dx / d * need; q.y = sh.hy + dy / d * need; }
+    }
+    for (const q of wp) { q.x = Math.max(24, Math.min(sky.w - 24, q.x)); q.y = Math.max(24, Math.min(sky.h - 70, q.y)); }
+    let len = 0; wp.forEach((a, i) => { const b = wp[(i + 1) % wp.length]; len += Math.hypot(b.x - a.x, b.y - a.y); });
+    // the loop through them, sampled finely, and kept clear of every hole along its whole length
+    const K = 14, route = { wp, K, avg: Math.max(40, len / wp.length) }, pts = [];
+    for (let i = 0; i < wp.length * K; i++) pts.push(skySpline(wp, i / K));
+    const clear = () => { for (const q of pts) for (const sh of hs) {
+      const dx = q.x - sh.hx, dy = (q.y - sh.hy) * 1.1, d = Math.hypot(dx, dy) || 0.01, need = sh.r * 1.9 + 18; if (d < need) { q.x = sh.hx + dx / d * need; q.y = sh.hy + dy / d * need / 1.1; }
+      const ly = sh.hy + Math.max(sh.r * 1.05, sh.r * 0.8 + 6) + 18, lx = q.x - sh.hx, lyy = q.y - ly, hw = 52 + 40, hh = 18 + 28;     // the name and hashrate under the hole
+      if (Math.abs(lx) < hw && Math.abs(lyy) < hh) { if (hh - Math.abs(lyy) < hw - Math.abs(lx)) q.y = ly + (lyy < 0 ? -hh : hh); else q.x = sh.hx + (lx < 0 ? -hw : hw); } } };
+    clear(); for (let k = 0; k < 4; k++) { const c = pts.map((q) => ({ x: q.x, y: q.y })), N = c.length; pts.forEach((q, i) => { q.x = (c[(i + N - 1) % N].x + c[i].x * 2 + c[(i + 1) % N].x) / 4; q.y = (c[(i + N - 1) % N].y + c[i].y * 2 + c[(i + 1) % N].y) / 4; }); clear(); }
+    route.pts = pts; route.key = key; route.avg = Math.max(40, pts.reduce((a, q, i) => a + Math.hypot(pts[(i + 1) % pts.length].x - q.x, pts[(i + 1) % pts.length].y - q.y), 0) / wp.length);
+    return (sky.route = route);
+  }
+  function skySpline(wp, u) {
+    const m = wp.length, i = Math.floor(u), f = u - i, P = (k) => wp[((k % m) + m) % m], p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+    const c = (a, b, cc, d) => 0.5 * ((2 * b) + (-a + cc) * f + (2 * a - 5 * b + 4 * cc - d) * f * f + (-a + 3 * b - 3 * cc + d) * f * f * f);
+    return { x: c(p0.x, p1.x, p2.x, p3.x), y: c(p0.y, p1.y, p2.y, p3.y) };
+  }
+  function skyAt(r, u) {
+    const N = r.pts.length, v = (((u * r.K) % N) + N) % N, i = Math.floor(v), f = v - i, a = r.pts[i], b = r.pts[(i + 1) % N];
+    return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+  }
+  function skyShip(g, t) {
+    if (!sky.ships.length || !sky.w) return;
+    const r = skyRoute(), still = sky.still, u = still ? 0.3 : (t / 1000) * (58 / r.avg) + 0.3, pos = skyAt(r, u), nxt = skyAt(r, u + 0.02);
+    const dx = nxt.x - pos.x, dy = nxt.y - pos.y, dir = dx >= 0 ? 1 : -1, tilt = Math.atan2(dy, Math.abs(dx)) * 0.55, S = Math.max(17, Math.min(30, sky.w / 32));
+    if (!still) for (let k = 14; k >= 1; k--) { const q = skyAt(r, u - k * 0.011); g.fillStyle = `rgba(255,${190 + k * 4},${120 + k * 6},${0.5 - k * 0.034})`; g.beginPath(); g.arc(q.x, q.y + Math.sin(t / 200 + k) * 1.2, Math.max(0.6, S * 0.09 * (1 - k / 16)), 0, 6.2832); g.fill(); }
+    g.save(); g.translate(pos.x, pos.y); g.scale(dir, 1); g.rotate(tilt); g.scale(S, S); g.lineJoin = 'round'; g.lineCap = 'round';
+    const ink = '#1a1630', lw = 0.07, fl = still ? 1 : 0.8 + 0.25 * Math.sin(t / 55) + 0.1 * Math.sin(t / 23);
+    // the flame
+    const fg = g.createLinearGradient(-1.35, 0, -1.35 - 1.1 * fl, 0); fg.addColorStop(0, 'rgba(255,214,120,.95)'); fg.addColorStop(0.5, 'rgba(255,120,40,.7)'); fg.addColorStop(1, 'rgba(255,80,40,0)');
+    g.fillStyle = fg; g.beginPath(); g.moveTo(-1.3, -0.22); g.quadraticCurveTo(-1.3 - 0.9 * fl, 0.02, -1.3, 0.3); g.closePath(); g.fill();
+    // fin
+    g.fillStyle = '#ff8a3d'; g.strokeStyle = ink; g.lineWidth = lw; g.beginPath(); g.moveTo(-0.85, 0.05); g.lineTo(-1.45, -0.55); g.lineTo(-1.3, 0.2); g.closePath(); g.fill(); g.stroke();
+    // hull
+    const hg = g.createLinearGradient(0, -0.3, 0, 0.8); hg.addColorStop(0, '#f4f7ff'); hg.addColorStop(1, '#8c97cc');
+    g.fillStyle = hg; g.beginPath(); g.ellipse(0, 0.22, 1.4, 0.55, 0, 0, 6.2832); g.fill(); g.stroke();
+    g.fillStyle = '#ff8a3d'; g.beginPath(); g.ellipse(0, 0.26, 1.3, 0.1, 0, 0, 6.2832); g.fill();
+    for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? '#ffd27a' : '#7be8ff'; g.beginPath(); g.arc(-0.75 + k * 0.5, 0.52, 0.065, 0, 6.2832); g.fill(); }
+    // the pilot: a shiba inu behind the glass
+    const hx = 0.2, hy = -0.12;
+    g.fillStyle = '#e0963f'; g.beginPath(); g.arc(hx, hy, 0.5, 0, 6.2832); g.fill();
+    for (const sd of [-1, 1]) {
+      g.fillStyle = '#e0963f'; g.beginPath(); g.moveTo(hx + sd * 0.14, hy - 0.42); g.lineTo(hx + sd * 0.3, hy - 0.9); g.lineTo(hx + sd * 0.5, hy - 0.3); g.closePath(); g.fill();
+      g.fillStyle = '#f6c9a0'; g.beginPath(); g.moveTo(hx + sd * 0.22, hy - 0.46); g.lineTo(hx + sd * 0.31, hy - 0.74); g.lineTo(hx + sd * 0.42, hy - 0.36); g.closePath(); g.fill();
+    }
+    g.fillStyle = '#fff3df'; g.beginPath(); g.ellipse(hx, hy + 0.14, 0.34, 0.25, 0, 0, 6.2832); g.fill();
+    g.beginPath(); g.ellipse(hx - 0.26, hy + 0.04, 0.16, 0.2, 0, 0, 6.2832); g.ellipse(hx + 0.26, hy + 0.04, 0.16, 0.2, 0, 0, 6.2832); g.fill();
+    g.fillStyle = '#fff3df'; for (const sd of [-1, 1]) { g.beginPath(); g.arc(hx + sd * 0.19, hy - 0.26, 0.055, 0, 6.2832); g.fill(); }
+    g.fillStyle = ink; for (const sd of [-1, 1]) { g.beginPath(); g.arc(hx + sd * 0.19, hy - 0.1, 0.055, 0, 6.2832); g.fill(); }
+    g.beginPath(); g.ellipse(hx, hy + 0.08, 0.075, 0.05, 0, 0, 6.2832); g.fill();
+    g.strokeStyle = ink; g.lineWidth = 0.035; g.beginPath(); g.moveTo(hx, hy + 0.12); g.lineTo(hx, hy + 0.17); g.moveTo(hx - 0.11, hy + 0.2); g.quadraticCurveTo(hx, hy + 0.3, hx + 0.11, hy + 0.2); g.stroke();
+    // the glass dome over the pilot
+    const dg = g.createLinearGradient(-0.5, -0.9, 0.7, 0.2); dg.addColorStop(0, 'rgba(190,240,255,.5)'); dg.addColorStop(1, 'rgba(120,200,255,.12)');
+    g.fillStyle = dg; g.strokeStyle = 'rgba(210,245,255,.9)'; g.lineWidth = 0.05; g.beginPath(); g.arc(hx, hy + 0.02, 0.8, Math.PI, 0); g.lineTo(hx + 0.8, hy + 0.3); g.lineTo(hx - 0.8, hy + 0.3); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 0.05; g.beginPath(); g.arc(hx, hy + 0.02, 0.64, Math.PI * 1.12, Math.PI * 1.38); g.stroke();
+    g.restore();
   }
   function skyStep(t) {
     if (!sky.on) return;
