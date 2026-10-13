@@ -331,6 +331,16 @@ input[type=range]:hover::-webkit-slider-thumb,input[type=range]:active::-webkit-
 .fill{height:8px;border-radius:99px;background:var(--surface);border:1px solid var(--line);overflow:hidden;margin:6px 0 4px}.fill i{display:block;height:100%;background:linear-gradient(90deg,#2fb585,var(--link));border-radius:99px}
 .st.s4 .bytebar{height:20px}.legend2{display:flex;flex-wrap:wrap;gap:4px 14px;margin-top:6px;font-size:12px;color:var(--muted)}.lg i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px}.lg em{font-style:normal;color:var(--text)}
 .st.flash{animation:flash 1.6s ease-out}@keyframes flash{0%{background:rgba(27,216,244,.25);border-color:var(--link)}100%{background:#0b0d17}}@media(prefers-reduced-motion:reduce){.st.flash{animation:none}}
+.cbstage{display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:26px;align-items:center;overflow:hidden}@media(max-width:860px){.cbstage{grid-template-columns:1fr}}
+.cbwrap{--S:216px;--D:78px;padding:calc(var(--D) + 6px) 0 4px 4px;display:flex;justify-content:center}
+.cbcube{position:relative;flex:none;width:var(--S);height:var(--S);margin:0 var(--D) 0 0}.cbcube.hit{animation:cbhit 1.1s ease-out 2}@keyframes cbhit{50%{filter:drop-shadow(0 0 22px rgba(60,226,107,.8))}}
+.cbfront{position:absolute;inset:0;background:#5a5148;overflow:hidden;border-radius:2px;display:flex;flex-direction:column;padding:11px 12px 30px}.cbtopf{position:absolute;left:0;top:calc(var(--D) * -1);width:var(--S);height:var(--D);background:#3d3730;transform-origin:0 100%;transform:skewX(-45deg)}.cbside{position:absolute;left:var(--S);top:0;width:var(--D);height:var(--S);background:#2c2823;transform-origin:0 0;transform:skewY(-45deg)}
+.cbfill{position:absolute;left:0;right:0;bottom:0;height:0;background:rgba(95,140,20,.9);transition:height .6s}.cbfoot{position:absolute;left:0;right:0;bottom:7px;text-align:center;font:600 11.5px ui-monospace,Menlo,monospace;color:#fff;z-index:2}
+.cbhead{position:relative;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}.cbcoin{width:24px;height:24px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ff9a52,#f26822);flex:none}.cbhead b{font:600 11.5px ui-monospace,Menlo,monospace;color:#7be8ff;text-align:right}
+.cbrows{position:relative;z-index:2;display:grid;gap:5px;font:12px ui-monospace,Menlo,monospace}.cbrows .r{display:flex;justify-content:space-between;gap:8px}.cbrows i{font-style:normal;color:#cdbfae;opacity:.8}.cbrows b{color:#fff;font-weight:700}.cbrows .hs b u{text-decoration:none;color:#3ce26b}
+.cbmeter{position:relative;z-index:2;display:flex;flex-wrap:wrap;gap:3px;align-items:center;margin-top:10px}.cbmeter i{width:15px;height:10px;border-radius:2px;background:rgba(0,0,0,.35);border:1px solid rgba(255,255,255,.18)}.cbmeter i.on{background:#3ce26b;border-color:#3ce26b}.cbmeter em{width:100%;font:500 10.5px system-ui;font-style:normal;color:#e8dccb;margin-top:3px}
+.cbcap{margin:6px 0 0;color:var(--muted);font-size:12px;text-align:center;max-width:340px}.cbright h2{font-size:17px;color:var(--text)}
+.st.on{border-color:var(--link);box-shadow:0 0 0 1px rgba(27,216,244,.35),0 0 18px rgba(27,216,244,.12)}.st{transition:border-color .25s,box-shadow .25s}
 details{margin-top:14px}summary{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text);font-size:13.5px;font-weight:600;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#0b0d17;list-style:none}summary::-webkit-details-marker{display:none}summary::before{content:'▸';color:var(--link);transition:transform .15s}details[open] summary::before{transform:rotate(90deg)}summary:hover{border-color:var(--link)}details[open] summary{margin-bottom:10px}
 """
 
@@ -719,46 +729,70 @@ def candidate_parts():
     hv, hu = hashrate_text(rate)
     since = max(0, int(time.time()) - int(d["lastTime"])) if d["lastTime"] else 0
     chance = 1 - math.exp(-60.0 / BLOCK_SECONDS)
+    zeros = max(1, int(math.log(diff, 16)))
+    kb = lambda v: "{:,.0f} kB".format(v / 1000.0)
     st = lambda n, title, cap, body, cls="": ("<div class='st " + cls + "'><span class=n>" + n + "</span><div class=stt><b>" + title + "</b><em>" + cap + "</em></div><div class=stb>" + body + "</div></div>")
     s1 = st("1", "The header is ready", "the block your node built, <a href='/block-assembly'>step by step</a>",
-            "<div class=big2>Block " + "{:,}".format(d["height"]) + "</div><div class=sub>" + "{:,}".format(d["nTx"]) + " transactions · merkle root <span class=mono>" + esc(d["merkleroot"][:8]) + "…" + esc(d["merkleroot"][-6:]) + "</span></div>"
+            "<div class=big2>Block " + "{:,}".format(d["height"]) + "</div><div class=sub>" + "{:,}".format(d["nTx"]) + " transactions · " + kb(d["weight"]) + " · merkle root <span class=mono>" + esc(d["merkleroot"][:8]) + "…" + esc(d["merkleroot"][-6:]) + "</span></div>"
             "<div class=sub>builds on <a class=mono href='/block/" + str(d["height"] - 1) + "'>" + esc(d["prevId"][:8]) + "…" + esc(d["prevId"][-6:]) + "</a></div>", "s1")
     s2 = st("2", "Miners change the nonce and hash", "every miner hashes the same header with different nonces (RandomX)",
             "<div class=big2>" + hv + " <small>" + hu + "</small></div><div class=sub>about what the whole network tries every second</div>", "s2")
-    s3 = st("3", "Look for a lucky hash", "the block is found when a hash falls under the target",
+    s3 = st("3", "Look for a lucky hash", "the block is found when the hash falls under the target: about " + str(zeros) + " zeros at the start",
             "<div class=big2>1 in " + "{:,}".format(diff) + "</div><div class=sub>tries win: that is the difficulty. The network adjusts it so a block takes about " + str(BLOCK_SECONDS // 60) + " minutes.</div>", "s3")
     pct = min(100, since / BLOCK_SECONDS * 100)
     s4 = st("4", "Found? Pass it on", "the winner sends the candidate plus its nonce to the network",
-            "<div class=big2><span id=since data-t='" + str(d["lastTime"]) + "'>" + "{}:{:02d}".format(since // 60, since % 60) + "</span> <small>since the last block</small></div><div class=fill id=sfill><i style='width:" + "{:.0f}".format(pct) + "%'></i></div>"
-            "<div class=sub>On average " + str(BLOCK_SECONDS // 60) + ":00. A new block is found in the next minute with a chance of " + "{:.0f}".format(chance * 100) + "%, whatever has passed already.</div>", "s4")
+            "<div class=big2><span id=since>" + "{}:{:02d}".format(since // 60, since % 60) + "</span> <small>since the last block</small></div><div class=fill id=sfill><i style='width:" + "{:.0f}".format(pct) + "%'></i></div>"
+            "<div class=sub>About <b id=tries>–</b> tries by all miners since then, <span id=ratio>–</span> × the difficulty. On average " + str(BLOCK_SECONDS // 60) + ":00; a block comes in the next minute with a chance of " + "{:.0f}".format(chance * 100) + "%.</div>", "s4")
     chips = "<span class=chip>Block being mined <b>" + "{:,}".format(d["height"]) + "</b></span><span class=chip>hashing now</span>"
-    return {"chips": chips, "steps": s1 + s2 + s3 + s4, "height": d["height"], "last": d["lastTime"], "diff": diff, "blob": d["blob"]}
+    return {"chips": chips, "steps": s1 + s2 + s3 + s4, "height": d["height"], "last": d["lastTime"], "diff": diff, "rate": rate, "zeros": zeros, "ntx": d["nTx"],
+            "prev": d["prevId"], "root": d["merkleroot"], "weight": d["weight"], "median": d["median"]}
 
 
 def candidate_page():
     d = candidate_parts()
     head = "<div class=bhero><h1>Block candidate</h1><span id=chips style='display:contents'>" + d["chips"] + "<span class=chip id=upd><i class=dot></i> live</span></span></div>"
-    body = (head + "<section class='card main'><h2>The block miners are hashing right now</h2>"
-            "<p class=muted style='margin:0 0 12px'>A candidate is a finished block header waiting for the right nonce. Miners try nonce after nonce until one hash is low enough.</p>"
-            "<div class=sts id=steps>" + d["steps"] + "</div></section>"
-            "<section class=card><h2>What every try looks like</h2><p class=muted style='margin:0 0 10px'>The header stays the same, only the nonce changes, and the hash comes out completely different each time. Almost every try is too high. "
-            "<b>An illustration: your browser does not hash, and only a miner's hardware does.</b></p>"
-            "<div class=tbl><table class=rank id=tries><tr><th>Nonce</th><th>Hash (first bytes)</th><th>Result</th></tr></table></div></section>"
-            "<script>" + CAND_JS.replace("__LAST__", str(d["last"])) + "</script>")
+    stage = ("<section class='card main cbstage'><div class=cbleft><div class=cbwrap><div class=cbcube id=cbcube>"
+             "<div class=cbfront><div class=cbhead><i class=cbcoin></i><b id=cbstate>ready · 76 B</b></div>"
+             "<div class=cbrows><div class=r><i>Height</i><b id=cbh></b></div><div class=r><i>Prev</i><b id=cbp></b></div><div class=r><i>Merkle</i><b id=cbm></b></div>"
+             "<div class=r><i>Time</i><b id=cbt></b></div><div class=r><i>Nonce</i><b id=cbn></b></div><div class='r hs'><i>Hash</i><b id=cbhash></b></div></div>"
+             "<div class=cbmeter id=cbmeter aria-hidden=true></div><div class=cbfill id=cbfill></div><div class=cbfoot id=cbfoot></div></div>"
+             "<div class=cbtopf></div><div class=cbside></div></div></div>"
+             "<p class=cbcap>The values are your node's. The nonce and hash are an illustration: your browser does not hash, only a miner's hardware does.</p></div>"
+             "<div class=cbright><h2>The block miners are hashing right now</h2>"
+             "<p class=muted style='margin:0 0 12px'>A candidate is a finished block header waiting for the right nonce. Miners try nonce after nonce until one hash is low enough.</p>"
+             "<div class=sts id=steps>" + d["steps"] + "</div></div></section>")
+    body = head + stage + "<script>" + CAND_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>"
     return page("Block candidate", body)
 
 
-CAND_JS = r"""(function(){var busy=false,last=__LAST__,n=Math.floor(Math.random()*4e9),tb=document.getElementById('tries'),STILL=matchMedia('(prefers-reduced-motion: reduce)').matches;
+CAND_JS = r"""(function(){var D=__DATA__,busy=false,still=matchMedia('(prefers-reduced-motion: reduce)').matches,t0=performance.now(),found=0,nonce=0,hs=[],last=D.last;
+function $(i){return document.getElementById(i)}
+function sh(h){return h.slice(0,6)+'…'+h.slice(-4)}
 function hx(v){return ('00000000'+(v>>>0).toString(16)).slice(-8)}
-function mix(x){x=Math.imul(x^(x>>>16),0x85ebca6b)>>>0;x=Math.imul(x^(x>>>13),0xc2b2ae35)>>>0;return (x^(x>>>16))>>>0}
-function row(){n=(n+1000003)>>>0;var a=mix(n^0x9e3779b9),b=mix(a+n),h=Math.max(a,0x20000000+b%0xd0000000);var tr=document.createElement('tr');tr.innerHTML='<td class=mono>'+hx(n)+'</td><td class=mono>'+hx(h)+hx(b).slice(0,4)+'…</td><td><span class=tag>too high</span></td>';tb.appendChild(tr);while(tb.rows.length>8)tb.deleteRow(1)}
-for(var i=0;i<7;i++)row();if(!STILL)setInterval(row,500);
-function clock(){var s=Math.max(0,Math.floor(Date.now()/1000)-last),e=document.getElementById('since');if(e)e.textContent=Math.floor(s/60)+':'+('0'+s%60).slice(-2);var f=document.querySelector('#sfill i');if(f)f.style.width=Math.min(100,s/120*100)+'%'}
-setInterval(clock,1000);
+function nf(v){var u=['','thousand','million','billion','trillion','quadrillion'],i=0;while(v>=1000&&i<5){v/=1000;i++}return v.toLocaleString('en',{maximumFractionDigits:v>=100?0:1})+(u[i]?' '+u[i]:'')}
+var Z=D.zeros;function meter(k){var h='';for(var i=0;i<Z;i++)h+='<i'+(i<k?' class=on':'')+'></i>';$('cbmeter').innerHTML=h+'<em>'+k+' of '+Z+' zeros</em>'}
+function foot(){$('cbfoot').textContent=D.ntx.toLocaleString('en')+' tx · '+Math.round(D.weight/1000)+' kB';$('cbfill').style.height=Math.min(100,D.weight/D.median*100)+'%'}
+function stepOn(n){[].forEach.call(document.querySelectorAll('.st'),function(e,i){e.classList.toggle('on',i===n)})}
+function clock(){var s=Math.max(0,Math.floor(Date.now()/1000)-last),e=$('since');if(e)e.textContent=Math.floor(s/60)+':'+('0'+s%60).slice(-2);var f=document.querySelector('#sfill i');if(f)f.style.width=Math.min(100,s/120*100)+'%';
+var tr=s*D.rate,a=$('tries');if(a)a.textContent=nf(tr);var r=$('ratio');if(r)r.textContent=(tr/D.diff).toFixed(1);$('cbt').textContent=new Date().toISOString().slice(11,19)}
+function fill(){$('cbh').textContent=D.height.toLocaleString('en');$('cbp').textContent=sh(D.prev);$('cbm').textContent=sh(D.root);foot();clock()}
+var PH=[2600,3800,3800,1800],TOT=PH.reduce(function(a,b){return a+b},0),TXT=['ready · 76 B','nonce +1 … hashing','compare with target','no luck yet · next nonce'];
+function frame(now){var t=still?2600:(now-t0)%TOT,ph=0,a=0;while(ph<3&&t>=a+PH[ph]){a+=PH[ph];ph++}
+if(!still&&found&&now<found){$('cbcube').classList.add('hit');$('cbstate').textContent='block found! next candidate'}else{if(found){found=0;t0=now;$('cbcube').classList.remove('hit')}
+$('cbstate').textContent=TXT[ph]}
+var rows=document.querySelectorAll('.cbrows .r');for(var i=0;i<rows.length;i++){var u=ph===0&&!still?Math.max(0,Math.min(1,(t-i*260)/420)):1;rows[i].style.opacity=u;rows[i].style.transform='translateX('+((1-u)*-26)+'px)'}
+stepOn(ph);
+if(ph===0&&!still){$('cbn').textContent='00000000';$('cbhash').textContent='—';meter(0)}
+else if(!still){if(((now/110)|0)!==frame.k){frame.k=(now/110)|0;nonce=(nonce+1000003+((Math.random()*4e6)|0))>>>0;var k=0;while(k<Z-1&&Math.random()<1/16)k++;var s='';for(var i=0;i<k;i++)s+='0';while(s.length<12)s+='0123456789abcdef'[(Math.random()*16)|0];if(k<12){}
+$('cbn').textContent=hx(nonce);$('cbhash').innerHTML='<u>'+s.slice(0,k)+'</u>'+s.slice(k,12)+'…';meter(k)}}
+else{$('cbn').textContent='00000000';$('cbhash').textContent='7f3a91c4e8b2…';meter(1)}
+if(!still)requestAnimationFrame(frame)}
 function tick(){if(busy||document.hidden)return;busy=true;fetch('/block-candidate.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
-last=d.last;var c=document.getElementById('chips');c.innerHTML=d.chips+'<span class=chip id=upd></span>';document.getElementById('steps').innerHTML=d.steps;clock();
-document.getElementById('upd').innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=document.getElementById('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
-setInterval(tick,5000);document.addEventListener('visibilitychange',tick)})();"""
+if(d.height!==D.height){found=performance.now()+2600}
+D=d;last=d.last;Z=d.zeros;$('chips').innerHTML=d.chips+'<span class=chip id=upd></span>';$('steps').innerHTML=d.steps;fill();
+$('upd').innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=$('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
+fill();meter(0);setInterval(clock,1000);setInterval(tick,5000);document.addEventListener('visibilitychange',tick);requestAnimationFrame(frame);
+})();"""
 
 
 RANK_JS = r"""(function(){
