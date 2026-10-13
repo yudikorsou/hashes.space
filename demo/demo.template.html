@@ -1638,18 +1638,20 @@
     if (TEMPLATE_API[netId] && !templateTried.has(netId)) { templateTried.add(netId); fetchTemplate(netId); }
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
     // on Monero the ranking opens its own page on the Monero Explorer: the transactions of the block being mined, from the highest fee rate down
-    const rankTag = chain().xmr ? `a href="${XMR_EXPLORERS[0]}/fee-ranking" target="_blank" rel="noopener" title="Open the fee-per-byte ranking of the block being mined" style="color:inherit;text-decoration:none;cursor:pointer"` : 'div';
+    const rankTag = chain().xmr ? `a href="${XMR_EXPLORERS[0]}/fee-ranking" target="_blank" rel="noopener" title="Open the fee-per-byte ranking of the block being mined" style="color:inherit;text-decoration:none;cursor:pointer"` : chain().doge ? `a href="${DOGE_EXPLORER}/fee-sorting" target="_blank" rel="noopener" title="Open the fee sorting of the block being mined: your node's waiting transactions, best fee rate first" style="color:inherit;text-decoration:none;cursor:pointer"` : 'div';
     el.innerHTML = `<${rankTag} class="block-wrap fee-priority linkable"><div class="above"></div>${feePriorityCube(b)}
       <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : chain().xmr ? 'Fee-Per-Byte Ranking' : 'Fee Auction'}</span></div></${rankTag.split(' ')[0]}>
       ${chain().xmr ? `<a class="block-wrap fee-priority linkable" href="${XMR_EXPLORERS[0]}/block-size" target="_blank" rel="noopener" title="Open the live Dynamic Block Size page of the block being mined" style="color:inherit;text-decoration:none;cursor:pointer"><div class="above"></div>${dynamicCube()}
-      <div class="below"><span class="datum-badge plain">Dynamic Block Size</span></div></a>` : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
-      <div class="below"><span class="datum-badge plain">Coinbase &amp; Merkle Root</span></div></div>` : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
+      <div class="below"><span class="datum-badge plain">Dynamic Block Size</span></div></a>` : chain().doge ? `<a class="block-wrap fee-priority linkable" href="${DOGE_EXPLORER}/coinbase-merkle" target="_blank" rel="noopener" title="Open the coinbase and merkle root of the block being mined, built from your node's mempool" style="color:inherit;text-decoration:none;cursor:pointer"><div class="above"></div>${merkleCube()}
+      <div class="below"><span class="datum-badge plain">Coinbase &amp; Merkle Root</span></div></a>` : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
       <div class="below"><span class="datum-badge plain">Create new block</span></div></div>`}
       ${chain().xmr ? `<a class="block-wrap linkable" href="${XMR_EXPLORERS[0]}/block-assembly" target="_blank" rel="noopener" title="Open the projected block of the block being mined: header, miner transaction and transactions" style="color:inherit;text-decoration:none;cursor:pointer"><div class="above"></div>${assemblyCube(b)}
+      <div class="below"><span class="datum-badge plain">Block assembly</span></div></a>` :
+      chain().doge ? `<a class="block-wrap linkable" href="${DOGE_EXPLORER}/block-assembly" target="_blank" rel="noopener" title="Open the block your node would build: the 80-byte header, the coinbase and the transactions" style="color:inherit;text-decoration:none;cursor:pointer"><div class="above"></div>${assemblyCube(b)}
       <div class="below"><span class="datum-badge plain">Block assembly</span></div></a>` : `<div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
       <div class="below"><span class="datum-badge plain">Block assembly</span></div></div>`}
-      <${chain().xmr ? 'a href="' + XMR_EXPLORERS[0] + '/block-candidate" target="_blank" rel="noopener" title="Open the block candidate being hashed: the header, the nonce search and the chance of a block" style="color:inherit;text-decoration:none;cursor:pointer"' : 'div'} class="block-wrap mining linkable"><div class="above">Hashing now on ${fmt((chain().blocks[0]?.height ?? chain().tipHeight) + 1)}</div>${candidateCube(b)}
-      <div class="below"><span class="datum-badge plain">Candidate block</span><span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span></div></${chain().xmr ? 'a' : 'div'}>`;
+      <${chain().xmr ? 'a href="' + XMR_EXPLORERS[0] + '/block-candidate" target="_blank" rel="noopener" title="Open the block candidate being hashed: the header, the nonce search and the chance of a block" style="color:inherit;text-decoration:none;cursor:pointer"' : chain().doge ? 'a href="' + DOGE_EXPLORER + '/block-candidate" target="_blank" rel="noopener" title="Open the block candidate being hashed: the header, the Scrypt nonce search and the chance of a block" style="color:inherit;text-decoration:none;cursor:pointer"' : 'div'} class="block-wrap mining linkable"><div class="above">Hashing now on ${fmt((chain().blocks[0]?.height ?? chain().tipHeight) + 1)}</div>${candidateCube(b)}
+      <div class="below"><span class="datum-badge plain">Candidate block</span><span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span></div></${chain().xmr || chain().doge ? 'a' : 'div'}>`;
     pinProjected();
     scheduleClip();
   }
@@ -1730,6 +1732,7 @@
   // Monero: an Onion Monero Blockchain Explorer's JSON API (backend XmrchainSource), polled. Tried in order: your own explorer
   // (the hashes Monero Explorer app on your Umbrel, published on the internet) first, then xmrchain.net. Change the first address
   // to where you publish yours. If none answers (or a browser blocks it), the chain stays simulated.
+  const DOGE_EXPLORER = 'https://doge.hashes.space';   // your Dogecoin Explorer: the four Dogecoin blocks open its pages /fee-sorting, /coinbase-merkle, /block-assembly and /block-candidate
   const XMR_EXPLORERS = ['https://xmr.hashes.space', 'https://xmrchain.net'];
   let XMR_BASE = XMR_EXPLORERS[XMR_EXPLORERS.length - 1];
   async function pickXmrExplorer() {
