@@ -717,6 +717,8 @@
   .front:has(.cube-coin) .txt.hdr.asm { padding-top: 24px; }
   .hdrasm .hf { will-change: transform, opacity; } .hdrasm .hf u { text-decoration: none; opacity: .6; font-size: .85em; }
   .txt.hdr.hdrasm { padding-top: 22px; align-items: stretch; } .hdrasm .hf { width: 100%; font-size: 8px; line-height: 1.2; } .hdrasm .hb { position: absolute; top: 9px; right: 8px; font-size: 9px; transition: color .2s; }
+  .txt.hdr.candasm { padding-top: 19px; gap: 0; } .candasm .hf { font-size: 7.8px; line-height: 1.15; }
+  .candasm .hb.ready { color: #2fb585; } .candasm .miss b { color: #ff8a80; } .candasm .hf { will-change: transform, opacity; }
   .hseg { position: absolute; left: 8px; right: 8px; bottom: 6px; display: flex; gap: 2px; height: 9px; }
   .hseg i { display: block; border-radius: 2px; opacity: .25; transform-origin: bottom; }
   .asm-stack { position: absolute; left: 8px; right: 8px; bottom: 8px; display: flex; flex-direction: column-reverse; align-items: flex-start; gap: 3px; }
@@ -2598,7 +2600,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   }
   const HDR_P = 8000;
   function hdrFrame(now) {
-    const rows = document.querySelectorAll('.hdrasm .hf'); if (!rows.length) return;
+    const rows = document.querySelectorAll('.hdrasm:not(.candasm) .hf'); if (!rows.length) return;
     const t = STILL.matches ? HDR_P * 0.8 : (now - asmT0) % HDR_P, out = t > HDR_P - 700 ? 1 - (t - (HDR_P - 700)) / 700 : 1, vals = headerValues(), segs = document.querySelectorAll('.hseg i');
     let bytes = 0;
     rows.forEach((r, i) => {
@@ -2608,7 +2610,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       if (segs[i]) { segs[i].style.opacity = String((0.25 + 0.75 * k) * out); segs[i].style.transform = `scaleY(${(0.4 + 0.6 * k).toFixed(2)})`; }
       bytes += HDR_FIELDS[i][1] * k;
     });
-    const hb = document.querySelector('.hdrasm .hb'), txt = Math.round(bytes) + ' / 80 B'; if (hb.textContent !== txt) hb.textContent = txt;
+    const hb = document.querySelector('.hdrasm:not(.candasm) .hb'), txt = Math.round(bytes) + ' / 80 B'; if (hb.textContent !== txt) hb.textContent = txt;
     hb.style.color = bytes > 79.5 ? '#1bd8f4' : '';
   }
   requestAnimationFrame(function hdrLoop(now) { if (!document.hidden) hdrFrame(now); requestAnimationFrame(hdrLoop); });
@@ -2638,6 +2640,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   setInterval(() => fetchTemplate(), 10000);
   const hex8 = (n) => (n >>> 0).toString(16).padStart(8, '0');
   function candidateCube(b) {
+    if (chain().doge) return dogeCandidateCube(b);
     const c = chain(), tip = c.blocks[0] ?? {}, t = templateFor(c), prev = tip.hash ?? '', time = new Date((t?.time ?? Date.now() / 1000) * 1000).toISOString().slice(11, 19);
     const version = t?.version ?? tip.version, bits = t?.bits ?? (typeof tip.bits === 'number' ? hex8(tip.bits) : undefined);
     const rows = [['Height', fmt((tip.height ?? c.tipHeight) + 1)], ['Prev', shortHash(prev)], ['Time', time]];
@@ -2652,10 +2655,31 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
         ${rows.map(([k, v]) => `<div class="${opt.has(k) ? 'opt' : ''}"${k === 'Nonce' ? ' title="The nonce is only known once a block is found: this is the search through the 32-bit range"' : ''}><i>${k}</i><b${k === 'Time' ? ' id="cand-time"' : ''}>${v}</b></div>`).join('')}</div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
+  // Dogecoin Candidate block: the 80-byte header that the Block assembly finished is now ready and being hashed. Every row is a field of that header
+  // (the same values as the assembly), the nonce counts through its 32-bit range and every try gives a scrypt result that is compared with the target.
+  // When the assembly completes the header slides in again, as the miners receive it. The scrypt results shown are only an impression: your browser does not hash.
+  function dogeCandidateCube(b) {
+    const c = chain(), tip = c.blocks[0] ?? {}, v = headerValues();
+    const rows = [['Version', v[0], ''], ['Prev', v[1], ''], ['Merkle', v[2], ' id="cand-merkle"'], ['Time', v[3], ' id="cand-time"'], ['Bits', v[4], ''], ['Nonce', '<span id="cand-nonce">' + hex8(nonceCtr) + '</span>', ''], ['Scrypt', '<span id="cand-hash">—</span>', '']];
+    return `<div class="cube" id="mining-block" title="The 80-byte header from Block assembly, being hashed: the nonce is tried one value after the other, and a block is found when the scrypt result falls under the target" style="--fill:${frontBg(b, false)}"><div class="face front" style="background:${frontBg(b, false)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr hdrasm candasm">
+        <b class="hb ready">ready · 80 B</b>${rows.map(([k, val, at]) => `<div class="hf"><i>${k}</i><b${at}>${val}</b></div>`).join('')}</div>
+      </div><div class="face top"></div><div class="face side"></div></div>`;
+  }
+  function candFrame(now) {
+    const rows = document.querySelectorAll('.candasm .hf'); if (!rows.length) return;
+    const t = STILL.matches ? 0 : (now - asmT0) % HDR_P, vals = headerValues();
+    rows.forEach((r, i) => {
+      const u = t - 5300 - i * 70, k = u < 0 ? (u > -150 ? 1 + u / 150 : 1) : easeOut(Math.min(1, u / 500));
+      r.style.opacity = String(Math.max(0, k)); r.style.transform = u >= 0 && u < 500 ? `translateX(${(-(1 - k) * 40).toFixed(1)}px)` : '';
+    });
+    const m = $('cand-merkle'); if (m && MK.nodes?.rootFull) { const w = sh4(MK.nodes.rootFull); if (m.textContent !== w) m.textContent = w; }
+  }
+  requestAnimationFrame(function candLoop(now) { if (!document.hidden) candFrame(now); requestAnimationFrame(candLoop); });
   // the header's time moves on with the clock when there is no template; the nonce is the search itself, trying one value after the other
   let nonceCtr = 0;
   setInterval(() => {
-    const n = $('cand-nonce'); if (n && !STILL.matches) { nonceCtr = (nonceCtr + 1_000_003) >>> 0; n.textContent = hex8(nonceCtr); }
+    const n = $('cand-nonce'); if (n && !STILL.matches) { nonceCtr = (nonceCtr + 1_000_003) >>> 0; n.textContent = hex8(nonceCtr);
+      const h = $('cand-hash'); if (h) { let x = Math.imul(nonceCtr ^ 0x9e3779b9, 0x85ebca6b) >>> 0; x ^= x >>> 13; x = Math.imul(x, 0xc2b2ae35) >>> 0; const y = Math.imul(x ^ nonceCtr, 0x27d4eb2f) >>> 0; h.textContent = hex8(x).slice(0, 4) + '…' + hex8(y).slice(4); h.parentNode.parentNode.classList.add('miss'); } }
   }, 90);
   setInterval(() => { const t = $('cand-time'); if (t && !templateFor(chain())) t.textContent = new Date().toISOString().slice(11, 19); }, 1000);
   function renderProjected() {
