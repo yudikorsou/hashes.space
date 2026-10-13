@@ -775,7 +775,7 @@
   .back-link:hover svg { color: var(--text); transform: translateX(-2px); }
   .back-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   @media (max-width: 1239px) { .mcard .calc-link { position: static; order: 99; align-self: flex-start; } }   /* the corner is only free of "View more »" when the card is wide */
-  /* the fleet: one little spaceship per mining pool, flying over the chart; hover one for its name and hashrate */
+  /* the pools as black holes in space; hover one for its name and hashrate */
   .pool-sky { position: relative; width: 100%; height: 280px; margin: -2px 0 6px; border-radius: 28px; overflow: hidden; background: radial-gradient(ellipse 80% 90% at 50% 50%, rgba(60, 70, 140, .16), rgba(60, 70, 140, 0) 75%); }
   .pool-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .pool-sky .sky-cap { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; color: var(--muted); font: 400 11.5px/1.3 var(--sans); pointer-events: none; }
@@ -1278,7 +1278,7 @@
   <article class="mcard m-hr" aria-labelledby="hr-title">
     <a class="calc-link" id="calc-link" href="#calc">More insights<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate of the mining pools</h2>
-    <div class="pool-sky" id="pool-sky" role="img" aria-label="A hovering UFO for every mining pool; hover one to see its hashrate"><canvas id="pool-sky-cv"></canvas><p class="sky-cap" id="sky-cap"></p></div>
+    <div class="pool-sky" id="pool-sky" role="img" aria-label="A black hole for every mining pool, sized by the hashrate it adds to the chain; hover one for details"><canvas id="pool-sky-cv"></canvas><p class="sky-cap" id="sky-cap"></p></div>
     <p class="hrsub" id="ms-hash-sub"></p>
     <a class="more" id="ms-more-hr" href="#dashboard">View more »</a>
   </article>
@@ -3966,7 +3966,7 @@ window.__coins = COIN_LOGOS;
   function poolHashSub(ph, info, period, net) {
     if (!ph || !ph.ok) return ph ? 'Your node did not answer yet: the pool hashrate comes from the explorer on your Umbrel (update it if it is an older version).' : 'Asking your node for the hashrate of the mining pools…';
     const who = ph.pool ? `${ph.pool} miners` : 'the mining pools';
-    return `Combined hashrate of ${who} right now: ${(ph.shareNow * 100).toFixed(1)}% of the network's ${si(ph.network, 1)}H/s. Hover a UFO to see what each pool contributes.`;
+    return `Combined hashrate of ${who} right now: ${(ph.shareNow * 100).toFixed(1)}% of the network's ${si(ph.network, 1)}H/s. Every pool is a black hole: the bigger it is, the more hashrate it adds.`;
   }
   // a period that only came in part (a source still computing it) is asked for again every so often
   setInterval(() => { const got = rangeBy[netId + ':' + range]; if (got && got.partial && Date.now() > got.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
@@ -4299,84 +4299,111 @@ window.__coins = COIN_LOGOS;
       });
     }
   }
-  // ---------- the fleet: a spaceship per mining pool ----------
+  // ---------- the pools as black holes ----------
   // From your own node's pool split (the pools endpoint of the explorer on your Umbrel): a pool's hashrate is its share of the blocks
   // found in the period times the chain's hashrate. Mempool sites and built-in snapshots are never used for it.
-  var sky = { ships: [], names: '', last: 0, hover: null, w: 0, h: 0, dpr: 1, on: false, still: false, msg: '', colors: {} };
+  // Every pool is a black hole: its size follows the hashrate it adds to the chain, and matter circles it in an accretion disc.
+  var sky = { ships: [], names: '', last: 0, hover: null, w: 0, h: 0, dpr: 1, on: false, still: false, msg: '', laid: '' };
   const SKY_MAX = 14;
-  const skyColor = (name) => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 70% 64%)`; };
+  const skyColor = (name) => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 78% 62%)`; };
+  const skyA = (c, a) => c.replace(')', ` / ${a})`);
+  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
+  const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
   function skySet(list, total, hashNow, win, note) {
     sky.msg = list ? '' : (note || 'Waiting for your node…');
     const ranked = (list || []).filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
     const top = ranked.slice(0, SKY_MAX - 1), rest = ranked.slice(SKY_MAX - 1), items = ranked.length > SKY_MAX ? [...top, { name: `${rest.length} smaller pools`, blocks: rest.reduce((a, x) => a + x.blocks, 0) }] : ranked;
     const sig = items.map((x) => x.name + ':' + x.blocks).join('|') + '|' + Math.round(hashNow || 0);
     if (sig === sky.names) return;
-    sky.names = sig;
-    const old = Object.fromEntries(sky.ships.map((sh) => [sh.name, sh])), n = items.length;
-    const stride = n > 2 ? [5, 3, 7, 2].find((k) => k < n && gcd(k, n) === 1) || 1 : 1;
+    sky.names = sig; sky.laid = '';
+    const old = Object.fromEntries(sky.ships.map((sh) => [sh.name, sh]));
     sky.ships = items.map((x, i) => {
       const share = total ? x.blocks / total : 0, prev = old[x.name];
-      return { name: x.name, share, blocks: x.blocks, hash: share * (hashNow || 0), win, len: 26 + 78 * Math.sqrt(Math.min(1, share)),
-        lane: ((i * stride) % n + 0.5) / n, x: prev ? prev.x : ((i * 0.61803) % 1) * 640, speed: 5 + 11 * (1 - Math.min(1, share * 2.2)), phase: (i * 1.7) % 6.28, color: skyColor(x.name) };
+      const bits = prev ? prev.bits : Array.from({ length: 70 }, (_, k) => ({ f: 1.35 + rnd(i * 70 + k, 1) * 1.5, th: rnd(i * 70 + k, 2) * 6.283, w: 0.5 + rnd(i * 70 + k, 3) * 0.9, s: 0.7 + rnd(i * 70 + k, 4) * 1.2, h: rnd(i * 70 + k, 5) }));
+      return { name: x.name, share, blocks: x.blocks, hash: share * (hashNow || 0), win, color: skyColor(x.name), bits, phase: i * 1.9, x: prev ? prev.x : null, y: prev ? prev.y : null, r: 10 };
     });
   }
-  const gcd = (a, b) => (b ? gcd(b, a % b) : a);
   function skySize() {
     const cv = $('pool-sky-cv'), r = cv.parentNode.getBoundingClientRect();
     sky.dpr = Math.min(2, window.devicePixelRatio || 1);
-    if (r.width !== sky.w || r.height !== sky.h) { sky.w = r.width; sky.h = r.height; cv.width = Math.round(r.width * sky.dpr); cv.height = Math.round(r.height * sky.dpr); }
+    if (r.width !== sky.w || r.height !== sky.h) { sky.w = r.width; sky.h = r.height; cv.width = Math.round(r.width * sky.dpr); cv.height = Math.round(r.height * sky.dpr); sky.laid = ''; }
   }
-  function skyPos(sh, t) {
-    const pad = 34, span = sky.h - 2 * pad - 24;
-    return { x: sh.x + Math.sin(t / 2100 + sh.phase) * 9, y: pad + sh.lane * span + Math.sin(t / 1100 + sh.phase) * 8 };   // it hovers: a slow sway and bob while it drifts
+  // sizes follow the hashrate; the holes are pushed apart until they (and the label under each) stand clear of each other
+  function skyLayout() {
+    const key = sky.names + '|' + sky.w + 'x' + sky.h; if (sky.laid === key || !sky.ships.length || !sky.w) return; sky.laid = key;
+    const n = sky.ships.length, area = sky.w * (sky.h - 30) * 0.26, sumS = sky.ships.reduce((a, x) => a + Math.sqrt(x.share), 0) || 1;
+    const k = Math.min(40, Math.max(10, Math.sqrt(area / Math.PI) * Math.sqrt(n > 1 ? 1 : 1) / Math.max(1.6, Math.sqrt(sumS * 0.9))));
+    sky.ships.forEach((sh, i) => {
+      sh.r = Math.max(9, k * Math.sqrt(Math.min(1, sh.share * 2.4)) + 4);
+      if (sh.x == null || sh.x > sky.w || sh.y > sky.h) { sh.x = ((i * 0.618 + 0.13) % 1) * sky.w; sh.y = 40 + ((i * 0.382 + 0.2) % 1) * (sky.h - 110); }
+      sh.hx = sh.x; sh.hy = sh.y;
+    });
+    const rc = (sh) => sh.r * 1.95 + 10;
+    for (let it = 0; it < 260; it++) {
+      for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+        const A = sky.ships[i], B = sky.ships[j], dx = B.hx - A.hx, dy = (B.hy - A.hy) * 1.15, d = Math.hypot(dx, dy) || 0.01, need = rc(A) + rc(B) - 10;
+        if (d < need) { const push = (need - d) / 2 / d; A.hx -= dx * push; A.hy -= dy * push / 1.15; B.hx += dx * push; B.hy += dy * push / 1.15; }
+      }
+      for (const sh of sky.ships) { const m = sh.r * 1.8 + 6; sh.hx = Math.max(m, Math.min(sky.w - m, sh.hx)); sh.hy = Math.max(sh.r * 1.2 + 6, Math.min(sky.h - 28 - Math.max(sh.r * 1.05, sh.r * 0.8 + 6) - 30, sh.hy)); }
+    }
   }
+  const skyPos = (sh, t) => ({ x: sh.hx + Math.sin(t / 3600 + sh.phase) * 5, y: sh.hy + Math.cos(t / 4300 + sh.phase) * 4 });   // they hardly move: a slow sway
   function skyDraw(t) {
     const cv = $('pool-sky-cv'), g = cv.getContext('2d');
     g.setTransform(sky.dpr, 0, 0, sky.dpr, 0, 0); g.clearRect(0, 0, sky.w, sky.h);
     const muted = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#9aa3c7';
     if (sky.msg) { g.fillStyle = muted; g.font = '14px sans-serif'; g.textAlign = 'center'; g.fillText(sky.msg, sky.w / 2, sky.h / 2); return; }
+    skyLayout();
+    const font = (px, w) => `${w} ${px}px "Chakra Petch", "Segoe UI", system-ui, sans-serif`;
     for (const sh of sky.ships) {
-      const { x, y } = skyPos(sh, t), W = sh.len * 1.05, hot = sky.hover === sh, tilt = Math.sin(t / 1500 + sh.phase) * 0.06;
-      g.save(); g.translate(x, y); g.rotate(tilt);
-      // the tractor beam under it: faint always, bright under the one the pointer is on
-      const beam = g.createLinearGradient(0, W * 0.12, 0, W * 0.95);
-      beam.addColorStop(0, sh.color.replace(')', ` / ${hot ? .5 : .2})`)); beam.addColorStop(1, sh.color.replace(')', ' / 0)'));
-      g.fillStyle = beam; g.beginPath(); g.moveTo(-W * 0.2, W * 0.12); g.lineTo(W * 0.2, W * 0.12); g.lineTo(W * 0.46, W * 0.95); g.lineTo(-W * 0.46, W * 0.95); g.closePath(); g.fill();
-      // a soft glow, the glass dome, the metal disc and the rim lights
-      const glow = g.createRadialGradient(0, 0, 0, 0, 0, W * 0.75); glow.addColorStop(0, sh.color.replace(')', ` / ${hot ? .35 : .16})`)); glow.addColorStop(1, sh.color.replace(')', ' / 0)'));
-      g.fillStyle = glow; g.beginPath(); g.arc(0, 0, W * 0.75, 0, 6.3); g.fill();
-      const dome = g.createRadialGradient(-W * 0.06, -W * 0.2, 1, 0, -W * 0.1, W * 0.26);
-      dome.addColorStop(0, 'rgba(255,255,255,.9)'); dome.addColorStop(0.45, sh.color.replace(')', ' / .75)')); dome.addColorStop(1, sh.color.replace(')', ' / .35)'));
-      g.fillStyle = dome; g.beginPath(); g.ellipse(0, -W * 0.06, W * 0.2, W * 0.2, 0, Math.PI, 0); g.fill();
-      const disc = g.createLinearGradient(0, -W * 0.1, 0, W * 0.14); disc.addColorStop(0, '#f4f6ff'); disc.addColorStop(0.5, '#a9b1d3'); disc.addColorStop(1, '#5b6490');
-      g.fillStyle = disc; g.beginPath(); g.ellipse(0, 0, W * 0.5, W * 0.13, 0, 0, 6.3); g.fill();
-      g.fillStyle = 'rgba(30,35,70,.45)'; g.beginPath(); g.ellipse(0, W * 0.05, W * 0.34, W * 0.05, 0, 0, 6.3); g.fill();
-      for (let i = 0; i < 5; i++) {
-        const a = (i - 2) / 2, lx = a * W * 0.34, on = (Math.floor(t / 280) + i) % 5 === 0;
-        g.fillStyle = on ? '#fff6c8' : sh.color; g.globalAlpha = on ? 1 : 0.75; g.beginPath(); g.arc(lx, W * 0.03 + Math.abs(a) * W * 0.03, Math.max(1.6, W * 0.022), 0, 6.3); g.fill(); g.globalAlpha = 1;
-      }
-      if (hot) { g.strokeStyle = sh.color; g.lineWidth = 1.5; g.beginPath(); g.ellipse(0, 0, W * 0.62, W * 0.34, 0, 0, 6.3); g.stroke(); }
+      const { x, y } = skyPos(sh, t), R = sh.r, hot = sky.hover === sh, tilt = -0.28, spin = hot ? 1.8 : 1;
+      g.save(); g.translate(x, y);
+      // the pull of it: a soft glow in the pool's colour
+      const glow = g.createRadialGradient(0, 0, R * 0.8, 0, 0, R * 3.4); glow.addColorStop(0, skyA(sh.color, hot ? 0.42 : 0.26)); glow.addColorStop(1, skyA(sh.color, 0));
+      g.fillStyle = glow; g.beginPath(); g.arc(0, 0, R * 3.4, 0, 6.2832); g.fill();
+      g.rotate(tilt);
+      // the matter behind the hole, then the hole, then the matter in front of it
+      const draw = (front) => {
+        for (const b of sh.bits) {
+          const th = b.th + t / 1000 * b.w * spin * (1.6 / b.f);
+          if ((Math.sin(th) > 0) !== front) continue;
+          const a = R * b.f, px = Math.cos(th) * a, py = Math.sin(th) * a * 0.27, near = 1 - (b.f - 1.35) / 1.5;
+          g.fillStyle = b.h > 0.55 ? skyA(sh.color, 0.35 + near * 0.6) : `rgba(255,${200 + Math.round(near * 55)},${150 + Math.round(near * 90)},${0.3 + near * 0.6})`;
+          g.beginPath(); g.arc(px, py, b.s * (0.7 + near * 0.8) * Math.max(0.7, R / 30), 0, 6.2832); g.fill();
+        }
+      };
+      draw(false);
+      g.lineWidth = Math.max(1, R * 0.06);
+      g.strokeStyle = skyA(sh.color, 0.5); g.beginPath(); g.ellipse(0, 0, R * 1.75, R * 1.75 * 0.27, 0, Math.PI, 0, true); g.stroke();   // the far half of the disc, bent over the top of the hole
+      g.save(); g.rotate(-tilt);
+      const rim = g.createRadialGradient(0, 0, R * 0.92, 0, 0, R * 1.35); rim.addColorStop(0, '#000'); rim.addColorStop(0.22, skyA(sh.color, 0.9)); rim.addColorStop(1, skyA(sh.color, 0));
+      g.fillStyle = rim; g.beginPath(); g.arc(0, 0, R * 1.35, 0, 6.2832); g.fill();
+      g.fillStyle = '#000'; g.beginPath(); g.arc(0, 0, R, 0, 6.2832); g.fill();
+      g.strokeStyle = 'rgba(255,240,215,.85)'; g.lineWidth = Math.max(1, R * 0.045); g.beginPath(); g.arc(0, 0, R * 1.03, 0, 6.2832); g.stroke();   // the photon ring
       g.restore();
+      draw(true);
+      g.strokeStyle = skyA(sh.color, 0.6); g.beginPath(); g.ellipse(0, 0, R * 1.75, R * 1.75 * 0.27, 0, 0, Math.PI); g.stroke();
+      g.restore();
+      // what it contributes, under it
+      const ly = y + Math.max(R * 1.05, R * 0.8 + 6) + 12;
+      g.textAlign = 'center'; g.fillStyle = hot ? '#fff' : '#e8ebf5'; g.font = font(sh.r > 24 ? 12 : 11, 600); g.fillText(sh.name.length > 20 ? sh.name.slice(0, 19) + '…' : sh.name, x, ly);
+      g.fillStyle = muted; g.font = font(10.5, 500); g.fillText(si(sh.hash, 1) + 'H/s', x, ly + 13);
     }
   }
   function skyStep(t) {
     if (!sky.on) return;
-    const dt = Math.min(0.05, (t - (sky.last || t)) / 1000); sky.last = t;
-    skySize();
-    if (!sky.still) for (const sh of sky.ships) { sh.x += sh.speed * dt * (sky.hover === sh ? 0.1 : 1); if (sh.x - sh.len > sky.w) sh.x = -sh.len; }
-    else sky.ships.forEach((sh, i) => { sh.x = (i + 0.5) / sky.ships.length * sky.w; });
-    skyDraw(t);
+    skySize(); skyDraw(t);
     requestAnimationFrame(skyStep);
   }
   function skyStart() {
     const el = $('pool-sky'); if (!el || sky.started) return; sky.started = true;
     sky.still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
-    const run = (on) => { if (on && !sky.on) { sky.on = true; sky.last = 0; requestAnimationFrame(skyStep); } else if (!on) sky.on = false; };
+    const run = (on) => { if (on && !sky.on) { sky.on = true; requestAnimationFrame(skyStep); } else if (!on) sky.on = false; };
     if ('IntersectionObserver' in window) new IntersectionObserver((es) => run(es.some((e) => e.isIntersecting))).observe(el); else run(true);
     const find = (e) => {
       const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, t = performance.now();
       let best = null, bd = 1e9;
-      for (const sh of sky.ships) { const p = skyPos(sh, t), dx = (px - p.x) / (sh.len * 0.6 + 6), dy = (py - p.y) / (sh.len * 0.36 + 6), d = dx * dx + dy * dy; if (d <= 1 && d < bd) { best = sh; bd = d; } }
+      for (const sh of sky.ships) { const p = skyPos(sh, t), d = Math.hypot(px - p.x, (py - p.y) * 1.25) / (sh.r * 1.9 + 6); if (d <= 1 && d < bd) { best = sh; bd = d; } }
       return best;
     };
     el.addEventListener('pointermove', (e) => {
