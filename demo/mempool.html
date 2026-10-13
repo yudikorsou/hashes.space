@@ -4730,7 +4730,6 @@ window.__coins = COIN_LOGOS;
         const A = sky.ships[i], B = sky.ships[j], dx = B.hx - A.hx, dy = (B.hy - A.hy) * 1.15, d = Math.hypot(dx, dy) || 0.01, need = rc(A) + rc(B) - 10;
         if (d < need) { const push = (need - d) / 2 / d; A.hx -= dx * push; A.hy -= dy * push / 1.15; B.hx += dx * push; B.hy += dy * push / 1.15; }
       }
-      if (netId === 'sha256') { const sn = skySunAt(); for (const sh of sky.ships) { const dx = sh.hx - sn.x, dy = sh.hy - sn.y, d = Math.hypot(dx, dy) || 0.01, need = sn.R * 2.5 + sh.r * 1.7; if (d < need) { sh.hx = sn.x + dx / d * need; sh.hy = sn.y + dy / d * need; } } }   // the sun's corner is kept free
       for (const sh of sky.ships) { const m = sh.r * 2.3 + 4; sh.hx = Math.max(m, Math.min(sky.w - m, sh.hx)); sh.hy = Math.max(sh.r * 1.2 + 6, Math.min(sky.h - 28 - Math.max(sh.r * 1.05, sh.r * 0.8 + 6) - 30, sh.hy)); }
     }
     { // centre the cluster between the top and the caption
@@ -4772,6 +4771,13 @@ window.__coins = COIN_LOGOS;
       g.fillStyle = rim; g.beginPath(); g.arc(0, 0, R * 1.35, 0, 6.2832); g.fill();
       g.fillStyle = '#000'; g.beginPath(); g.arc(0, 0, R, 0, 6.2832); g.fill();
       g.strokeStyle = 'rgba(255,240,215,.85)'; g.lineWidth = Math.max(1, R * 0.045); g.beginPath(); g.arc(0, 0, R * 1.03, 0, 6.2832); g.stroke();   // the photon ring
+      if (netId === 'sha256') {   // the sun lights the edge of each hole that faces it, a little less the further away it is
+        const sn = skySunAt(), dx = sn.x - x, dy = sn.y - y, d = Math.hypot(dx, dy) || 1, k = Math.max(0.25, Math.min(1, 1.25 - d / (sky.w * 0.9))), an = Math.atan2(dy, dx);
+        g.lineCap = 'round';
+        g.strokeStyle = `rgba(255,170,80,${0.2 * k})`; g.lineWidth = Math.max(2, R * 0.22); g.beginPath(); g.arc(0, 0, R * 1.05, an - 0.95, an + 0.95); g.stroke();
+        g.strokeStyle = `rgba(255,236,190,${0.85 * k})`; g.lineWidth = Math.max(1, R * 0.06); g.beginPath(); g.arc(0, 0, R * 1.03, an - 0.7, an + 0.7); g.stroke();
+        g.lineCap = 'butt';
+      }
       g.restore();
       draw(true);
       g.strokeStyle = skyA(sh.color, 0.6); g.beginPath(); g.ellipse(0, 0, R * 1.75, R * 1.75 * 0.27, 0, 0, Math.PI); g.stroke();
@@ -4788,7 +4794,7 @@ window.__coins = COIN_LOGOS;
   const sunBits = Array.from({ length: 70 }, (_, k) => ({ f: 1.5 + rnd(k, 11) * 1.4, th: rnd(k, 12) * 6.283, w: 0.45 + rnd(k, 13) * 0.8, s: 0.5 + rnd(k, 14) * 0.9, h: rnd(k, 15) }));
   const sunCells = Array.from({ length: 260 }, (_, k) => ({ lon: rnd(k, 21) * 6.283, lat: Math.asin((rnd(k, 22) - 0.5) * 1.9), s: 0.045 + rnd(k, 23) * 0.075, w: 0.05 + rnd(k, 24) * 0.05, dark: rnd(k, 25) > 0.55 }));
   const sunSparks = Array.from({ length: 110 }, (_, k) => ({ a: rnd(k, 31) * 6.283, d: 0.5 + Math.pow(rnd(k, 32), 1.6) * 2.3, sp: 0.16 + rnd(k, 33) * 0.3, ph: rnd(k, 34), cv: (rnd(k, 35) - 0.5) * 0.9, sz: 0.6 + rnd(k, 36) * 1.1 }));
-  const skySunAt = () => { const R = Math.max(18, Math.min(42, sky.w / 20)); return { R, x: sky.w - R * 2.5 - 4, y: R * 2.25 + 10 }; };
+  const skySunAt = () => { const R = Math.max(16, Math.min(36, sky.w / 24)); return { R, x: sky.w * 0.7, y: Math.max(R * 2.3 + 6, (sky.h - 30) * 0.3) }; };   // far away in the background, a little in from the corner
   function skySun(g, t) {
     const { R, x, y } = skySunAt(), still = sky.still, T = still ? 4000 : t, TAU = 6.2832, tilt = -0.28;
     g.save(); g.translate(x, y);
