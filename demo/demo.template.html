@@ -1632,8 +1632,8 @@
     const rankTag = chain().xmr ? `a href="${XMR_EXPLORERS[0]}/fee-ranking" target="_blank" rel="noopener" title="Open the fee-per-byte ranking of the block being mined" style="color:inherit;text-decoration:none;cursor:pointer"` : 'div';
     el.innerHTML = `<${rankTag} class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
       <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : chain().xmr ? 'Fee-Per-Byte Ranking' : 'Fee Auction'}</span></div></${rankTag.split(' ')[0]}>
-      ${chain().xmr ? `<div class="block-wrap fee-priority"><div class="above"></div>${dynamicCube()}
-      <div class="below"><span class="datum-badge plain">Dynamic Block Size</span></div></div>` : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
+      ${chain().xmr ? `<a class="block-wrap fee-priority" href="${XMR_EXPLORERS[0]}/block-size" target="_blank" rel="noopener" title="Open the live Dynamic Block Size page of the block being mined" style="color:inherit;text-decoration:none;cursor:pointer"><div class="above"></div>${dynamicCube()}
+      <div class="below"><span class="datum-badge plain">Dynamic Block Size</span></div></a>` : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
       <div class="below"><span class="datum-badge plain">Coinbase &amp; Merkle Root</span></div></div>` : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
       <div class="below"><span class="datum-badge plain">Create new block</span></div></div>`}
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}

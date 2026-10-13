@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-monero-explorer
 category: crypto
 name: Monero Explorer
-version: "0.18.5.1-10"
+version: "0.18.5.1-11"
 tagline: A Monero block explorer on your own Monero node
 description: >-
   An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
@@ -31,6 +31,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  New page /block-size: a live view of the dynamic block size logic for the block that is being mined. The median of the last 100 blocks, the effective median and block limit, a chart of the last 100 block sizes, the penalty on the base reward with a slider, and what the next transactions cost in penalty. It updates by itself every 5 seconds (data also at /block-size.json).
   The fee-per-byte ranking page (/fee-ranking) now updates by itself every 5 seconds: new transactions, the key figures, the ranking and the search result change as they enter the pool, without reloading the page. New /fee-ranking.json serves the same data.
   New page /fee-ranking: the Fee-Per-Byte Ranking of the block that is being mined, with a simple explanation of what it is, the key figures, and the waiting transactions of your node ranked from the highest fee rate down, showing which ones fit in the next block. The Find Mempool page opens it from the first Monero block.
   New /api/v1/block-template: the next block as your Monero node sees it (major and minor version, previous block, timestamp and the merkle root, Monero tree hash, of a stand-in miner transaction and the best-paying transactions of the pool). The Find Mempool page builds its Monero Block assembly animation from it.

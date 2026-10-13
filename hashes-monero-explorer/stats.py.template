@@ -298,6 +298,25 @@ footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 .rank tr.cut td{background-image:linear-gradient(rgba(242,104,34,.45),rgba(242,104,34,.45))}.rank tr.cut td span{border-color:rgba(242,104,34,.55);color:var(--gold);background:#2a2230}
 .finder{display:flex;gap:8px;max-width:none;margin:0 0 10px}.finder input{font-size:13.5px}.hit{display:flex;gap:14px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin:0 0 12px;background:#0b0d17}.hit.in{border-color:var(--link)}.hit.out{border-color:#5d6280}.hit.miss{color:var(--muted);display:block}.hit .hn{font:700 22px/1 system-ui;min-width:56px;color:var(--text)}.hit.in .hn{color:var(--link)}
 .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#2fb585;box-shadow:0 0 0 0 rgba(47,181,133,.6);animation:pulse 2s infinite}@keyframes pulse{70%{box-shadow:0 0 0 7px rgba(47,181,133,0)}100%{box-shadow:0 0 0 0 rgba(47,181,133,0)}}@media(prefers-reduced-motion:reduce){.dot{animation:none}}
+.bsz{display:block;width:100%;min-width:560px;height:auto}#chart{overflow-x:auto}.bsz .ax{stroke:var(--line);stroke-width:1}.bsz rect{fill:#7a6cd6}.bsz .med{stroke:var(--link);stroke-width:2}.bsz .lim{stroke:#d9a21b;stroke-width:2;stroke-dasharray:7 5}.bsz .tk{fill:var(--muted);font:12px system-ui;text-anchor:end}
+.legend .k3{background:#7a6cd6}.legend .k4{background:#d9a21b}
+.penwrap{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.1fr);gap:24px;align-items:center}@media(max-width:820px){.penwrap{grid-template-columns:1fr}}
+.card.main{border-color:#3a3f5c;box-shadow:0 0 0 1px rgba(242,104,34,.18),0 10px 30px rgba(0,0,0,.25)}.card.main h2{font-size:17px;color:var(--text)}
+.pen{display:block;width:100%;height:auto;background:#0b0d17;border:1px solid var(--line);border-radius:12px}.pen .ax{stroke:var(--line);fill:none;stroke-width:1}.pen .curve{fill:none;stroke:#ff8a80;stroke-width:2.5}.pen #mk{fill:#fff;stroke:#ff8a80;stroke-width:2.5}.pen .tk2{fill:var(--muted);font:8.5px system-ui}
+.bigrow{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-content:space-between}.big{font:700 38px/1 system-ui;letter-spacing:-.02em}.bigq{color:var(--muted);font-size:13px;margin-top:4px}
+.keptbox{min-width:180px;flex:1;max-width:260px}.keptbox small{display:block;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}.keptbox b{font:700 28px/1.1 system-ui}.keptbox b.ok{color:#2fb585}.keptbox b.warn{color:#f2b04a}.keptbox b.bad{color:#ff6b5e}.keptbox em{display:block;font-style:normal;color:var(--muted);font-size:12px;margin-top:3px}
+.mtr{height:8px;border-radius:99px;background:#0b0d17;border:1px solid var(--line);overflow:hidden;margin-top:6px}.mtr i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#ff6b5e,#f2b04a 50%,#2fb585);background-size:260px 100%;border-radius:99px;transition:width .15s}
+.slwrap{position:relative;margin:34px 0 4px}.bub{position:absolute;top:-30px;transform:translateX(-50%);background:var(--gold);color:#1a1406;font:700 12px/1 system-ui;padding:5px 9px;border-radius:7px;white-space:nowrap;pointer-events:none}.bub::after{content:'';position:absolute;left:50%;bottom:-4px;width:8px;height:8px;background:var(--gold);transform:translateX(-50%) rotate(45deg);border-radius:1px}
+.poolmk{position:absolute;top:30px;width:2px;height:10px;background:var(--link);transform:translateX(-1px);border-radius:1px;pointer-events:none}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:26px;background:transparent;padding:0;margin:0;cursor:pointer;--p:0%}
+input[type=range]::-webkit-slider-runnable-track{height:10px;border-radius:99px;background:linear-gradient(90deg,#2fb585,#f2b04a 55%,#ff6b5e);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+input[type=range]::-moz-range-track{height:10px;border-radius:99px;background:linear-gradient(90deg,#2fb585,#f2b04a 55%,#ff6b5e);box-shadow:inset 0 0 0 1px rgba(255,255,255,.12)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;margin-top:-8px;border-radius:50%;background:#fff;border:4px solid var(--gold);box-shadow:0 2px 8px rgba(0,0,0,.5);transition:transform .1s}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:4px solid var(--gold);box-shadow:0 2px 8px rgba(0,0,0,.5)}
+input[type=range]:hover::-webkit-slider-thumb,input[type=range]:active::-webkit-slider-thumb{transform:scale(1.1)}input[type=range]:focus-visible{outline:2px solid var(--link);outline-offset:6px;border-radius:99px}
+.ticks{display:flex;justify-content:space-between;color:var(--muted);font-size:11.5px;margin-top:2px}
+.presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.presets button{background:#0b0d17;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:500 12.5px system-ui;cursor:pointer}.presets button:hover{border-color:var(--gold);color:var(--gold)}.presets button#poolbtn{border-color:var(--link);color:var(--link)}
+.formula{margin:14px 0 0;color:var(--muted);font-size:13px}.formula span{color:var(--text);font-weight:600;font-family:ui-monospace,Menlo,monospace}
 details{margin-top:14px}summary{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text);font-size:13.5px;font-weight:600;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#0b0d17;list-style:none}summary::-webkit-details-marker{display:none}summary::before{content:'▸';color:var(--link);transition:transform .15s}details[open] summary::before{transform:rotate(90deg)}summary:hover{border-color:var(--link)}details[open] summary{margin-bottom:10px}
 """
 
@@ -472,6 +491,127 @@ def ranking_parts():
              if rows else "<p class=muted>No transactions are waiting right now: the next block is empty apart from its miner reward.</p>")
     return {"chips": chips, "tiles": tl, "table": table, "height": height, "fit": fit, "used": used, "median": median, "total": total, "low": round(rates[fit - 1], 1) if fit else None,
             "rows": [[x[3], round(x[0], 1), x[1], x[2]] for x in rows[:5000]]}
+
+
+_weights = {"tip": -1, "w": []}
+
+
+def last_weights(tip):
+    """the weights of the last 100 blocks, oldest first (cached until a block is found)"""
+    if _weights["tip"] != tip:
+        hs = rpc("get_block_headers_range", {"start_height": max(0, tip - 99), "end_height": tip})["headers"]
+        _weights["w"] = [(int(h["height"]), int(h.get("block_weight") or h["block_size"])) for h in hs]
+        _weights["tip"] = tip
+    return _weights["w"]
+
+
+def penalty(b, m):
+    """the share of the base block reward that is cut for a block of weight b when the effective median is m (nothing up to the median, all of it at twice the median)"""
+    return 0.0 if b <= m else min(1.0, (b / m - 1) ** 2)
+
+
+def blocksize_parts():
+    """the Dynamic Block Size logic of the block that is being mined, as the pieces of the page that change"""
+    info = rpc("get_info")
+    height = int(info["height"])
+    ws = last_weights(height - 1)
+    srt = sorted(w for _, w in ws)
+    med = (srt[len(srt) // 2] + srt[(len(srt) - 1) // 2]) / 2 if srt else 0
+    M = int(max(300000, med))
+    pool = NODE_RPC.post("/get_transaction_pool", b"{}", 20).get("transactions") or []
+    txs = sorted(((int(t["fee"]) / max(1, int(t.get("weight") or t.get("blob_size") or 1)), int(t["fee"]), max(1, int(t.get("weight") or t.get("blob_size") or 1)), t["id_hash"])
+                  for t in pool if not t.get("double_spend_seen") and not t.get("do_not_relay")), reverse=True)
+    waiting = sum(t[2] for t in txs)
+    base = TAIL_REWARD
+    chips = "<span class=chip>Block being mined <b>" + "{:,}".format(height) + "</b></span><span class=chip>last <b>" + str(len(ws)) + "</b> blocks</span>"
+    kb = lambda v: "{:,.0f} kB".format(v / 1000.0)
+    tiles = [("Median of the last 100 blocks", kb(med), "{:,} B".format(int(med))), ("Effective median", kb(M), "never below 300 kB"), ("Block limit", kb(2 * M), "twice the effective median"),
+             ("Waiting in the pool", kb(waiting), "{:.0f}% of the median".format(waiting / M * 100))]
+    tl = "".join("<div class=tile><small>" + k + "</small><b style='font-size:20px'>" + v + "</b><em>" + sub + "</em></div>" for k, v, sub in tiles)
+    # chart: the weight of each of the last blocks, the median and the limit
+    W, H, L, B = 1000, 230, 64, 22
+    top = max(2 * M * 1.08, max((w for _, w in ws), default=0) * 1.05)
+    Y = lambda v: H - B - v / top * (H - B - 8)
+    bw = (W - L - 6) / max(1, len(ws))
+    bars = "".join("<rect x='" + "{:.1f}".format(L + i * bw + 1) + "' y='" + "{:.1f}".format(Y(w)) + "' width='" + "{:.1f}".format(max(1, bw - 2)) + "' height='" + "{:.1f}".format(H - B - Y(w)) + "' rx=1.5><title>Block " + "{:,}".format(h) + ": " + "{:,}".format(w) + " B</title></rect>" for i, (h, w) in enumerate(ws))
+    svg = ("<svg class=bsz viewBox='0 0 " + str(W) + " " + str(H) + "' role=img aria-label='The weight of the last 100 blocks, their median and the block limit'>"
+           "<line class=ax x1=" + str(L) + " x2=" + str(W) + " y1=" + str(H - B) + " y2=" + str(H - B) + " />"
+           "<g class=bars>" + bars + "</g>"
+           "<line class=med x1=" + str(L) + " x2=" + str(W) + " y1='" + "{:.1f}".format(Y(M)) + "' y2='" + "{:.1f}".format(Y(M)) + "' /><line class=lim x1=" + str(L) + " x2=" + str(W) + " y1='" + "{:.1f}".format(Y(2 * M)) + "' y2='" + "{:.1f}".format(Y(2 * M)) + "' />"
+           "<text x=" + str(L - 6) + " y='" + "{:.1f}".format(Y(M) + 4) + "' class=tk>" + kb(M) + "</text><text x=" + str(L - 6) + " y='" + "{:.1f}".format(Y(2 * M) + 4) + "' class=tk>" + kb(2 * M) + "</text><text x=" + str(L - 6) + " y=" + str(H - B + 4) + " class=tk>0</text></svg>")
+    chart = svg + "<p class=legend><span class=k3></span> a block's weight <span class=k1></span> effective median <span class=k4></span> block limit (2 ×)</p>"
+    # transactions: what each one that lifts the block over the median costs in base reward
+    used, rows, cum = 0, [], 0
+    for rate, fee, w, txid in txs:
+        before = penalty(cum, M) * base
+        cum += w
+        extra = penalty(cum, M) * base - before
+        if cum > M and len(rows) < 8:
+            rows.append((txid, w, fee, extra, cum))
+    if rows:
+        trs = "".join("<tr class='" + ("in" if fee > extra else "out") + "'><td><a class=mono href='/tx/" + esc(txid) + "'>" + esc(txid[:6]) + "…" + esc(txid[-4:]) + "</a></td><td class=r>" + "{:,}".format(w) + "</td><td class=r>" + kb(c) + "</td>"
+                      "<td class=r>" + xmr(fee) + "</td><td class=r>" + "{:.8f}".format(extra / 1e12).rstrip("0").rstrip(".") + "</td><td><span class='tag" + (" in" if fee > extra else "") + "'>" + ("fee pays for it" if fee > extra else "not worth it") + "</span></td></tr>" for txid, w, fee, extra, c in rows)
+        txhtml = ("<p class=muted style='margin:0 0 10px'>The waiting transactions, best rate first, that would take the block past the median. Each pays only if its fee is more than the reward it makes the miner lose.</p>"
+                  "<table class=rank><tr><th>Tx</th><th class=r>Bytes</th><th class=r>Block size</th><th class=r>Fee (XMR)</th><th class=r>Extra penalty (XMR)</th><th>Verdict</th></tr>" + trs + "</table>")
+    else:
+        txhtml = "<p class=muted style='margin:0'>All " + "{:,}".format(len(txs)) + " waiting transactions (" + kb(waiting) + ") fit under the median of " + kb(M) + ": no penalty applies to the next block right now.</p>"
+    return {"chips": chips, "tiles": tl, "chart": chart, "txs": txhtml, "height": height, "median": M, "waiting": waiting, "base": base, "raw": int(med)}
+
+
+BS_JS = r"""(function(){
+var D=__DATA__,sl=document.getElementById('sl'),touched=false,busy=false;
+function kb(v){return Math.round(v/1000).toLocaleString()+' kB'}
+function xmr(a){return (a/1e12).toFixed(6).replace(/0+$/,'').replace(/\.$/,'')||'0'}
+function poolQ(){return Math.max(1,Math.min(2,D.waiting/D.median))}
+function draw(){var q=+sl.value/100,B=D.median*q,pen=q<=1?0:Math.min(1,(q-1)*(q-1)),cut=D.base*pen,kept=1-pen;
+document.getElementById('big').textContent=kb(B);document.getElementById('bigq').textContent=q.toFixed(2)+' × the median of '+kb(D.median);
+var k=document.getElementById('kept');k.textContent=Math.round(kept*100)+'%';k.className=pen?(pen>.5?'bad':'warn'):'ok';
+document.getElementById('keptsub').textContent=pen?'cut by '+xmr(cut)+' XMR of '+xmr(D.base)+' XMR':'no penalty up to the median';
+document.getElementById('meter').style.width=(kept*100)+'%';
+document.getElementById('form').textContent='('+q.toFixed(2)+' − 1)² = '+(pen*100).toFixed(1)+'%';
+var pct=(q-1)*100;sl.style.setProperty('--p',pct+'%');var b=document.getElementById('bub');b.style.left='calc('+pct+'% + '+(13-pct*.26)+'px)';b.textContent=kb(B);
+var m=document.getElementById('mk');m.setAttribute('cx',12+(q-1)*296);m.setAttribute('cy',14+pen*92);
+var d=document.getElementById('area');d.setAttribute('d','M12 106'+Array.from({length:21},function(_,i){var t=i/20;return t<=(q-1)+1e-9?'L'+(12+t*296).toFixed(1)+' '+(14+t*t*92).toFixed(1):''}).join('')+'L'+(12+(q-1)*296).toFixed(1)+' '+(14+pen*92).toFixed(1)+'L'+(12+(q-1)*296).toFixed(1)+' 106Z');
+var pq=poolQ(),pm=document.getElementById('poolmk');pm.style.left='calc('+((pq-1)*100)+'% + '+(13-(pq-1)*100*.26)+'px)';pm.hidden=D.waiting<=D.median;
+document.getElementById('poolbtn').hidden=D.waiting<=D.median;document.getElementById('poolbtn').textContent='Everything waiting ('+kb(Math.min(D.waiting,2*D.median))+')'}
+function set(v){touched=true;sl.value=Math.round(v*100);draw()}
+function put(id,h){var e=document.getElementById(id);if(e&&e.innerHTML!==h)e.innerHTML=h}
+function tick(){if(busy||document.hidden)return;busy=true;
+fetch('/block-size.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
+D=d;put('chips',d.chips+'<span class=chip id=upd></span>');put('tiles',d.tiles);put('chart',d.chart);put('txs',d.txs);if(!touched)sl.value=Math.round(poolQ()*100);draw();
+document.getElementById('upd').innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=document.getElementById('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
+sl.addEventListener('input',function(){touched=true;draw()});
+document.getElementById('p1').onclick=function(){set(1)};document.getElementById('p2').onclick=function(){set(1.25)};document.getElementById('p3').onclick=function(){set(1.5)};document.getElementById('p4').onclick=function(){set(2)};document.getElementById('poolbtn').onclick=function(){set(poolQ())};
+sl.value=Math.round(poolQ()*100);draw();setInterval(tick,5000);document.addEventListener('visibilitychange',tick);
+})();"""
+
+
+def blocksize_page():
+    d = blocksize_parts()
+    head = "<div class=bhero><h1>Dynamic block size</h1><span id=chips style='display:contents'>" + d["chips"] + "<span class=chip id=upd><i class=dot></i> live</span></span></div>"
+    how = ("<section class=card><h2>What is this?</h2>"
+           "<p class=lead>Monero has no fixed block size. The network looks at the <b>last 100 blocks</b> and lets the next block be bigger when they were busy, and smaller when they were quiet. Bigger than normal costs the miner part of the block reward, so a block only grows when its transactions pay for it.</p>"
+           "<div class=steps><div class=step><span class=n>1</span><b>Median</b> of the last 100 block sizes, never below 300 kB</div><div class=step><span class=n>2</span><b>Limit</b> a block may be at most twice the median</div>"
+           "<div class=step><span class=n>3</span><b>Penalty</b> above the median the base reward shrinks, to zero at the limit</div></div></section>")
+    curve = "M" + "L".join("{:.1f} {:.1f}".format(12 + i / 20 * 296, 14 + (i / 20) ** 2 * 92) for i in range(21))
+    pen = ("<section class='card main'><h2>Try it: what does a bigger block cost the miner?</h2>"
+           "<p class=muted style='margin:0 0 14px'>Drag the slider to make the block bigger than the median. The base reward (0.6 XMR) shrinks by (block size ÷ median − 1)². Transaction fees are not cut.</p>"
+           "<div class=penwrap><div><svg class=pen viewBox='0 0 330 126' role=img aria-label='Share of the base reward that is kept as the block grows from the median to the limit'>"
+           "<defs><linearGradient id=g1 x1=0 x2=1><stop offset=0 stop-color='#2fb585' stop-opacity=.35 /><stop offset=1 stop-color='#ff6b5e' stop-opacity=.35 /></linearGradient></defs>"
+           "<path id=area fill='url(#g1)' d='M12 106Z'/><path class=ax d='M12 8V106H312'/><path class=curve d='" + curve + "'/>"
+           "<text x=16 y=11 class=tk2>full reward</text><text x=12 y=121 class=tk2>median</text><text x=312 y=121 class=tk2 style='text-anchor:end'>limit (2 ×)</text>"
+           "<circle id=mk r=5.5 cx=12 cy=14 /></svg></div>"
+           "<div class=ctl><div class=bigrow><div><div class=big id=big>–</div><div class=bigq id=bigq></div></div>"
+           "<div class=keptbox><small>Base reward kept</small><b id=kept class=ok>100%</b><div class=mtr><i id=meter></i></div><em id=keptsub></em></div></div>"
+           "<div class=slwrap><div id=bub class=bub>–</div><span id=poolmk class=poolmk hidden title='Where the block would end if it took everything that is waiting'></span>"
+           "<input type=range id=sl min=100 max=200 value=100 aria-label='Block size as a multiple of the median'>"
+           "<div class=ticks><span>median</span><span>1.25×</span><span>1.5×</span><span>1.75×</span><span>limit 2×</span></div></div>"
+           "<div class=presets><button type=button id=p1>At the median</button><button type=button id=p2>+25%</button><button type=button id=p3>+50%</button><button type=button id=p4>At the limit</button><button type=button id=poolbtn hidden>Everything waiting</button></div>"
+           "<p class=formula>Penalty = <span id=form>–</span> of the base reward</p></div></div></section>")
+    script = "<script>" + BS_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>"
+    body = (head + pen + "<div class=tiles id=tiles>" + d["tiles"] + "</div>" + how + "<section class=card><h2>The last 100 blocks</h2><div id=chart>" + d["chart"] + "</div></section>"
+            + "<section class=card><h2>What it costs a transaction</h2><div id=txs>" + d["txs"] + "</div></section>" + script)
+    return page("Dynamic block size", body)
 
 
 RANK_JS = r"""(function(){
@@ -656,6 +796,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.send_json(200, block_template(), 8)
             except Exception as exc:
                 return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+        if path == "/block-size.json" and self.command in ("GET", "HEAD") and NODE:
+            try:
+                return self.send_json(200, blocksize_parts(), 0)
+            except Exception as exc:
+                return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+        if path == "/block-size" and self.command == "GET" and NODE:
+            try:
+                body = blocksize_page().encode()
+            except Exception as exc:
+                log("block size:", exc)
+                return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            return self.wfile.write(body)
         if path == "/fee-ranking.json" and self.command in ("GET", "HEAD") and NODE:
             try:
                 return self.send_json(200, ranking_parts(), 0)
