@@ -339,6 +339,12 @@
   @media (min-width: 2100px) { .strip { --s: 170px; --k: 1.360; --d: 22px; } .strip .half { gap: 63px; } }
   @media (min-width: 2400px) { .strip { --s: 190px; --k: 1.520; --d: 25px; } .strip .half { gap: 70px; } }
   @media (min-width: 2800px) { .strip { --s: 210px; --k: 1.680; --d: 27px; } .strip .half { gap: 78px; } }
+  /* the three blocks before the fan are spread over their whole half, with their headline centred above them */
+  @media (min-width: 1500px) {
+    .strip .half.projected { justify-content: space-evenly; padding-inline: 24px 32px; }
+    .projected > :first-child { margin-left: 0; }
+    .strip-head.left { justify-self: center; margin-right: 0; width: 100%; }
+  }
   @media (max-width: 720px) {
     .strip { --s: 92px; --k: 1; }
     .strip-head { font-size: 10px; letter-spacing: .1em; gap: 8px; width: auto; }
