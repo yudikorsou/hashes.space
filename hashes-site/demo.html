@@ -91,6 +91,7 @@
   /* the height is a small plate on the block, in the faces and the lettering of the block itself */
   .height b { display: inline-block; padding: 3px 8px; border-radius: 3px; background: #232838; border: 1px solid rgba(255,255,255,.10); border-top-color: rgba(255,255,255,.16);
     box-shadow: -2px 2px 0 0 rgba(25,28,39,.9); font: 600 12.5px/1.15 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: .01em; color: #e8ebf5; }
+  #projected .above { min-height: 28px; display: flex; align-items: flex-end; justify-content: center; }   /* room for the two-line label, so the three blocks stand level */
   .mining .above { color: var(--text); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
   /* 3D block: front face + mempool-style dark top and left faces */
   .cube { position: relative; width: var(--s); height: var(--s); margin: var(--d) 0 0 var(--d); }
@@ -1856,7 +1857,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       <div class="below"><span class="datum-badge plain">Fee Auction</span></div></div>
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
       <div class="below"><span class="datum-badge plain">Block assembly</span></div></div>
-      <div class="block-wrap mining"><div class="above">Hashing now</div>${candidateCube(b)}
+      <div class="block-wrap mining"><div class="above">Hashing now on ${esc(network()?.label ?? 'SHA-256')}</div>${candidateCube(b)}
       <div class="below"><span class="datum-badge plain">Candidate block</span><span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span></div></div>`;
     pinProjected();
     scheduleClip();
