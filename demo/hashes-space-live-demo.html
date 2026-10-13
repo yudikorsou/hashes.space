@@ -99,7 +99,7 @@
     box-shadow: -2px 2px 0 0 rgba(25,28,39,.9); font: 600 12.5px/1.15 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: .01em; color: #e8ebf5; }
   .mining .above { display: flex; justify-content: center; width: 0; overflow: visible; white-space: nowrap; color: var(--text); font-weight: 600; font-size: calc(12px * var(--k, 1)); letter-spacing: .06em; text-transform: uppercase; }   /* one line, as wide as the block it sits on */
   /* 3D block: front face + mempool-style dark top and left faces */
-  .cube { position: relative; width: var(--s); height: var(--s); margin: var(--d) 0 0 var(--d); }
+  .cube { position: relative; width: var(--s); height: var(--s); margin: var(--d) var(--d) 0 0; }
   .face { position: absolute; }
   /* the coin of the chain shown, small in the top left corner of every block */
   .front:has(.cube-coin) .txt { padding-top: 22px; }
@@ -107,10 +107,7 @@
   @media (max-width: 640px) { .mining .above { font-size: 10px; letter-spacing: .03em; } .cube-coin { top: 4px; left: 4px; width: 12px; height: 12px; } .front:has(.cube-coin) .txt { padding-top: 16px; } }
   .front { inset: 0; }
   .top { left: 0; top: calc(var(--d) * -1); width: var(--s); height: var(--d); transform-origin: bottom left; transform: skewX(45deg); background: #232838; }
-  .side { left: calc(var(--d) * -1); top: 0; width: var(--d); height: var(--s); transform-origin: top right; transform: skewY(45deg); background: #191c27; }
-  /* the blocks being built, before the fan, show their shaded side on the right */
-  #projected .cube { margin: var(--d) var(--d) 0 0; }
-  #projected .side { left: var(--s); transform-origin: top left; transform: skewY(-45deg); }
+  .side { left: var(--s); top: 0; width: var(--d); height: var(--s); transform-origin: top left; transform: skewY(-45deg); background: #191c27; }   /* the shaded side is on the right */
   .txt { height: 100%; display: grid; grid-template-rows: auto auto 1fr auto auto; justify-items: center; align-items: center; padding: 12px 6px 10px; font: 400 12px/1.25 var(--sans); color: #fff; text-align: center; }
   .txt .fee { font-weight: 600; font-size: calc(13px * var(--k, 1)); }
   .txt .range { color: rgba(255,255,255,.8); font-size: calc(11px * var(--k, 1)); }
@@ -344,7 +341,7 @@
   @media (min-width: 2800px) { .strip { --s: 210px; --k: 1.680; --d: 27px; } .strip .half { gap: 78px; } }
   /* the three blocks before the fan are spread over their whole half, with their headline centred above them */
   @media (min-width: 1500px) {
-    .strip .half.projected { justify-content: space-evenly; padding-inline: 24px 32px; }
+    .strip .half.projected { justify-content: space-evenly; padding-inline: 24px calc(var(--s) * .55); }
     .projected > :first-child { margin-left: 0; }
     .strip-head.left { justify-self: center; margin-right: 0; width: 100%; }
   }
