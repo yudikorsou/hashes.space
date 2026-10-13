@@ -548,7 +548,7 @@ def block_template():
     with TEMPLATE_LOCK:
         if TEMPLATE["data"] and time.time() - TEMPLATE["at"] < 8:
             return TEMPLATE["data"]
-        t = NODE.call("getblocktemplate", {"rules": ["segwit"]})
+        t = NODE.call("getblocktemplate", {"rules": ["segwit", "blake2b"] if CHAIN == "blake2b" else ["segwit"]})   # Knots on the BLAKE2b chain asks the client to name the blake2b rule
         fn, how = merkle_hash()
         tag = b"/hashes.space/"
         script = _height_push(t["height"]) + bytes([len(tag)]) + tag
