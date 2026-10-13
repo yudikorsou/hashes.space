@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-monero-explorer
 category: crypto
 name: Monero Explorer
-version: "0.18.5.1-15"
+version: "0.18.5.1-16"
 tagline: A Monero block explorer on your own Monero node
 description: >-
   An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
@@ -31,6 +31,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The four pages made for the Find Mempool page (/fee-ranking, /block-size, /block-assembly, /block-candidate) share one lighter design: glass panels on a soft glow, quiet uppercase labels, hairline tables, and the steps as a timeline of numbered rings.
   The /block-candidate page has a lighter glass design: the four steps beside the animated block are a quiet timeline (numbered rings joined by a line, the current step glowing) instead of dark boxes.
   The /block-candidate page now opens with the animated candidate block: the header rows of the block being mined (height, previous block, merkle root, time) slide in, then the nonce counts and each try shows how many leading zeros of the hash it got against the zeros the difficulty needs, in step with the four steps next to it. The block turns green and the next candidate starts when a block is found.
   New page /block-candidate: the block candidate of the block that is being mined, in four steps: the finished header, miners changing the nonce (network hashrate), the 1-in-difficulty lucky hash, and the time since the last block with the chance of a block in the next minute. It updates every 5 seconds.
