@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.6"
+version: "1.9.7"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The mining pools black holes show six pools at a time, biggest first, with arrows for the next six. OCEAN and CONVOY each get their own black hole. The Solominers heading and the headline sizes now match Inside the miners.
   Bitcoin hashrate by country is gone: Bitcoin, BLAKE2b and Dogecoin now show the hashrate of solo miners (miners that use no pool) next to the mining pools, read from your own explorers. Update those apps too.
   The hashrate section now has black holes, one per mining pool, sized by hashrate: hover one for its name and the hashrate it contributes. Built from your own nodes' pool statistics on all four chains. The View hashrate mining pools page is gone and the calculator button is now More insights.
   The hashrate section now shows the combined hashrate of the mining pools (14 days, 1 month, 6 months, 1 year) with their share of the network, read from the Bitcoin, Bitcoin Knots, Dogecoin and Monero explorers on your Umbrel. Update those apps too.
