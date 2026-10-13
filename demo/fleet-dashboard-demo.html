@@ -87,15 +87,14 @@
   /* the height is a small plate on the block, in the faces and the lettering of the block itself */
   .height b { display: inline-block; padding: 3px 8px; border-radius: 3px; background: #232838; border: 1px solid rgba(255,255,255,.10); border-top-color: rgba(255,255,255,.16);
     box-shadow: -2px 2px 0 0 rgba(25,28,39,.9); font: 600 12.5px/1.15 var(--mono); font-variant-numeric: tabular-nums; letter-spacing: .01em; color: #e8ebf5; }
-  #projected .above { min-height: 28px; display: flex; align-items: flex-end; justify-content: center; }   /* room for the two-line label, so the three blocks stand level */
-  .mining .above { color: var(--text); font-weight: 600; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; }
+  .mining .above { white-space: nowrap; color: var(--text); font-weight: 600; font-size: calc(var(--s) * .056); letter-spacing: .03em; text-transform: uppercase; }   /* one line, as wide as the block it sits on */
   /* 3D block: front face + mempool-style dark top and left faces */
   .cube { position: relative; width: var(--s); height: var(--s); margin: var(--d) 0 0 var(--d); }
   .face { position: absolute; }
   /* the coin of the chain shown, small in the top left corner of every block */
   .front:has(.cube-coin) .txt { padding-top: 22px; }
   .cube-coin { position: absolute; top: 6px; left: 6px; width: 16px; height: 16px; border-radius: 50%; z-index: 1; opacity: .95; filter: drop-shadow(0 1px 2px rgba(0,0,0,.45)); pointer-events: none; }
-  @media (max-width: 640px) { .cube-coin { top: 4px; left: 4px; width: 12px; height: 12px; } .front:has(.cube-coin) .txt { padding-top: 16px; } }
+  @media (max-width: 640px) { .mining .above { font-size: 6.2px; letter-spacing: .01em; } .cube-coin { top: 4px; left: 4px; width: 12px; height: 12px; } .front:has(.cube-coin) .txt { padding-top: 16px; } }
   .front { inset: 0; }
   .top { left: 0; top: calc(var(--d) * -1); width: var(--s); height: var(--d); transform-origin: bottom left; transform: skewX(45deg); background: #232838; }
   .side { left: calc(var(--d) * -1); top: 0; width: var(--d); height: var(--s); transform-origin: top right; transform: skewY(45deg); background: #191c27; }
