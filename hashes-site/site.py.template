@@ -73,7 +73,10 @@ def refresh_pages():
             with open(bundled, "rb") as src, open(target, "wb") as dst:
                 dst.write(src.read())
         try:
-            with urllib.request.urlopen(url, timeout=30) as r:
+            # a changing query string gets past GitHub's five-minute cache of the raw file, so a push
+            # that happened just before an app start is not missed until the next hourly fetch
+            req = urllib.request.Request(url + "?t=" + str(int(time.time())), headers={"Cache-Control": "no-cache"})
+            with urllib.request.urlopen(req, timeout=30) as r:
                 page = r.read()
             if len(page) < 50000 or b"<title" not in page[:4000]:
                 raise RuntimeError("that does not look like the page")
