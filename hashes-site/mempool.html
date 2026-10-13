@@ -4043,7 +4043,7 @@ window.__coins = COIN_LOGOS;
     { // the fleet flies only on what your own node reported
       const own = m.live && (m.node || netId === 'dogecoin' || netId === 'monero');
       skyStart();
-      skySet(own ? rp.pools.map((x) => ({ name: x.name, blocks: x.blocks })) : null, own ? (rp.blockCount || rp.pools.reduce((a, x) => a + x.blocks, 0)) : 0, own ? m.hash : 0, rp.window,
+      skySet(own ? rp.pools.map((x) => ({ name: x.name === 'Single payout (pool or solo miner)' ? 'Other pools & solo' : x.name, blocks: x.blocks })) : null, own ? (rp.blockCount || rp.pools.reduce((a, x) => a + x.blocks, 0)) : 0, own ? m.hash : 0, rp.window,
         m.live ? 'Waiting for your node: the ships are built from its pool statistics.' : 'Your node does not answer: the ships are built from its pool statistics.');
       $('sky-cap').textContent = own && sky.ships.length ? `${sky.ships.length} ${netId === 'monero' ? 'payout kinds' : 'mining pools'} · size follows hashrate · ${windowSpoken(rp.window)}` : '';
       if (sky.still) skyDraw(performance.now());
