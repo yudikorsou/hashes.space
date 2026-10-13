@@ -15,6 +15,7 @@ Reads everything from the node's RPC, pruned or not, and serves:
   /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from the block headers (24h, 14d, 1m, 6m, 1y)
   /api/v1/mining/pools/<period>     blocks per mining pool, from the tags and payout addresses in each coinbase
   /api/v1/mining/pool-hashrate/<period>  the hashrate of the mining pools together: the network's hashrate times the share of blocks that pools mined, per day
+  /api/v1/mining/solo/<period>      the hashrate of the miners that use no pool: blocks of solo services ("solo" in the pool's name) and blocks with no pool tag or known payout address, times the network's hashrate
   /api/v1/mining/pool/<slug>/blocks   the latest blocks of one pool (the page's pool view)
   /api/v1/difficulty-adjustment       where the chain is in its difficulty period, and the change the period is heading for
   /api/v1/fees/recommended            fastest / half-hour / hour / economy / minimum fee rates, from your own mempool
@@ -75,6 +76,7 @@ ADDRESS_SCAN = os.environ.get("ADDRESS_SCAN", "1") != "0"         # address bala
 POOL_BLOCKS = int(os.environ.get("POOL_BLOCKS", "4320"))     # how far back the pool of each block is read: 30 days
 POOLS_URL = os.environ.get("POOLS_URL", "https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json")
 BTC_BLOCKS_PER_DAY = int(os.environ.get("BLOCKS_PER_DAY", "144"))        # both chains aim at ten minutes a block
+SOLO_RX = re.compile(r"solo", re.I)     # a pool whose name says it is a solo service
 POOL_WINDOWS = {"24h": DAY, "1w": WEEK, "14d": 14 * DAY, "1m": 30 * DAY}   # the periods the pool split is cut to
 EPOCH = 2016                 # one difficulty period: the "14 days" are the last 2016 blocks, the stretch the difficulty is set over
 # tags to know when the public list cannot be fetched (and for chains it knows nothing about)
@@ -539,6 +541,26 @@ class ChainStats:
         since = min(days) * DAY
         return {"currentHashrate": rate * share_now, "currentShare": share_now, "networkHashrate": rate, "since": since,
                 "complete": since <= end - span + DAY, "hashrates": points}
+
+    def solo(self, period):
+        """the hashrate of miners without a pool, as far as blocks show it: the blocks of solo services plus the blocks that carry no
+        pool tag and no known payout address (an upper bound: a small pool missing from the list lands there too), times the network's hashrate"""
+        p = self.pools(period)
+        with self.lock:
+            rate = self.now[0]
+        total = max(1, p["blockCount"])
+        sources = []
+        for e in p["pools"]:
+            if SOLO_RX.search(e["name"]):
+                kind, name = "service", e["name"]
+            elif e["name"] == "Unknown":
+                kind, name = "unattributed", "No pool tag or known payout address"
+            else:
+                continue
+            sources.append({"name": name, "kind": kind, "blockCount": e["blockCount"], "share": e["blockCount"] / total, "hashrate": rate * e["blockCount"] / total})
+        blocks = sum(x["blockCount"] for x in sources)
+        return {"window": p["window"], "blockCount": p["blockCount"], "soloBlocks": blocks, "share": blocks / total, "currentHashrate": rate * blocks / total,
+                "networkHashrate": rate, "sources": sources}
 
     def pools(self, period):
         with self.lock:
@@ -1515,6 +1537,9 @@ class Handler(BaseHTTPRequestHandler):
                          "mempool": STATE["mempool_count"], "pruned": STATE["info"].get("pruned"), "node": STATE["info"].get("subversion"), "chain": CHAIN, "syncing": STATE["info"].get("initialblockdownload"),
                          "statistics": STATS.ready, "statisticsError": STATS.error, "pools": len(POOLS.tags) > 0}
                 return self.json(s)
+            m = re.fullmatch(r"/api/v1/mining/solo/(24h|14d|1w|1m)", path)
+            if m:
+                return self.json(STATS.solo(m.group(1)), 300)
             m = re.fullmatch(r"/api/v1/mining/pool-hashrate/(24h|14d|1m|6m|1y)", path)
             if m:
                 return self.json(STATS.pool_hashrate(m.group(1)), 300)

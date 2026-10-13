@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-dogecoin-explorer
 category: crypto
 name: Dogecoin Explorer
-version: "1.2.0"
+version: "1.3.0"
 tagline: A Dogecoin block explorer on your own Dogecoin node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/dogecoin.png
 description: >-
@@ -33,6 +33,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  New /api/v1/mining/solo/<period>: the hashrate of miners that use no pool, estimated from the blocks of solo services and the blocks with no known pool, times the network's hashrate (an upper bound). Blocks whose coinbase names none of the known pools count as solo.
   The Find Mempool page's hashrate section now shows the combined hashrate of the mining pools (14 days, 1 month, 6 months, 1 year) instead of the whole network's: new /api/v1/mining/pool-hashrate/<period>, the network's hashrate times the share of blocks that pools mined. Over a long period the shares come from an evenly spread sample of the blocks.
   Hashrate and mining pool statistics for 24 hours, 14 days, 1 month, 6 months and 1 year. Uses the Dogecoin Core app's real RPC password (fixes "HTTP 401"); unknown pools no longer show garbled names.
   First release.

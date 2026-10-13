@@ -13,6 +13,7 @@ transactions and the mempool. Serves:
   /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from your node (period: 24h, 14d, 1m, 6m, 1y)
   /api/v1/mining/pools/<period>     blocks per mining pool over the period (a sample of the blocks for the long ones)
   /api/v1/mining/pool-hashrate/<period>  the hashrate of the mining pools together: the network's hashrate times the share of blocks that pools mined
+  /api/v1/mining/solo/<period>      the hashrate of the miners that use no pool: blocks whose coinbase names no known pool, times the network's hashrate (an upper bound)
   (1y and 1w are what older versions of the page ask for, and are still answered)
   /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
 
@@ -288,7 +289,7 @@ def mempool_json(b):
 
 DAY, WEEK, YEAR_DAYS = 1440, 10080, 365  # Dogecoin: a block a minute
 _pool_by_height = {}
-_mining = {"hashrate": {}, "pools": {}, "pool-hashrate": {}, "at": 0}
+_mining = {"hashrate": {}, "pools": {}, "pool-hashrate": {}, "solo": {}, "at": 0}
 # the periods the page offers: blocks in the period, and one hashrate point per STEP blocks (a block a minute)
 RANGES = {"24h": (1440, 60), "14d": (20160, 360), "1m": (43200, 720), "6m": (259200, 1440), "1y": (525600, 1440)}
 SAMPLE = 2500   # a long period reads about this many blocks for its pool shares (an estimate), a short one reads them all
@@ -411,6 +412,30 @@ def pool_hashrate_range(tip, rng, hr):
             "sampled": stride > 1, "hashrates": points}
 
 
+def solo_range(pools, hr):
+    """the hashrate of miners without a pool: the blocks whose coinbase names none of the known pools (a solo miner's own tag, or no tag at all)
+    plus any name that says solo, times the network's hashrate. An upper bound: a pool missing from the list lands here too."""
+    known = {n for n, _ in POOLS}
+    total = max(1, pools["blockCount"])
+    sources, other = [], 0
+    for e in pools["pools"]:
+        if e["name"] in known:
+            continue
+        if re.search("solo", e["name"], re.I):
+            sources.append({"name": e["name"], "kind": "service", "blockCount": e["blockCount"]})
+        else:
+            other += e["blockCount"]
+    if other:
+        sources.append({"name": "No known pool in the coinbase", "kind": "unattributed", "blockCount": other})
+    rate = hr["currentHashrate"]
+    for x in sources:
+        x["share"] = x["blockCount"] / total
+        x["hashrate"] = rate * x["share"]
+    blocks = sum(x["blockCount"] for x in sources)
+    return {"window": None, "blockCount": pools["blockCount"], "soloBlocks": blocks, "share": blocks / total, "currentHashrate": rate * blocks / total,
+            "networkHashrate": rate, "sampled": bool(pools.get("sampled")), "sources": sources}
+
+
 def hashrate_year(tip):
     heights = [tip - d * DAY for d in range(YEAR_DAYS) if tip - d * DAY > DAY][::-1]
     hashes = rpc_batch([("getblockhash", [h]) for h in heights])
@@ -441,6 +466,7 @@ def mining_stats():
                 _mining["hashrate"][rng] = hashrate_range(tip, rng)
                 _mining["pools"][rng] = pools_range(tip, rng)
                 _mining["pool-hashrate"][rng] = pool_hashrate_range(tip, rng, _mining["hashrate"][rng])
+                _mining["solo"][rng] = dict(solo_range(_mining["pools"][rng], _mining["hashrate"][rng]), window=rng)
         except Exception as exc:  # noqa: BLE001
             log("mining stats: " + str(exc))
         time.sleep(600)
@@ -638,7 +664,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json([mempool_json(b) for b in last_blocks(10)], 10)
             if path == "/api/v1/fees/mempool-blocks":
                 return self.json(_state["mempool"] or mempool_blocks(), 5)
-            m = re.fullmatch(r"/api/v1/mining/(hashrate|pools|pool-hashrate)/(\w+)", path)
+            m = re.fullmatch(r"/api/v1/mining/(hashrate|pools|pool-hashrate|solo)/(\w+)", path)
             if m:
                 data = _mining[m.group(1)].get(m.group(2))
                 if data is None:

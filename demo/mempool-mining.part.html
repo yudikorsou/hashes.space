@@ -5,14 +5,11 @@
   .mhead { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 18px 0; min-width: 0; align-self: start; }
   .mhead .kpis { width: 100%; }
   .m-hr-head { grid-area: hrh; } .m-pools-head { grid-area: poolsh; }
-  .mcard.m-hr { grid-area: hr; padding-bottom: 62px; } .mcard.m-pools { grid-area: pools; } .mcard.m-globe { grid-area: globe; } .m-globe-head { grid-area: globeh; }
-  .mstats.has-globe { grid-template-areas: 'hrh globeh' 'hr globe' 'src src'; }
-  .mstats.has-globe > .m-pools, .mstats.has-globe > .m-pools-head { display: none; }   /* on Bitcoin the globe takes the place of the pools, which have a page of their own */
-  .mstats.has-globe .mcard.m-pools { width: 100%; max-width: 760px; justify-self: center; }
-  .mstats.has-globe .mcard.m-pools::before { display: none; }
-  .mstats.has-globe .m-pools-head { margin-top: 24px; }
-  .mcard.m-globe::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
-  .m-globe-head[hidden] { display: none !important; } .msource { grid-area: src; }
+  .mcard.m-hr { grid-area: hr; padding-bottom: 62px; } .mcard.m-pools { grid-area: pools; } .mcard.m-solo { grid-area: solo; } .m-solo-head { grid-area: soloh; }
+  .mstats.has-solo { grid-template-areas: 'hrh soloh' 'hr solo' 'src src'; }
+  .mstats.has-solo > .m-pools, .mstats.has-solo > .m-pools-head { display: none; }   /* the solo miners take the place of the pools pie on Bitcoin, BLAKE2b and Dogecoin */
+  .mcard.m-solo::before { content: ''; position: absolute; left: -10px; top: 8%; bottom: 8%; width: 1px; background: linear-gradient(transparent, rgba(160, 170, 230, 0.22), transparent); }
+  .m-solo-head[hidden] { display: none !important; } .msource { grid-area: src; }
   /* the calculators have a page to themselves */
   .mstats.calcpage { grid-template-areas: 'head' 'one' 'src'; grid-template-columns: minmax(0, 640px); justify-content: center; padding-top: 28px; }
   .calcpage .calchead { grid-area: head; text-align: center; max-width: 60ch; margin: 0 auto; display: grid; gap: 8px; }
@@ -25,8 +22,8 @@
   .calc-link[hidden] { display: none !important; }
   @media (max-width: 900px) {
     .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'poolsh' 'pools' 'src'; }
-    .mstats.has-globe { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'globeh' 'globe' 'src'; }
-    .mcard.m-globe::before { display: none; }
+    .mstats.has-solo { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'soloh' 'solo' 'src'; }
+    .mcard.m-solo::before { display: none; }
   }
   .mstats[hidden], .mcard[hidden] { display: none !important; }
   /* no boxes: each chart floats on a soft glow that fades into the page, with a faint line between the two */
@@ -123,21 +120,20 @@
   .pool-empty { grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
   @media (max-width: 520px) { .poolhead h1 { font-size: 23px; } .pool-blocks { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
   @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mstats .kpis dd { font-size: 17px; } .mstats .mtitle, .mstats .kpis dt { font-size: 15.5px; } }
-  /* Bitcoin hashrate by country: a spinning globe under the pools chart */
-  .mcard.m-globe { align-items: center; justify-content: center; gap: 12px; }
-  #globe-canvas { display: block; width: min(100%, 520px); aspect-ratio: 1; margin: 0 auto; cursor: grab; touch-action: pan-y; }
-  #globe-canvas:active { cursor: grabbing; }
-  .globe-list { display: none; }
-  .globe-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 14px; padding: 7px 12px; border-radius: 14px; cursor: pointer; transition: background .15s; }
-  .globe-list li:hover, .globe-list li:focus-visible { background: rgba(120, 130, 210, .12); outline: none; }
-  .globe-list li.off { cursor: default; opacity: .7; }
-  .globe-list .gn { font: 600 13.5px/1.3 var(--sans); color: var(--text); }
-  .globe-list .gv { font: 500 12.5px/1.3 var(--mono); color: var(--text); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
-  .globe-list .gv small { color: var(--muted); font: inherit; }
-  .globe-list .gbar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: rgba(120, 130, 210, .14); overflow: hidden; }
-  .globe-list .gbar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f7931a, #ffc46b); }
-  .globe-note { margin: 0; max-width: 60ch; text-align: center; color: var(--muted); font: 400 12px/1.55 var(--sans); }
-  .globe-note a { color: var(--link); }
+  /* miners without a pool: lone lights drifting through space, and where the figure comes from */
+  .mcard.m-solo { padding-bottom: 20px; }
+  .solo-sky { position: relative; width: 100%; flex: 1 1 340px; min-height: 340px; margin: -2px 0 6px; }
+  .solo-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .solo-sky .sky-cap { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; color: var(--muted); font: 400 11.5px/1.3 var(--sans); pointer-events: none; }
+  .solo-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
+  .solo-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 14px; padding: 4px 12px; }
+  .solo-list .gn { font: 600 13px/1.3 var(--sans); color: var(--text); }
+  .solo-list .gv { font: 500 12.5px/1.3 var(--mono); color: var(--text); text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .solo-list .gv small { color: var(--muted); font: inherit; }
+  .solo-list .gbar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: rgba(120, 130, 210, .14); overflow: hidden; }
+  .solo-list .gbar i { display: block; height: 100%; border-radius: 3px; background: linear-gradient(90deg, #f7931a, #ffc46b); }
+  .solo-note { margin: 8px 0 0; max-width: 60ch; align-self: center; text-align: center; color: var(--muted); font: 400 12px/1.55 var(--sans); }
+  @media (max-width: 520px) { .solo-sky { min-height: 260px; flex-basis: 260px; } }
 <!--HTML-->
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <header class="mhead m-hr-head">
@@ -145,9 +141,10 @@
       <div><dt><span id="ms-hash-title">Mining pools</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
     </dl>
   </header>
-  <header class="mhead m-globe-head" id="gl-head" hidden>
-    <h2 class="mtitle" id="gl-title">Bitcoin hashrate by country</h2>
-    <p class="msub">Estimated hashrate per country</p>
+  <header class="mhead m-solo-head" id="solo-head" hidden>
+    <dl class="kpis">
+      <div><dt>Solo miners</dt><dd id="solo-hash">–</dd></div>
+    </dl>
   </header>
   <header class="mhead m-pools-head">
     <h2 class="mtitle"><span id="pools-title">Hashrate mining pools</span> <span class="mperiod" id="pools-period"></span></h2>
@@ -164,10 +161,11 @@
     <div class="plot"><svg id="ms-pie" viewBox="0 0 600 344" role="img" aria-label="Blocks per mining pool, last week"></svg></div>
     <p class="pnote" id="ms-pools-note" hidden></p>
   </article>
-  <article class="mcard m-globe" id="gl-wrap" aria-labelledby="gl-title" hidden>
-    <canvas id="globe-canvas" role="img" aria-label="A spinning globe showing the countries that mine Bitcoin, with the estimated hashrate of each"></canvas>
-    <ol class="globe-list" id="globe-list"></ol>
-    <p class="globe-note" id="globe-note"></p>
+  <article class="mcard m-solo" id="solo-wrap" aria-label="Hashrate of miners that use no pool" hidden>
+    <div class="solo-sky" id="solo-sky" role="img" aria-label="Lone lights, one for every block found without a pool"><canvas id="solo-cv"></canvas><p class="sky-cap" id="solo-cap"></p></div>
+    <p class="hrsub" id="solo-sub"></p>
+    <ul class="solo-list" id="solo-list"></ul>
+    <p class="solo-note" id="solo-note"></p>
   </article>
   <p class="msource" id="ms-source"></p>
 </section>
@@ -458,8 +456,7 @@
         : m ? `Difficulty from a snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining (${site} is not reachable from this page)` : '';
     }
     $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
-    { const gl = netId === 'sha256' && !!m; $('gl-wrap').hidden = !gl; $('gl-head').hidden = !gl; sec.classList.toggle('has-globe', gl); }   // Bitcoin hashrate by country, next to the global hashrate
-    if (netId === 'sha256' && window.globeSet) window.globeSet((miningBy.sha256 || {}).hash || 0);
+    { const so = ['sha256', 'blake2b', 'dogecoin'].includes(netId) && !!m; $('solo-wrap').hidden = !so; $('solo-head').hidden = !so; sec.classList.toggle('has-solo', so); if (so) renderSolo(); }   // miners without a pool, next to the pools' hashrate
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
     { const g = netId === 'sha256', more = $('ms-more-hr'); more.style.display = g ? 'none' : ''; if (!g) { more.href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`; more.target = '_blank'; more.textContent = 'View more »'; } }   // Bitcoin has no link here; the other chains open their own mining page
@@ -867,6 +864,67 @@
       if (sky.still) skyDraw(performance.now());
     });
     el.addEventListener('pointerleave', (e) => { sky.hover = null; tip(e, null); if (sky.still) skyDraw(performance.now()); });
+  }
+  // ---------- miners without a pool ----------
+  // From your own explorer (/api/v1/mining/solo/<period>): the blocks of solo services plus the blocks that name no known pool, times the
+  // chain's hashrate. Bitcoin and BLAKE2b read the pool of every block, Dogecoin a sample; Monero names no pool, so it keeps the pools pie.
+  var SOLO_PERIOD = { sha256: '1m', blake2b: '1m', dogecoin: '14d' };
+  var soloBy = {}, soloBusy = {};
+  async function loadSoloFor(net) {
+    const cur = soloBy[net];
+    if (soloBusy[net] || !PH_HOST[net] || !SOLO_PERIOD[net]) return;
+    if (cur && Date.now() < (cur.ok ? cur.at + 600000 : cur.retry)) return;
+    soloBusy[net] = true;
+    try {
+      const r = await getJson(PH_HOST[net], '/solo/' + SOLO_PERIOD[net]);
+      if (!r || !Array.isArray(r.sources)) throw new Error('no data');
+      soloBy[net] = { ok: true, at: Date.now(), ...r };
+    } catch { soloBy[net] = { ok: false, at: Date.now(), retry: Date.now() + 20000 }; }
+    finally { soloBusy[net] = false; }
+    if (net === netId && typeof renderMiningStats === 'function') renderMiningStats();
+  }
+  setInterval(() => { const g = soloBy[netId]; if (g && !g.ok && Date.now() > g.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
+  var solo = { dots: [], n: 0, w: 0, h: 0, dpr: 1, on: false, started: false, still: false };
+  function renderSolo() {
+    loadSoloFor(netId);
+    const d = soloBy[netId], ok = d && d.ok, per = ok ? (d.window || SOLO_PERIOD[netId]) : '';
+    $('solo-hash').textContent = ok ? `Hashrate ${si(d.currentHashrate, 1)}H/s` : '–';
+    $('solo-sub').textContent = ok ? `Miners that use no pool: ${(d.share * 100).toFixed(1)}% of the blocks in ${windowSpoken(per)}, of the network's ${si(d.networkHashrate, 1)}H/s. Each light is a block found without a pool.`
+      : d ? 'Your node did not answer yet: the solo-miner hashrate comes from the explorer on your Umbrel (update it if it is an older version).' : 'Asking your node for the hashrate of miners without a pool…';
+    $('solo-list').replaceChildren(...(ok ? d.sources.map((x) => { const li = document.createElement('li');
+      li.innerHTML = `<span class="gn">${esc(x.name)}</span><span class="gv">${si(x.hashrate, 1)}H/s <small>· ${(x.share * 100).toFixed(1)}%</small></span><span class="gbar"><i style="width:${Math.min(100, Math.max(2, x.share / Math.max(d.share, 1e-9) * 100))}%"></i></span>`; return li; }) : []));
+    $('solo-note').textContent = ok ? 'An estimate from the blocks found, so an upper bound: a small pool that is missing from the list of known pools counts here too, and a solo miner only shows up when a block is found.' + (d.sampled ? ' Over this period the blocks come from an evenly spread sample.' : '') : '';
+    $('solo-cap').textContent = ok ? `${d.soloBlocks.toLocaleString('en')} of ${d.blockCount.toLocaleString('en')} blocks · ${windowSpoken(per).replace(/^the /, '')}` : '';
+    const n = ok ? Math.min(160, d.soloBlocks) : 0;
+    if (n !== solo.n) { solo.n = n; solo.dots = Array.from({ length: n }, (_, i) => ({ x: rnd(i, 11), y: rnd(i, 12), vx: 4 + rnd(i, 13) * 10, r: 1.2 + rnd(i, 15) * 2.2, ph: rnd(i, 16) * 6.28, w: 0.8 + rnd(i, 17) * 1.4 })); }
+    soloStart();
+    if (solo.still) soloDraw(performance.now());
+  }
+  function soloSize() {
+    const cv = $('solo-cv'), r = cv.parentNode.getBoundingClientRect();
+    solo.dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (r.width !== solo.w || r.height !== solo.h) { solo.w = r.width; solo.h = r.height; cv.width = Math.round(r.width * solo.dpr); cv.height = Math.round(r.height * solo.dpr); }
+  }
+  function soloDraw(t) {
+    const cv = $('solo-cv'), g = cv.getContext('2d');
+    g.setTransform(solo.dpr, 0, 0, solo.dpr, 0, 0); g.clearRect(0, 0, solo.w, solo.h);
+    const padY = 30, H = solo.h - padY - 30, span = solo.w + 40;
+    for (const d of solo.dots) {
+      const x = (((d.x * solo.w + (solo.still ? 0 : t / 1000 * d.vx)) % span) + span) % span - 20, y = padY + d.y * H + Math.sin(t / 1800 * d.w + d.ph) * 6;
+      const tw = 0.65 + 0.35 * Math.sin(t / 700 * d.w + d.ph), R = d.r * 3.2, tl = d.vx * 3.2;
+      const tail = g.createLinearGradient(x - tl, y, x, y); tail.addColorStop(0, 'rgba(255,190,90,0)'); tail.addColorStop(1, `rgba(255,190,90,${0.28 * tw})`);
+      g.fillStyle = tail; g.fillRect(x - tl, y - d.r * 0.35, tl, d.r * 0.7);
+      const glow = g.createRadialGradient(x, y, 0, x, y, R); glow.addColorStop(0, `rgba(255,214,140,${0.8 * tw})`); glow.addColorStop(1, 'rgba(255,170,60,0)');
+      g.fillStyle = glow; g.beginPath(); g.arc(x, y, R, 0, 6.2832); g.fill();
+      g.fillStyle = `rgba(255,248,225,${0.55 + 0.45 * tw})`; g.beginPath(); g.arc(x, y, d.r * 0.55, 0, 6.2832); g.fill();
+    }
+  }
+  function soloStep(t) { if (!solo.on) return; soloSize(); soloDraw(t); requestAnimationFrame(soloStep); }
+  function soloStart() {
+    const el = $('solo-sky'); if (!el || solo.started) return; solo.started = true;
+    solo.still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+    const run = (on) => { if (on && !solo.on) { solo.on = true; requestAnimationFrame(soloStep); } else if (!on) solo.on = false; };
+    if ('IntersectionObserver' in window) new IntersectionObserver((es) => run(es.some((e) => e.isIntersecting))).observe(el); else run(true);
   }
   // how the chain stands against where it was a year ago, in words under the headline figure
   function hashrateThen(m, info, period) {
