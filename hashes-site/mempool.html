@@ -4371,7 +4371,9 @@ window.__coins = COIN_LOGOS;
   // Every pool is a black hole: its size follows the hashrate it adds to the chain, and matter circles it in an accretion disc.
   var sky = { ships: [], names: '', last: 0, hover: null, w: 0, h: 0, dpr: 1, on: false, still: false, msg: '', laid: '' };
   const SKY_PAGE = 6;
-  const skyColor = (name) => { let h = 0; for (const ch of name) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return `hsl(${h % 360} 78% 62%)`; };
+  // the glow follows the labels under the mined blocks: red for a centralised pool, orange for a DATUM pool (OCEAN on Bitcoin, CONVOY on BLAKE2b), green for P2Pool on Monero
+  const SKY_RED = 'hsl(0 100% 65%)', SKY_ORANGE = 'hsl(33 94% 54%)', SKY_GREEN = 'hsl(137 74% 56%)';
+  const skyColor = (name) => (netId === 'sha256' && /^ocean$/i.test(name)) || (netId === 'blake2b' && /^convoy$/i.test(name)) ? SKY_ORANGE : netId === 'monero' && /^p2pool$/i.test(name) ? SKY_GREEN : SKY_RED;
   const skyA = (c, a) => c.replace(')', ` / ${a})`);
   const gcd = (a, b) => (b ? gcd(b, a % b) : a);
   const rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
