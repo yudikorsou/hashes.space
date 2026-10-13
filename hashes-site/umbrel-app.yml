@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.24"
+version: "1.9.25"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The View more link is gone from the mining pools sections, and Bitcoin BLAKE2b no longer uses mempool.guide for them: the pools, hashrate and difficulty come only from your own nodes, and the sections stay hidden until your node answers.
   The mining pools black holes glow like the labels under the mined blocks: red for a centralised pool, orange for OCEAN on Bitcoin and CONVOY on Bitcoin BLAKE2b, and on Monero green for P2Pool and red for the rest.
   The top of every block now leans the same way as its shaded side, so the blocks look like solid boxes seen from the right.
   The shaded side of every block is filled with the same colour as the block, a shade darker, so the side fills up with the block.

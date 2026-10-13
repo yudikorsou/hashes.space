@@ -736,7 +736,7 @@
   /* Find Mempool: only the blockchain */
   #miner-slot, .fleet-shares { display: none !important; }
 
-  /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
+  /* Find Mempool: mining pools and hashrate & difficulty, read from your own nodes */
   .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hrh poolsh' 'hr pools' 'src src'; align-items: stretch; gap: 20px; row-gap: 14px; }
   /* the period for both charts: a row of pills, the chosen one filled */
   .mhead { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 18px 0; min-width: 0; align-self: start; }
@@ -1331,7 +1331,6 @@
     <h2 class="sr-only" id="hr-title">Hashrate of the mining pools</h2>
     <div class="pool-sky" id="pool-sky" role="group" aria-label="A black hole for every mining pool, sized by the hashrate it adds to the chain; hover one for details"><canvas id="pool-sky-cv"></canvas><button type="button" class="sky-arrow prev" id="sky-prev" aria-label="Previous six pools" hidden>&#8249;</button><button type="button" class="sky-arrow next" id="sky-next" aria-label="Next six pools" hidden>&#8250;</button><p class="sky-cap" id="sky-cap"></p></div>
     <p class="hrsub" id="ms-hash-sub"></p>
-    <a class="more" id="ms-more-hr" href="#dashboard">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
     <a class="calc-link" id="pcalc-link" href="#poolcalc" hidden>Mining pool calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
@@ -3855,22 +3854,20 @@ window.__coins = COIN_LOGOS;
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, computing the same statistics from your Dogecoin Core node
   // Monero: the Monero Explorer app on your Umbrel (xmr.hashes.space), computing the same statistics from your Monero node;
   // the hashes.space app (mempool.hashes.space) computes them too and answers while the explorer has not been updated yet
-  var MINING_SITES = { sha256: 'btc.hashes.space', blake2b: 'mempool.guide', dogecoin: 'doge.hashes.space', monero: 'xmr.hashes.space' };
+  var MINING_SITES = { sha256: 'btc.hashes.space', blake2b: 'btcb2.hashes.space', dogecoin: 'doge.hashes.space', monero: 'xmr.hashes.space' };
   var MINING_FALLBACK = { monero: 'mempool.hashes.space' };
-  var SNAPSHOT_FROM = { sha256: 'mempool.space', blake2b: 'mempool.guide' };   // where the built-in snapshots (shown only while the node does not answer) were taken
   // served from hashes.space, the two Bitcoin chains can also be asked through the hashes.space app, which passes the
   // statistics on with a single CORS header (mempool.guide sends two, so a browser refuses its answer)
   // anywhere else (a preview, a copy of the page on another site) the same app is asked at its public address, so everyone gets the node's numbers
   const NODE_HOST = /(^|\.)hashes\.space$/.test(location.hostname) ? location.host : 'mempool.hashes.space';
-  MINING_FALLBACK.blake2b = NODE_HOST + '/api/v1/mining/proxy/' + MINING_SITES.blake2b;   // Bitcoin goes only to its own node (btc.hashes.space), with no mempool.space behind it
   // Served from hashes.space, the two Bitcoin chains are asked first of the hashes.space app itself, which works the global hashrate
-  // and the pool split out of the Bitcoin nodes on your Umbrel; Bitcoin (SHA-256) asks only its own node, mempool.guide is the fallback of Bitcoin BLAKE2b
+  // and the pool split out of the Bitcoin nodes on your Umbrel; Bitcoin (SHA-256) and Bitcoin BLAKE2b ask only their own nodes
   var MINING_NODE = {};
   MINING_NODE.sha256 = 'btc.hashes.space';   // the hashes Bitcoin Explorer app: statistics from your own Bitcoin node (and nothing behind it)
-  MINING_NODE.blake2b = 'btcb2.hashes.space';   // the hashes Bitcoin BLAKE2b Explorer app: statistics from your own Bitcoin Knots node (mempool.guide when it does not answer)
+  MINING_NODE.blake2b = 'btcb2.hashes.space';   // the hashes Bitcoin BLAKE2b Explorer app: statistics from your own Bitcoin Knots node
   const NODE_NAME = { sha256: 'your Bitcoin node', blake2b: 'your Bitcoin BLAKE2b node' };
   const fromName = (net, site) => (miningBy[net]?.node ? NODE_NAME[net] : MINING_FROM[net] ?? site + '/mining');
-  // sites without mempool.space's mining pages: "View more" opens the explorer itself
+  // the chains whose explorers run on your own Umbrel serve every period themselves
   var MINING_MORE = { dogecoin: 'https://doge.hashes.space/', monero: 'https://xmr.hashes.space/' };
   // a Monero block never says which pool mined it: the reward goes to a one-time address that names nobody.
   // What the chain does show is how the reward was split, so that is what the section shows there.
@@ -3886,25 +3883,8 @@ window.__coins = COIN_LOGOS;
   const windowBlocks = (w) => WINDOW_WORDS[w] ?? "last week's blocks";
   const windowSpoken = (w) => ({ '24h': 'the last 24 hours', '1w': 'the last week', '14d': 'the last 14 days', '1m': 'the last month', '3m': 'the last 3 months', '6m': 'the last 6 months', '1y': 'the last year' }[w] ?? 'the last week');
   var POOLS_NOTE = { monero: 'A Monero block never names its pool: the reward goes to a one-time address. P2Pool pays every one of its miners in the block itself, so its blocks carry many payouts; a custodial pool or a solo miner leaves one.' };
-  // snapshots for when the API can't be reached from this page
+  // no built-in snapshots: the sections show what your own nodes report, and stay hidden until they answer
   var MINING_SNAPSHOTS = {};
-  MINING_SNAPSHOTS.blake2b = {
-    at: 1791417600,
-    pools: { blockCount: 1168, pools: [['AlphaPool', 369, [['Soggy Waffle', 109], ['huangyh', 33], ['BlockBuster3000', 30], ['XGLLGSZB', 29], ['Tofu Toes', 27], ['DAtumYF', 23], ['DAUMWangpeisong', 22], ['Grumpy Pickle', 22], ['MineWithMe', 14], ['Sweaty Beaver', 14], ['wo912849', 8], ['mabeigu668', 6], ['Wzyw3', 5], ['LTQS', 4], ['whbtc', 4], ['DATUM User', 3], ['Fed14', 3], ['LU007', 3], ['Wang wei', 2], ['wangyong66688', 2]]],
-      ['Lazarus', 282, [['DATUM User', 55], ['XBTGW01', 38], ['Gateway', 34], ['BTCB2', 24], ['DouPool', 22], ['HKBMS3Cloud', 15], ['orionubdat', 9], ['Freedom Money', 4], ['Lunar Fleet', 4], ['nine006', 3], ['BlockFoundry', 2], ['fishnet', 2], ['HARUSERVER', 2], ['ibs DATUM User', 2], ['JH Gateway', 2], ['MBGA', 2], ['nomadshiba xbt', 2], ['SOVEROOT', 2], ['this is so big', 2], ['cryptographic proof instead of trust', 1]]],
-      ['B2Pool', 134], ['DxPool', 81], ['Omega Pool', 69], ['CONVOY', 62], ['Legata', 31], ['Rabid Pool', 18], ['RIPTIDE', 17], ['PyBLOCK', 14], ['sobig solo', 14], ['Quai Network', 13], ['Unknown', 12], ['Pow.re', 6], ['Paperclip Pool', 6], ['Blockvase', 5], ['mhr6091', 4], ['DATUM User', 4], ['Red Panda Mining', 4], ['TrueNorth', 3], ['Blake2b is BTC', 3], ['Jim Johnson', 3], ['CrypticBro2009', 2], ['Bitcoin Xor', 2], ['btc maxi', 2], ['Tower7', 2], ['ghost_of_nobody', 1], ['Napkin', 1], ['Son of Satoshi', 1], ['TerminusPool', 1], ['TwentyOne.Life', 1], ['Komodo', 1]] },
-    hashrate: { currentHashrate: 41394563947455700, currentDifficulty: 21846214529159510000,
-      // one point a week (the live API has one a day)
-      hashrates: [[1760486400, 1.2841e21], [1761091200, 1.0956e21], [1761696000, 1.1871e21], [1762300800, 1.0235e21], [1762905600, 1.183e21], [1763510400, 1.0148e21], [1764115200, 8.768e20], [1764720000, 9.424e20], [1765324800, 9.501e20], [1765929600, 1.0899e21], [1766534400, 1.0609e21], [1767139200, 8.732e20], [1767744000, 9.533e20], [1768348800, 9.8e20], [1768953600, 9.83e20], [1769558400, 8.488e20], [1770163200, 9.205e20], [1770768000, 8.967e20], [1771372800, 1.0302e21], [1771977600, 1.1754e21], [1772582400, 9.686e20], [1773187200, 1.0107e21], [1773792000, 8.974e20], [1774396800, 8.522e20], [1775001600, 9.067e20], [1775606400, 9.536e20], [1776211200, 1.1292e21], [1776816000, 9.083e20], [1777420800, 9.339e20], [1778025600, 9.851e20], [1778630400, 8.649e20], [1779235200, 9.629e20], [1779840000, 9.404e20], [1780444800, 7.598e20], [1781049600, 8.608e20], [1781654400, 1.0058e21], [1782259200, 1.0799e21], [1782864000, 9.785e20], [1783468800, 9.385e20], [1784073600, 1.0191e21], [1784678400, 8.668e20], [1785283200, 7.843e20], [1785888000, 8.801e20], [1786492800, 0], [1787097600, 0], [1787702400, 0], [1788307200, 2.1635e15], [1788912000, 1.9286e16], [1789516800, 3.3150e16], [1790121600, 3.4696e16], [1790726400, 3.9714e16], [1791331200, 4.0437e16], [1791417600, 4.0619e16]],
-      difficulty: [[1760594746, 1.46716e14], [1761732893, 1.55973e14], [1762972230, 1.52271e14], [1764206208, 1.49301e14], [1765424862, 1.48195e14], [1766634486, 1.48258e14], [1767859543, 1.46473e14], [1769110282, 1.41668e14], [1770472605, 1.25865e14], [1771527275, 1.44398e14], [1772731727, 1.45042e14], [1774043659, 1.33793e14], [1775208520, 1.38967e14], [1776448537, 1.35595e14], [1777687605, 1.32472e14], [1778860884, 1.36607e14], [1780050586, 1.38955e14], [1781396637, 1.24933e14], [1782525607, 1.3387e14], [1783800551, 1.27171e14], [1785019866, 1.26232e14], [1786219932, 1.2748e14], [1788070477, 1.30542e17], [1788280416, 7.66357e16], [1788343545, 3.06543e17], [1788540388, 1.22617e18], [1788831998, 4.90468e18], [1789236249, 1.46771e19], [1790130520, 1.98647e19], [1791230424, 2.18462e19]] },
-  };
-  MINING_SNAPSHOTS.sha256 = {
-    at: 1791417600,
-    pools: { blockCount: 1051, pools: [['Foundry USA', 276], ['AntPool', 217], ['F2Pool', 185], ['ViaBTC', 99], ['SpiderPool', 72], ['SECPOOL', 43], ['MARA Pool', 41], ['Luxor', 38], ['OCEAN', 30], ['Braiins Pool', 12], ['NiceHash', 12], ['BTC.com', 9], ['Unknown', 8], ['Binance Pool', 4], ['WhitePool', 3], ['Poolin', 2]] },
-    hashrate: { currentHashrate: 987326967307282400000, currentDifficulty: 132716002350731.3,
-      hashrates: MINING_SNAPSHOTS.blake2b.hashrate.hashrates.slice(0, 43).concat([[1786492800, 8.228e20], [1787097600, 9.411e20], [1787702400, 8.904e20], [1788307200, 9.017e20], [1788912000, 8.579e20], [1789516800, 1.0209e21], [1790121600, 9.344e20], [1790726400, 1.051e21], [1791331200, 1.0246e21], [1791417600, 1.0189e21]]),
-      difficulty: MINING_SNAPSHOTS.blake2b.hashrate.difficulty.slice(0, 21).concat([[1786217755, 1.2748e14], [1787446127, 1.25807e14], [1788640367, 1.27451e14], [1789801745, 1.32757e14], [1791011796, 1.32716e14]]) },
-  };
   var miningBy = {}; // per network: { live, at, pools: [{ name, blocks, miners: [[name, blocks]] }], blockCount, hashrates: [[t, h]], difficulty: [[t, d]], hash, diff }
   var mining = null; // { live, at, pools: [{ name, blocks, miners: [[name, blocks]] }], blockCount, hashrates: [[t, h]], difficulty: [[t, d]], hash, diff }
   var SI = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
@@ -4069,13 +4049,12 @@ window.__coins = COIN_LOGOS;
         : `Waiting for the difficulty of ${network().chain} from ${site ?? network().source}. Pick another proof-of-work network above, or try again in a moment.`;
       $('calc-source').textContent = m && m.live
         ? `Difficulty live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-        : m ? `Difficulty from a snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining (${site} is not reachable from this page)` : '';
+        : m ? `Difficulty from a snapshot of ${site}/mining (${site} is not reachable from this page)` : '';
     }
     $('pcalc-link').hidden = !(DATUM_TIDES_POOLS[netId] || P2POOLS[netId]);
     { const so = ['sha256', 'blake2b', 'dogecoin'].includes(netId) && !!m; $('solo-wrap').hidden = !so; $('solo-head').hidden = !so; sec.classList.toggle('has-solo', so); sec.classList.toggle('swap', netId === 'monero'); if (so) renderSolo(); }   // miners without a pool, next to the pools' hashrate
     if (!m) return;
     sec.setAttribute('aria-label', `Mining on ${network().chain}`);
-    { const g = netId === 'sha256', more = $('ms-more-hr'); more.style.display = g ? 'none' : ''; if (!g) { more.href = MINING_MORE[netId] ?? `https://${site}/graphs/mining/hashrate-difficulty`; more.target = '_blank'; more.textContent = 'View more »'; } }   // Bitcoin has no link here; the other chains open their own mining page
     setUnits('calc-unit'); setUnits('pcalc-unit');
     // the two charts follow the period chosen above; the calculators and pool pages keep working from the base data
     const rv = rangeView(netId, range, m), info = RANGE_INFO[range];
@@ -4100,7 +4079,7 @@ window.__coins = COIN_LOGOS;
     $('ms-hash-sub').textContent = poolHashSub(ph, info, range, netId);
     $('ms-source').textContent = m.live
       ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
-      : `Snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
+      : `Snapshot of ${site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
     if (!sec.hidden && netId !== 'sha256') drawPie(rp);
     { // the fleet flies only on what your own node reported
       const own = m.live && (m.node || netId === 'dogecoin' || netId === 'monero');
