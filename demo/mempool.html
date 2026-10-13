@@ -2876,8 +2876,9 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       <div class="below"><span class="datum-badge plain">Dynamic Block Size</span></div></a>` : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
       <div class="below"><span class="datum-badge plain">Coinbase &amp; Merkle Root</span></div></div>` : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
       <div class="below"><span class="datum-badge plain">Create new block</span></div></div>`}
-      <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
-      <div class="below"><span class="datum-badge plain">Block assembly</span></div></div>
+      ${chain().xmr ? `<a class="block-wrap" href="${XMR_EXPLORERS[0]}/block-assembly" target="_blank" rel="noopener" title="Open the projected block of the block being mined: header, miner transaction and transactions" style="color:inherit;text-decoration:none;cursor:pointer"><div class="above"></div>${assemblyCube(b)}
+      <div class="below"><span class="datum-badge plain">Block assembly</span></div></a>` : `<div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
+      <div class="below"><span class="datum-badge plain">Block assembly</span></div></div>`}
       <div class="block-wrap mining"><div class="above">Hashing now on ${fmt((chain().blocks[0]?.height ?? chain().tipHeight) + 1)}</div>${candidateCube(b)}
       <div class="below"><span class="datum-badge plain">Candidate block</span><span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span></div></div>`;
     pinProjected();

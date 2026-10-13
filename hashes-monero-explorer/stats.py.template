@@ -317,6 +317,13 @@ input[type=range]:hover::-webkit-slider-thumb,input[type=range]:active::-webkit-
 .ticks{display:flex;justify-content:space-between;color:var(--muted);font-size:11.5px;margin-top:2px}
 .presets{display:flex;flex-wrap:wrap;gap:8px;margin-top:14px}.presets button{background:#0b0d17;color:var(--text);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font:500 12.5px system-ui;cursor:pointer}.presets button:hover{border-color:var(--gold);color:var(--gold)}.presets button#poolbtn{border-color:var(--link);color:var(--link)}
 .formula{margin:14px 0 0;color:var(--muted);font-size:13px}.formula span{color:var(--text);font-weight:600;font-family:ui-monospace,Menlo,monospace}
+.bytebar{display:flex;height:22px;border-radius:7px;overflow:hidden;gap:2px;background:#0b0d17;border:1px solid var(--line);padding:3px}.bytebar i{display:block;border-radius:3px;min-width:3px}
+.tbl{overflow-x:auto}td.sw{width:14px;padding-right:0}td.sw i{display:block;width:10px;height:10px;border-radius:3px}.rank td.why{white-space:normal;color:var(--muted);font-size:13px;min-width:220px}.rank td.wrap{max-width:360px}
+.hexblob{margin:12px 0 0;padding:12px;background:#0b0d17;border:1px solid var(--line);border-radius:10px;word-break:break-all;line-height:1.7;letter-spacing:.02em}
+.kv{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}.kv>div{background:#0b0d17;border:1px solid var(--line);border-radius:10px;padding:10px 14px}.kv small{display:block;color:var(--muted);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase}.kv b{display:block;font:700 20px/1.3 system-ui}.kv em{display:block;font-style:normal;color:var(--muted);font-size:12px}.kv .sum{border-color:rgba(242,104,34,.55)}.kv .sum b{color:var(--gold)}
+.rank tr.miner td{background:rgba(242,104,34,.06)}
+.tag{display:inline-block;padding:1px 9px;border-radius:999px;background:#2a2230;border:1px solid rgba(242,104,34,.55);color:var(--gold);font-size:12px}.tag.in{background:#10262b;border-color:rgba(27,216,244,.5);color:var(--link)}
+@media(max-width:700px){.fld tr:first-child{display:none}.fld,.fld tbody{display:block}.fld tr{display:grid;grid-template-columns:14px 1fr auto;gap:2px 10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}.fld td{display:block;padding:0;border:0;white-space:normal}.fld td.r{text-align:right;color:var(--muted);font-size:12.5px}.fld td.r:nth-of-type(3){display:none}.fld td.r:nth-of-type(4)::before{content:'byte ' attr(data-b) ' · ';}.fld td.mono,.fld td.why{grid-column:2/4;max-width:none;min-width:0}.fld td.why{font-size:12.5px}}
 details{margin-top:14px}summary{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text);font-size:13.5px;font-weight:600;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#0b0d17;list-style:none}summary::-webkit-details-marker{display:none}summary::before{content:'▸';color:var(--link);transition:transform .15s}details[open] summary::before{transform:rotate(90deg)}summary:hover{border-color:var(--link)}details[open] summary{margin-bottom:10px}
 """
 
@@ -614,6 +621,81 @@ def blocksize_page():
     return page("Dynamic block size", body)
 
 
+def assembly_parts():
+    """the projected block as your node sees it, as the pieces of the Block assembly page that change"""
+    d = block_template()
+    kb = lambda v: "{:,.0f} kB".format(v / 1000.0)
+    blob = bytes.fromhex(d["blob"])
+    n_ver, n_ts, n_cnt = len(varint(d["majorVersion"])) + len(varint(d["minorVersion"])), len(varint(d["timestamp"])), len(varint(d["nTx"]))
+    fields = [("Major version", len(varint(d["majorVersion"])), str(d["majorVersion"]), "the consensus rules this block follows", "#4a78c9"),
+              ("Minor version", len(varint(d["minorVersion"])), str(d["minorVersion"]), "a vote for the next network upgrade", "#4a78c9"),
+              ("Timestamp", n_ts, time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime(d["timestamp"])) + " UTC", "when the block is made (unix time {:,}); the miner updates it as it works".format(d["timestamp"]), "#2fb585"),
+              ("Previous block", 32, d["prevId"], "the hash of block {:,}: this is what chains the blocks together".format(d["height"] - 1), "#7a6cd6"),
+              ("Nonce", 4, "00000000", "the number the miner changes on every try, until the hash is low enough", "#e8ebf5"),
+              ("Merkle root", 32, d["merkleroot"], "one hash that stands for the miner transaction and all {:,} other transactions".format(d["nTx"] - 1), "#1bd8f4"),
+              ("Transaction count", n_cnt, str(d["nTx"]), "the miner transaction plus the transactions of the pool", "#9ad9e8")]
+    off, rows, bar, hexs = 0, "", "", ""
+    for name, size, val, why, col in fields:
+        chunk = blob[off:off + size].hex()
+        span = str(off) if size == 1 else "{}–{}".format(off, off + size - 1)
+        rows += ("<tr><td class=sw><i style='background:" + col + "'></i></td><td><b>" + name + "</b></td><td class=r>" + span + "</td><td class=r data-b='" + span + "'>" + str(size) + " B</td>"
+                 "<td class='mono wrap'>" + esc(val) + "</td><td class=why>" + esc(why) + "</td></tr>")
+        bar += "<i style='flex:" + str(size) + ";background:" + col + "' title='" + name + " · " + str(size) + " bytes'></i>"
+        hexs += "<span style='color:" + col + "' title='" + name + "'>" + chunk + "</span>"
+        off += size
+    total = len(blob)
+    header = ("<div class=bytebar>" + bar + "</div><p class=muted style='margin:6px 0 14px'>" + str(total) + " bytes, drawn to scale. This is what every miner on the network hashes, over and over.</p>"
+              "<div class=tbl><table class='rank fld'><tr><th></th><th>Field</th><th class=r>Byte</th><th class=r>Size</th><th>Value</th><th>What it is</th></tr>" + rows + "</table></div>"
+              "<details><summary>Show the " + str(total) + " bytes as hex</summary><p class='mono hexblob'>" + hexs + "</p></details>")
+    base = TAIL_REWARD
+    pen = penalty(d["weight"], d["median"]) * base
+    total_reward = base - pen + d["fees"]
+    reward = ("<div class=kv><div><small>Base reward</small><b>" + xmr(base) + " XMR</b><em>the tail emission every block pays</em></div>"
+              "<div><small>Fees</small><b>" + xmr(d["fees"]) + " XMR</b><em>from the " + "{:,}".format(d["nTx"] - 1) + " transactions below</em></div>"
+              "<div><small>Size penalty</small><b>" + (xmr(pen) + " XMR" if pen else "none") + "</b><em>" + ("block is over the median" if pen else "block stays under the median") + " · <a href='/block-size'>how it works</a></em></div>"
+              "<div class=sum><small>Miner receives</small><b>" + xmr(total_reward) + " XMR</b><em>locked for 60 blocks (until height " + "{:,}".format(d["height"] + 60) + ")</em></div></div>"
+              "<p class=muted style='margin:12px 0 0'>The miner transaction pays whoever finds the block, to a one-time address only that miner knows. Until a miner builds it there is no real hash, so this preview uses a stand-in " + "<span class=mono>" + esc(d["minerTx"][:8]) + "…" + esc(d["minerTx"][-6:]) + "</span> for it.</p>")
+    txrows = "<tr class=miner><td class=n>0</td><td><span class=tag>miner tx</span> <span class='mono muted'>stand-in</span></td><td class=r>–</td><td class=r>" + xmr(base) + " (reward)</td></tr>"
+    for i, (tid, w, fee) in enumerate(d["txs"][:200]):
+        txrows += "<tr><td class=n>" + str(i + 1) + "</td><td><a class=mono href='/tx/" + esc(tid) + "'>" + esc(tid[:10]) + "…" + esc(tid[-6:]) + "</a></td><td class=r>" + "{:,}".format(w) + "</td><td class=r>" + xmr(fee) + "</td></tr>"
+    hd = "<tr><th>#</th><th>Transaction</th><th class=r>Bytes</th><th class=r>Fee (XMR)</th></tr>"
+    if d["txs"]:
+        first = "".join(txrows.split("</tr>")[:9]) + "</tr>" if len(d["txs"]) > 8 else txrows
+        txs = ("<table class=rank>" + hd + first + "</table>" + ("<details><summary>Show all " + "{:,}".format(len(d["txs"]) + 1) + " leaves of the tree</summary><table class=rank>" + hd + txrows + "</table></details>" if len(d["txs"]) > 8 else ""))
+    else:
+        txs = "<p class=muted style='margin:0'>No transactions are waiting right now: the projected block holds only the miner transaction.</p>"
+    leaves = d["nTx"]
+    levels = max(1, (leaves - 1).bit_length())
+    pct = min(100, d["weight"] / d["median"] * 100)
+    chips = ("<span class=chip>Block being mined <b>" + "{:,}".format(d["height"]) + "</b></span><span class=chip>not mined yet</span>")
+    tiles = [("Transactions", "{:,}".format(leaves), "1 miner tx + {:,} from the pool".format(leaves - 1)), ("Block weight", kb(d["weight"]), "{:.0f}% of the {} median".format(pct, kb(d["median"]))),
+             ("Fees", xmr(d["fees"]) + " XMR", "paid to the miner on top of " + xmr(base)), ("Header", str(total) + " bytes", "what miners hash")]
+    tl = "".join("<div class=tile><small>" + k + "</small><b style='font-size:20px'>" + v + "</b><em>" + sub + "</em></div>" for k, v, sub in tiles)
+    tree = ("<p class=muted style='margin:0 0 10px'>The merkle root is Monero's tree hash: the " + "{:,}".format(leaves) + " transaction hashes, the miner transaction first, are hashed in pairs, " + str(levels) + " time" + ("s" if levels != 1 else "") + " over, until one hash is left. Change one transaction and the root, and so the block hash, changes.</p>")
+    return {"chips": chips, "tiles": tl, "header": header, "reward": reward, "tree": tree, "txs": txs, "height": d["height"], "root": d["merkleroot"]}
+
+
+def assembly_page():
+    d = assembly_parts()
+    head = "<div class=bhero><h1>Block assembly</h1><span id=chips style='display:contents'>" + d["chips"] + "<span class=chip id=upd><i class=dot></i> live</span></span></div>"
+    what = ("<section class=card><h2>What is this?</h2><p class=lead>This is the block your node would build right now, before any miner has found it. A Monero block is a small <b>header</b> that miners hash, a <b>miner transaction</b> that pays the reward, and the <b>transactions</b> of the pool that pay the best fee per byte.</p>"
+            "<div class=steps><div class=step><span class=n>1</span><b>Pick</b> the best-paying transactions that fit the block (<a href='/fee-ranking'>ranking</a>)</div>"
+            "<div class=step><span class=n>2</span><b>Fold</b> their hashes into one merkle root</div><div class=step><span class=n>3</span><b>Write</b> the header around it: miners then hash it with new nonces</div></div></section>")
+    body = (head + "<div class=tiles id=tiles>" + d["tiles"] + "</div>"
+            "<section class='card main'><h2>The block header</h2><div id=header>" + d["header"] + "</div></section>"
+            "<section class=card><h2>The miner transaction</h2><div id=reward>" + d["reward"] + "</div></section>"
+            "<section class=card><h2>The transactions and the merkle root</h2><div id=tree>" + d["tree"] + "</div><div id=txs>" + d["txs"] + "</div></section>" + what
+            + "<script>" + AS_JS + "</script>")
+    return page("Block assembly", body)
+
+
+AS_JS = r"""(function(){var busy=false;function put(id,h){var e=document.getElementById(id);if(e&&e.innerHTML!==h){var o=e.querySelector('details');var op=o&&o.open;e.innerHTML=h;if(op){var n=e.querySelector('details');if(n)n.open=true}}}
+function tick(){if(busy||document.hidden)return;busy=true;fetch('/block-assembly.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
+put('chips',d.chips+'<span class=chip id=upd></span>');put('tiles',d.tiles);put('header',d.header);put('reward',d.reward);put('tree',d.tree);put('txs',d.txs);
+document.getElementById('upd').innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=document.getElementById('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
+setInterval(tick,5000);document.addEventListener('visibilitychange',tick)})();"""
+
+
 RANK_JS = r"""(function(){
 var D=__DATA__,q=document.getElementById('q'),hit=document.getElementById('hit'),upd=document.getElementById('upd'),busy=false;
 function nx(v){return Number(v).toLocaleString(undefined,{maximumFractionDigits:1})}
@@ -713,6 +795,15 @@ def tree_hash(hashes):
 _template = {"at": 0, "data": None}
 
 
+def varint(n):
+    out = bytearray()
+    while n >= 0x80:
+        out.append((n & 0x7F) | 0x80)
+        n >>= 7
+    out.append(n)
+    return bytes(out)
+
+
 def block_template():
     """what your node would put in the next block: the header fields and the tree hash of the miner transaction and the best-paying pool transactions.
     The miner transaction pays whoever finds the block, which only the miner knows: a stand-in transaction hash takes its place, as the Block assembly shows it."""
@@ -721,14 +812,26 @@ def block_template():
     info = rpc("get_info")
     hdr = rpc("get_last_block_header")["block_header"]
     pool = NODE_RPC.post("/get_transaction_pool", b"{}", 20).get("transactions") or []
-    best = sorted((t for t in pool if not t.get("double_spend_seen") and not t.get("do_not_relay")), key=lambda t: t["fee"] / max(1, t["weight"]), reverse=True)
-    ids = [t["id_hash"] for t in best[:60]]
+    best = sorted((t for t in pool if not t.get("double_spend_seen") and not t.get("do_not_relay")), key=lambda t: t["fee"] / max(1, int(t.get("weight") or t.get("blob_size") or 1)), reverse=True)
+    median = max(300000, int(info.get("block_weight_median") or info.get("block_size_median") or 0))
+    chosen, used = [], 0
+    for t in best:                                  # best rate first, until the block is as big as the effective median
+        w = max(1, int(t.get("weight") or t.get("blob_size") or 1))
+        if used + w > median or len(chosen) >= 500:
+            break
+        used += w
+        chosen.append((t["id_hash"], w, int(t["fee"])))
+    ids = [c[0] for c in chosen]
     height = int(info["height"])
     coinbase = keccak256(("miner_tx|%d|hashes.space" % height).encode())
     root = tree_hash([coinbase] + [bytes.fromhex(i) for i in ids])
-    data = {"height": height, "majorVersion": int(hdr["major_version"]), "minorVersion": int(hdr["minor_version"]), "timestamp": int(time.time()),
-            "prevId": info["top_block_hash"], "nonce": None, "merkleroot": root.hex(), "nTx": len(ids) + 1, "txids": ids[:3],
-            "reward": int(hdr.get("reward") or 0), "difficulty": int(info.get("difficulty") or 0)}
+    now = int(time.time())
+    major, minor, prev = int(hdr["major_version"]), int(hdr["minor_version"]), info["top_block_hash"]
+    blob = varint(major) + varint(minor) + varint(now) + bytes.fromhex(prev) + b"\x00\x00\x00\x00" + root + varint(len(ids) + 1)
+    data = {"height": height, "majorVersion": major, "minorVersion": minor, "timestamp": now,
+            "prevId": prev, "nonce": None, "merkleroot": root.hex(), "nTx": len(ids) + 1, "txids": ids[:3],
+            "reward": int(hdr.get("reward") or 0), "difficulty": int(info.get("difficulty") or 0),
+            "minerTx": coinbase.hex(), "txs": chosen, "weight": used, "median": median, "blob": blob.hex(), "fees": sum(c[2] for c in chosen)}
     _template["data"], _template["at"] = data, time.time()
     return data
 
@@ -796,6 +899,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.send_json(200, block_template(), 8)
             except Exception as exc:
                 return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+        if path == "/block-assembly.json" and self.command in ("GET", "HEAD") and NODE:
+            try:
+                return self.send_json(200, assembly_parts(), 0)
+            except Exception as exc:
+                return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+        if path == "/block-assembly" and self.command == "GET" and NODE:
+            try:
+                body = assembly_page().encode()
+            except Exception as exc:
+                log("block assembly:", exc)
+                return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            return self.wfile.write(body)
         if path == "/block-size.json" and self.command in ("GET", "HEAD") and NODE:
             try:
                 return self.send_json(200, blocksize_parts(), 0)
