@@ -877,7 +877,7 @@
   <div id="miner-slot"></div>
 
   <div class="demo-row">
-    <p class="legend"><b>How to read it.</b> The page connects to one miner at a time, picked on Find ASIC. Every share it sends to your node flies from its fan into the block being mined as a string of 0s and 1s, leading zeros first. Switch the PoW network above: a miner only hashes usefully on a network of its own hash function. This demo runs on simulated miners; the full app reads real miners of any proof-of-work hash function, and blocks from mempool.space, litecoinspace.org or your own node.</p>
+    <p class="legend"><b>How to read it.</b> The page connects to one miner at a time, picked on Find ASIC. Every share it sends to your node flies from its fan into the block being mined as a string of 0s and 1s, leading zeros first. Switch the PoW network above: a miner only hashes usefully on a network of its own hash function. This demo runs on simulated miners; the full app reads real miners of any proof-of-work hash function, and blocks from litecoinspace.org or your own node.</p>
   </div>
 </main>
 </div>
@@ -1135,7 +1135,7 @@ function formatBtc(sats) {
     return `${(sats / 1e8).toFixed(3)} BTC`;
 }
 /**
- * mempool.space colour scheme.
+ * mempool colour scheme.
  * Projected blocks: fee colour of the median fee (green → orange → magenta),
  * empty part #554b45. Mined blocks: purple → blue, empty part #2d3348.
  */
@@ -1151,7 +1151,7 @@ const FEE_COLORS = [
     'bd5c28', 'bc552d', 'bc4f30', 'bc4a34', 'bb4339', 'bb3d3c', 'bb373f', 'ba3243', 'b92b48', 'b9254b',
     'b8214d', 'b71d4f', 'b61951', 'b41453', 'b30e55', 'b10857', 'b00259', 'ae005b',
 ];
-/** sat/vB → mempool.space fee colour */
+/** sat/vB → mempool fee colour */
 function feeColor(rate) {
     let i = FEE_LEVELS.findIndex((level) => rate < level);
     i = i === -1 ? FEE_COLORS.length - 1 : Math.max(0, i - 1);
@@ -2021,8 +2021,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   //   <- {blocks:[…]}, {block:{…}}, {"mempool-blocks":[…]}
   // Works when this file is opened in a normal browser tab; inside a sandboxed
   // preview the connection is blocked and the chain stays simulated.
-  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and nothing else (no mempool.space);
-  // Bitcoin BLAKE2b: the Bitcoin BLAKE2b Explorer app on your Bitcoin Knots node (btcb2.hashes.space), and nothing else (no mempool.guide)
+  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and nothing else (nothing else);
+  // Bitcoin BLAKE2b: the Bitcoin BLAKE2b Explorer app on your Bitcoin Knots node (btcb2.hashes.space), and nothing else
   const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: 'wss://btc.hashes.space/api/v1/ws', scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: ['wss://btcb2.hashes.space/api/v1/ws'] };
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
   const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://btc.hashes.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://btcb2.hashes.space/block/', monero: 'https://xmr.hashes.space/block/' };

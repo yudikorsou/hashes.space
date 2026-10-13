@@ -15,8 +15,8 @@ interface OwnForm {
 
 /**
  * The PoW network: which proof-of-work blockchain the page shows.
- *   the networks in the backend's networks.json (e.g. SHA-256 → Bitcoin from mempool.space,
- *   Scrypt → Litecoin from litecoinspace.org, BLAKE2b → Bitcoin BLAKE2b from mempool.guide)
+ *   the networks in the backend's networks.json (e.g. Scrypt → Litecoin from litecoinspace.org,
+ *   BLAKE2b → Bitcoin BLAKE2b from btcb2.hashes.space)
  *   Your node → the account's own node and/or Electrum server, for any hash function
  */
 @Component({

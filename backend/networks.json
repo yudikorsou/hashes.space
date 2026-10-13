@@ -6,9 +6,9 @@
     "chain": "Bitcoin BLAKE2b",
     "ticker": "BTCB2",
     "source": "mempool",
-    "wsUrl": "wss://mempool.guide/api/v1/ws",
-    "sourceLabel": "mempool.guide",
-    "explorer": "https://mempool.guide/block/",
+    "wsUrl": "wss://btcb2.hashes.space/api/v1/ws",
+    "sourceLabel": "btcb2.hashes.space",
+    "explorer": "https://btcb2.hashes.space/block/",
     "datumPools": [
       "CONVOY"
     ],

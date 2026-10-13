@@ -1,7 +1,7 @@
 {
   "name": "asic-fleet-backend",
   "version": "1.0.0",
-  "description": "Multi-tenant ASIC fleet dashboard backend: chain data relay (mempool.space / Bitcoin Core / Knots) + miner telemetry over WebSocket",
+  "description": "Multi-tenant ASIC fleet dashboard backend: chain data relay (mempool-style explorers / Bitcoin Core / Knots) + miner telemetry over WebSocket",
   "main": "dist/index.js",
   "license": "AGPL-3.0-only",
   "scripts": {

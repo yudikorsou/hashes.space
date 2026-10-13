@@ -6,10 +6,10 @@ CHAIN=blake2b (the Bitcoin Knots app on the BLAKE2b chain, "Bitcoin BLAKE2b Expl
 Reads everything from the node's RPC, pruned or not, and serves:
 
   /                      the node's state, the latest blocks and the mempool
-  /block/<hash|height>   a block with its transactions (a block the pruned node no longer keeps links to mempool.space)
+  /block/<hash|height>   a block with its transactions (a block the pruned node no longer keeps is not listed)
   /tx/<txid>             a transaction (mempool, a block you came from, or any tx with -txindex)
   /search?q=             height, block hash or txid
-  /api/v1/blocks         the last blocks, in mempool.space's format, with the fees and the pool worked out from your node
+  /api/v1/blocks         the last blocks, in mempool's format, with the fees and the pool worked out from your node
   /api/v1/fees/mempool-blocks   the blocks your mempool would build, best fee rate first
   /api/blocks/tip/height
   /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from the block headers (24h, 14d, 1m, 6m, 1y)
@@ -27,11 +27,10 @@ Reads everything from the node's RPC, pruned or not, and serves:
   /api/v1/tx/<txid>/projection        where a mempool transaction lands (block, ETA), its CPFP package and whether it can be replaced
   /api/v1/address/<address>           balance and unspent outputs of one address (scantxoutset: slow, runs in the background, cached)
   /api/v1/block-template              the header of the block being mined now (getblocktemplate): previous block, merkle root of the template, bits, time; the nonce stays null
-  /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
+  /api/v1/ws             mempool's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
   /api/v1/status         what the explorer sees of the node (for when something does not show up)
 
-Fees are in sat/vB. The explorer refuses to serve (the page then uses mempool.space, or mempool.guide for the BLAKE2b
-chain) while the node is still syncing, because a node that is behind would show old blocks as live.
+Fees are in sat/vB. The explorer refuses to serve (the page then shows simulated blocks) while the node is still syncing, because a node that is behind would show old blocks as live.
 """
 
 import base64
@@ -60,9 +59,9 @@ CHAIN = os.environ.get("CHAIN", "sha256")
 if CHAIN not in ("sha256", "blake2b"):
     raise SystemExit("CHAIN must be sha256 or blake2b")
 # what differs between the two chains: the names, the ticker, the accent colour and where a block is opened when this node has pruned it
-CFG = {"sha256": {"name": "Bitcoin", "coin": "BTC", "accent": "#f7931a", "other": "mempool.space"},
-       "blake2b": {"name": "Bitcoin BLAKE2b", "coin": "BTCB2", "accent": "#e2b33c", "other": "mempool.guide"}}[CHAIN]
-NAME, COIN, OTHER = CFG["name"], CFG["coin"], CFG["other"]
+CFG = {"sha256": {"name": "Bitcoin", "coin": "BTC", "accent": "#f7931a"},
+       "blake2b": {"name": "Bitcoin BLAKE2b", "coin": "BTCB2", "accent": "#e2b33c"}}[CHAIN]
+NAME, COIN = CFG["name"], CFG["coin"]
 
 
 def log(msg):
@@ -86,7 +85,7 @@ FALLBACK_POOLS = [
     ("OCEAN", ["OCEAN\\.XYZ"]), ("Braiins Pool", ["/slush/", "Braiins"]), ("NiceHash", ["NiceHash"]), ("BTC.com", ["BTC\\.COM"]),
     ("Binance Pool", ["binance"]), ("CONVOY", ["convoy"]), ("BTCB2", ["btcb2"]), ("B2Pool", ["b2pool"]),
 ]
-# The pools of the BLAKE2b chain, named the way mempool.guide names them, by the text each puts in its coinbase (read from the
+# The pools of the BLAKE2b chain, named the way the BLAKE2b chain's pools name themselves, by the text each puts in its coinbase (read from the
 # chain's last 600 blocks). The first tag that matches wins, so a pool's own name comes before the generic "DATUM Gateway" tag:
 # the blocks of a pool whose miners use a DATUM Gateway read "<pool> DATUM User". The SHA-256 pool list is not used for this chain.
 B2_POOLS = [("AlphaPool", ["alphapool"]), ("Lazarus", ["lazarus"]), ("B2Pool", ["b2pool"]), ("CONVOY", ["convoy"]),
@@ -143,7 +142,7 @@ def bits_work(bits_hex):
 
 
 def percentiles(rates):
-    """[lowest, 10%, 25%, median, 75%, 90%, highest] of a list of fee rates, as mempool.space's feeRange."""
+    """[lowest, 10%, 25%, median, 75%, 90%, highest] of a list of fee rates, as mempool's feeRange."""
     if not rates:
         return [0, 0, 0, 0, 0, 0, 0]
     r = sorted(rates)
@@ -267,7 +266,7 @@ class ChainStats:
             tb, wb, work, diff = self.header(b)
             if tb > ta and wb > wa:
                 hs.append((tb, (wb - wa) / (tb - ta)))
-            d = work if self.name == "blake2b" else diff   # BLAKE2b: the hashes a block takes, as mempool.guide shows it
+            d = work if self.name == "blake2b" else diff   # BLAKE2b: the hashes a block takes
             if d != last:
                 ds.append((tb, d))
                 last = d
@@ -317,7 +316,7 @@ class ChainStats:
             self.miner_of.pop(h, None)
 
     # ---- the live block stream: the newest blocks and the blocks the mempool would build, straight from the node ----
-    # The same shape as mempool.space's websocket ("blocks" and "mempool-blocks"), so the page reads either one.
+    # The same shape as mempool's websocket ("blocks" and "mempool-blocks"), so the page reads either one.
     def block_view(self, hash_):
         """One block as the page shows it: size, fees (from the node's own undo data) and the pool that mined it."""
         hit = self.live_blocks.get(hash_)
@@ -443,7 +442,7 @@ class ChainStats:
             return [self.history[h] for h in sorted(self.history)]
 
     def pool_blocks(self, slug, limit=40):
-        """The latest blocks of one pool, in mempool.space's format (id, height, timestamp, tx_count, size)."""
+        """The latest blocks of one pool, in mempool's format (id, height, timestamp, tx_count, size)."""
         with self.lock:
             heights = sorted((h for h, p in self.pool_of.items() if re.sub(r"[^a-z0-9]+", "-", p.lower()).strip("-") == slug), reverse=True)[:limit]
         out = []
@@ -678,7 +677,7 @@ def block_template():
 
 
 def difficulty_adjustment():
-    """Where the chain is in its difficulty period (2016 blocks), as mempool.space's /api/v1/difficulty-adjustment."""
+    """Where the chain is in its difficulty period (2016 blocks), as mempool's /api/v1/difficulty-adjustment."""
     tip = int(NODE.call("getblockcount"))
     start = tip - tip % EPOCH
     t_tip, t_start = STATS.header(tip)[0], STATS.header(max(1, start))[0]
@@ -888,7 +887,7 @@ def stats_worker():
         time.sleep(600)
 
 
-# ---------- WebSocket (mempool.space protocol) ----------
+# ---------- WebSocket (mempool protocol) ----------
 
 _clients = set()
 _clients_lock = threading.Lock()
@@ -1121,7 +1120,7 @@ def home():
             info = NODE.call("getblockchaininfo")
         except Exception as exc:  # noqa: BLE001
             err = err or str(exc)
-    state = ("<div class='card err'>The explorer is not serving the page's live stream yet: " + html.escape(err) + ". The Find Mempool page uses " + OTHER + " until this clears.</div>"
+    state = ("<div class='card err'>The explorer is not serving the page's live stream yet: " + html.escape(err) + ". The Find Mempool page shows simulated blocks until this clears.</div>"
              if err else "<div class='card ok'>Live: the Find Mempool page reads its " + NAME + " blocks from this node.</div>")
     rows = "".join(
         "<tr><td><a href='/block/" + b["id"] + "'>" + "{:,}".format(b["height"]) + "</a></td><td class=muted>" + ago(b["timestamp"]) + "</td><td>"

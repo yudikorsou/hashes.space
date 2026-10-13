@@ -7,7 +7,7 @@ transactions and the mempool. Serves:
   /block/<hash|height>   a block with its transactions
   /tx/<txid>             a transaction (mempool, a block from this explorer, or any tx with -txindex)
   /search?q=             height, block hash or txid
-  /api/v1/blocks         the last blocks, in mempool.space's format (for hashes.space)
+  /api/v1/blocks         the last blocks, in mempool's format (for hashes.space)
   /api/v1/fees/mempool-blocks   the mempool cut into blocks of 1 MB, best fee first
   /api/blocks/tip/height
   /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from your node (period: 24h, 14d, 1m, 6m, 1y)
@@ -15,7 +15,7 @@ transactions and the mempool. Serves:
   /api/v1/mining/pool-hashrate/<period>  the hashrate of the mining pools together: the network's hashrate times the share of blocks that pools mined
   /api/v1/mining/solo/<period>      the hashrate of the miners that use no pool: blocks whose coinbase names no known pool, times the network's hashrate (an upper bound)
   (1y and 1w are what older versions of the page ask for, and are still answered)
-  /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
+  /api/v1/ws             mempool's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
 
 Fees are in koinu per byte (1 DOGE = 100,000,000 koinu).
 """
@@ -278,14 +278,14 @@ def mempool_blocks():
 
 
 def mempool_json(b):
-    """a block in mempool.space's /api/v1/blocks format"""
+    """a block in mempool's /api/v1/blocks format"""
     r = round(b["avgFee"], 2)
     return {"id": b["hash"], "height": b["height"], "timestamp": b["time"], "tx_count": b["nTx"], "size": b["size"], "weight": b["size"] * 4,
             "previousblockhash": b["prev"], "extras": {"medianFee": r, "feeRange": [r, r], "totalFees": b["fees"], "reward": b["fees"] + SUBSIDY,
                                                       "pool": {"name": b["pool"]}, "coinbaseRaw": b["coinbaseHex"]}}
 
 
-# ---------- mining statistics from your own node (mempool.space's /api/v1/mining format) ----------
+# ---------- mining statistics from your own node (mempool's /api/v1/mining format) ----------
 
 DAY, WEEK, YEAR_DAYS = 1440, 10080, 365  # Dogecoin: a block a minute
 _pool_by_height = {}
@@ -472,7 +472,7 @@ def mining_stats():
         time.sleep(600)
 
 
-# ---------- WebSocket (mempool.space protocol) ----------
+# ---------- WebSocket (mempool protocol) ----------
 
 _clients = set()
 _clients_lock = threading.Lock()

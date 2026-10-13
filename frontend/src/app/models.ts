@@ -2,7 +2,7 @@ import type { MinerAction, MinerSettings, PoolStrategy, SettingsGroupId } from '
 export type { MinerAction, MinerSettings, PoolStrategy, SettingsGroupId } from './lib/settings-schema';
 
 // Mirror of backend/src/types.ts – keep the two in sync (or move to a shared package).
-// Shared, normalised data model. Every chain source (mempool.guide,
+// Shared, normalised data model. Every chain source (a mempool-style explorer,
 // Bitcoin Core, Bitcoin Knots, simulator) is mapped onto these shapes so the
 // frontend never needs to know where the data came from.
 
@@ -19,7 +19,7 @@ export interface NetworkInfo {
   label: string; // "SHA-256"
   chain: string; // "Bitcoin"
   ticker: string; // "BTC"
-  source: string; // "mempool.guide", "Your node (Bitcoin Knots)"
+  source: string; // "btcb2.hashes.space", "Your node (Bitcoin Knots)"
   /** block page link prefix, if the stream has a public explorer */
   explorerBlockUrl?: string;
   /** coin logo shown in the PoW picker, e.g. coins/bitcoin.png */
@@ -68,7 +68,7 @@ export interface ProjectedBlock {
 }
 
 export interface ChainState {
-  source: string; // human readable, e.g. "mempool.guide" or "Bitcoin Knots @ 10.0.0.5"
+  source: string; // human readable, e.g. "btcb2.hashes.space" or "Bitcoin Knots @ 10.0.0.5"
   network: string;
   tipHeight: number;
   blocks: ChainBlock[]; // newest first

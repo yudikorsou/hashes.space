@@ -4,7 +4,7 @@
 The Onion Monero Blockchain Explorer (xmrblocks) answers every request it knows (its pages and
 its /api/... JSON). This small server stands in front of it on the app's port, hands everything
 on to it unchanged, and adds the two endpoints the hashes.space Find Mempool page reads for its
-"Global hashrate" and "Mining pools" sections, in mempool.space's shape:
+"Global hashrate" and "Mining pools" sections, in mempool's shape:
 
   /api/v1/mining/hashrate/<period>   hashrate and difficulty over the period
   /api/v1/mining/pools/<period>      how the period's blocks were paid out

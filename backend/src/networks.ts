@@ -7,7 +7,7 @@ import path from 'path';
  * hashes.space works with any proof-of-work hash function: SHA-256, Scrypt, BLAKE2b,
  * kHeavyHash, Equihash, RandomX, … Each network says which hash function (algo) it is
  * validated with, which blockchain it is and where its blocks come from:
- *   mempool    a mempool.space-style WebSocket (mempool.space, litecoinspace.org, mempool.guide, your own mempool)
+ *   mempool    a mempool-style WebSocket (litecoinspace.org, the hashes.space explorers, your own mempool)
  *   node       a node's JSON-RPC (Bitcoin Core / Knots style: getblocktemplate, getblock)
  *   xmrchain   a Monero onion-blockchain-explorer API (xmrchain.net or your own), fed by a synced monerod
  *   simulated  made-up blocks, for classrooms without internet or chains without an explorer
@@ -23,13 +23,13 @@ export interface NetworkConfig {
   chain: string;
   ticker: string;
   source: 'mempool' | 'node' | 'xmrchain' | 'simulated';
-  /** mempool: the WebSocket, e.g. wss://mempool.space/api/v1/ws */
+  /** mempool: the WebSocket, e.g. wss://btcb2.hashes.space/api/v1/ws */
   wsUrl?: string;
   /** xmrchain: an onion-monero-blockchain-explorer API, e.g. https://xmr.hashes.space/api (your own) */
   apiUrl?: string;
   /** xmrchain: used only while apiUrl can't be reached, e.g. https://xmrchain.net/api */
   fallbackApiUrl?: string;
-  /** shown as the data source, e.g. "mempool.space" */
+  /** shown as the data source, e.g. "btcb2.hashes.space" */
   sourceLabel?: string;
   /**
    * DATUM Compatible: blocks from these pools get an orange glow and a "DATUM Compatible" notice (pools that
@@ -45,7 +45,7 @@ export interface NetworkConfig {
   feeUnit?: string;
   /** coin logo for the PoW picker: a path under the frontend's public folder (coins/bitcoin.png) or a URL */
   logo?: string;
-  /** block page link prefix, e.g. https://mempool.space/block/ */
+  /** block page link prefix, e.g. https://btcb2.hashes.space/block/ */
   explorer?: string;
   /** node: JSON-RPC address and login (default: the BITCOIN_RPC_* settings) */
   rpcUrl?: string;
@@ -57,7 +57,7 @@ export interface NetworkConfig {
 }
 
 const BUILT_IN: NetworkConfig[] = [
-  { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool', wsUrl: 'wss://mempool.guide/api/v1/ws', sourceLabel: 'mempool.guide', explorer: 'https://mempool.guide/block/', datumPools: ['CONVOY'] },
+  { id: 'blake2b', algo: 'blake2b', label: 'BLAKE2b', chain: 'Bitcoin BLAKE2b', ticker: 'BTCB2', source: 'mempool', wsUrl: 'wss://btcb2.hashes.space/api/v1/ws', sourceLabel: 'btcb2.hashes.space', explorer: 'https://btcb2.hashes.space/block/', datumPools: ['CONVOY'] },
 ];
 
 /** labels for hash functions without a network in networks.json (a miner can still be set to them) */
@@ -118,7 +118,7 @@ function withOwnMoneroExplorer(list: NetworkConfig[]): NetworkConfig[] {
 
 /**
  * DOGECOIN_EXPLORER_URL: the hashes Dogecoin Explorer app on your Umbrel (http://umbrel.local:4082, or where you publish it):
- * Dogecoin blocks and mempool stream from its mempool.space-style WebSocket.
+ * Dogecoin blocks and mempool stream from its mempool-style WebSocket.
  */
 function withOwnDogecoinExplorer(list: NetworkConfig[]): NetworkConfig[] {
   const url = (process.env.DOGECOIN_EXPLORER_URL ?? '').trim().replace(/\/+$/, '');

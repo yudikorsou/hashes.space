@@ -67,7 +67,7 @@ export function formatBtc(sats: number): string {
 }
 
 /**
- * mempool colour scheme (as on mempool.guide).
+ * mempool colour scheme.
  * Projected blocks: fee colour of the median fee (green → orange → magenta),
  * empty part #554b45. Mined blocks: purple → blue, empty part #2d3348.
  */

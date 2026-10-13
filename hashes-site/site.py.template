@@ -2,7 +2,7 @@
 """hashes.space pages, served from your own Umbrel.
 
 Serves the Find Mempool page and the fleet dashboard demo, and computes Monero mining statistics
-straight from the Monero Node app on this Umbrel, in mempool.space's shape, so the page's
+straight from the Monero Node app on this Umbrel, in mempool's shape, so the page's
 "Global hashrate" and "Mining pools" sections work for Monero too:
 
   /api/v1/mining/hashrate/1y   hashrate and difficulty over the past year
@@ -269,7 +269,7 @@ def worker():
         time.sleep(600)
 
 
-# ---------- the statistics, in mempool.space's shape ----------
+# ---------- the statistics, in mempool's shape ----------
 
 def hashrate_1y():
     with _lock:
@@ -305,7 +305,7 @@ def pools_1w():
 # ---------- the two Bitcoin chains, from your own nodes ----------
 # The Find Mempool page shows "Global hashrate" and "Mining pools" for Bitcoin SHA-256 and Bitcoin BLAKE2b. They are
 # worked out here from a node on this Umbrel (hashrate and difficulty from the block headers' chainwork, the pool of
-# every block from the tags and payout addresses in its coinbase), so neither mempool.space nor mempool.guide is
+# every block from the tags and payout addresses in its coinbase), so no outside mining site is
 # needed. A chain without a node, or whose node is not answering, answers 503, and the page then falls back to the
 # stored numbers it ships with. The nodes come from the apps this one is linked to:
 #   Bitcoin SHA-256: the Bitcoin Node app (APP_BITCOIN_*), or SHA256_RPC_HOST / _PORT / _USER / _PASS
@@ -387,7 +387,7 @@ def bits_work(bits_hex):
 
 
 def percentiles(rates):
-    """[lowest, 10%, 25%, median, 75%, 90%, highest] of a list of fee rates, as mempool.space's feeRange."""
+    """[lowest, 10%, 25%, median, 75%, 90%, highest] of a list of fee rates, as mempool's feeRange."""
     if not rates:
         return [0, 0, 0, 0, 0, 0, 0]
     r = sorted(rates)
@@ -462,7 +462,7 @@ class ChainStats:
             tb, wb, work, diff = self.header(b)
             if tb > ta and wb > wa:
                 hs.append((tb, (wb - wa) / (tb - ta)))
-            d = work if self.name == "blake2b" else diff   # BLAKE2b: the hashes a block takes, as mempool.guide shows it
+            d = work if self.name == "blake2b" else diff   # BLAKE2b: the hashes a block takes
             if d != last:
                 ds.append((tb, d))
                 last = d
@@ -511,7 +511,7 @@ class ChainStats:
             del self.pool_of[h]
 
     # ---- the live block stream: the newest blocks and the blocks the mempool would build, straight from the node ----
-    # The same shape as mempool.space's websocket ("blocks" and "mempool-blocks"), so the page reads either one.
+    # The same shape as mempool's websocket ("blocks" and "mempool-blocks"), so the page reads either one.
     def block_view(self, hash_):
         """One block as the page shows it: size, fees (from the node's own undo data) and the pool that mined it."""
         hit = self.live_blocks.get(hash_)
@@ -691,31 +691,6 @@ def start_chains():
         log(name + " node: " + host + ":" + str(port))
 
 
-# ---------- mining statistics of the two Bitcoin chains, passed on (when no node is linked) ----------
-# mempool.guide sends two Access-Control-Allow-Origin headers, which a browser rejects, so the Find Mempool page
-# could not read its BLAKE2b statistics. Asked here instead (same site as the page), they arrive with one header.
-
-PROXY_HOSTS = {"mempool.guide", "mempool.space"}
-_proxied = {}
-
-
-def proxy_mining(host, rest):
-    if host not in PROXY_HOSTS or not rest.startswith("/api/v1/mining/") or ".." in rest:
-        raise ValueError("not a mining statistics address")
-    key = host + rest
-    hit = _proxied.get(key)
-    if hit and time.time() - hit[0] < 300:
-        return hit[1]
-    req = urllib.request.Request("https://" + host + rest, headers={"User-Agent": "hashes.space"})
-    with urllib.request.urlopen(req, timeout=20) as r:
-        body = r.read()
-    json.loads(body)                       # only ever pass on JSON
-    if len(_proxied) > 200:
-        _proxied.clear()
-    _proxied[key] = (time.time(), body)
-    return body
-
-
 # ---------- the web server ----------
 
 class Handler(http.server.SimpleHTTPRequestHandler):
@@ -757,16 +732,6 @@ class Handler(http.server.SimpleHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path.startswith("/api/"):
             try:
-                if path.startswith("/api/v1/mining/proxy/"):
-                    host, _, rest = path[len("/api/v1/mining/proxy/"):].partition("/")
-                    body = proxy_mining(host, "/" + rest)
-                    self.send_response(200)
-                    self.send_header("Content-Type", "application/json")
-                    self.send_header("Cache-Control", "public, max-age=300")
-                    self.send_header("Content-Length", str(len(body)))
-                    self.end_headers()
-                    self.wfile.write(body)
-                    return
                 if path.startswith("/api/v1/mining/node/"):
                     # /api/v1/mining/node/<chain>/api/v1/mining/<hashrate|pools>/<period>
                     chain, _, rest = path[len("/api/v1/mining/node/"):].partition("/")

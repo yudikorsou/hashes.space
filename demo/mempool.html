@@ -1740,7 +1740,7 @@ function formatBtc(sats) {
     return `${(sats / 1e8).toFixed(3)} BTC`;
 }
 /**
- * mempool.space colour scheme.
+ * mempool colour scheme.
  * Projected blocks: fee colour of the median fee (green → orange → magenta),
  * empty part #554b45. Mined blocks: purple → blue, empty part #2d3348.
  */
@@ -1756,7 +1756,7 @@ const FEE_COLORS = [
     'bd5c28', 'bc552d', 'bc4f30', 'bc4a34', 'bb4339', 'bb3d3c', 'bb373f', 'ba3243', 'b92b48', 'b9254b',
     'b8214d', 'b71d4f', 'b61951', 'b41453', 'b30e55', 'b10857', 'b00259', 'ae005b',
 ];
-/** sat/vB → mempool.space fee colour */
+/** sat/vB → mempool fee colour */
 function feeColor(rate) {
     let i = FEE_LEVELS.findIndex((level) => rate < level);
     i = i === -1 ? FEE_COLORS.length - 1 : Math.max(0, i - 1);
@@ -2627,8 +2627,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   //   <- {blocks:[…]}, {block:{…}}, {"mempool-blocks":[…]}
   // Works when this file is opened in a normal browser tab; inside a sandboxed
   // preview the connection is blocked and the chain stays simulated.
-  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and nothing else (no mempool.space);
-  // Bitcoin BLAKE2b: the Bitcoin BLAKE2b Explorer app on your Bitcoin Knots node (btcb2.hashes.space), and nothing else (no mempool.guide)
+  // Bitcoin: the hashes Bitcoin Explorer app on your Umbrel, published at btc.hashes.space, and nothing else (nothing else);
+  // Bitcoin BLAKE2b: the Bitcoin BLAKE2b Explorer app on your Bitcoin Knots node (btcb2.hashes.space), and nothing else
   const LIVE_WS = { dogecoin: 'wss://doge.hashes.space/api/v1/ws', sha256: 'wss://btc.hashes.space/api/v1/ws', scrypt: 'wss://litecoinspace.org/api/v1/ws', blake2b: ['wss://btcb2.hashes.space/api/v1/ws'] };
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
   const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://btc.hashes.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://btcb2.hashes.space/block/', monero: 'https://xmr.hashes.space/block/' };
@@ -3857,7 +3857,7 @@ window.__coins = COIN_LOGOS;
   var MINING_SITES = { sha256: 'btc.hashes.space', blake2b: 'btcb2.hashes.space', dogecoin: 'doge.hashes.space', monero: 'xmr.hashes.space' };
   var MINING_FALLBACK = { monero: 'mempool.hashes.space' };
   // served from hashes.space, the two Bitcoin chains can also be asked through the hashes.space app, which passes the
-  // statistics on with a single CORS header (mempool.guide sends two, so a browser refuses its answer)
+  // statistics on with a single CORS header
   // anywhere else (a preview, a copy of the page on another site) the same app is asked at its public address, so everyone gets the node's numbers
   const NODE_HOST = /(^|\.)hashes\.space$/.test(location.hostname) ? location.host : 'mempool.hashes.space';
   // Served from hashes.space, the two Bitcoin chains are asked first of the hashes.space app itself, which works the global hashrate
@@ -4094,7 +4094,7 @@ window.__coins = COIN_LOGOS;
     renderCalc(); fillPools(); renderPoolCalc();
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
-  // A block needs on average difficulty × 2^32 hashes on Bitcoin; mempool.guide gives the BLAKE2b difficulty in hashes per block.
+  // A block needs on average difficulty × 2^32 hashes on Bitcoin; the BLAKE2b explorer gives the difficulty in hashes per block.
   // hashrate units offered by the calculators: Monero is mined on CPUs, so it gets the small ones
   var CALC_UNITS = { monero: [['1e3', 'kH/s'], ['1e6', 'MH/s'], ['1e9', 'GH/s']] };
   var CALC_UNITS_DEFAULT = [['1e9', 'GH/s'], ['1e12', 'TH/s'], ['1e15', 'PH/s']];
@@ -4314,7 +4314,7 @@ window.__coins = COIN_LOGOS;
       const share = p.blocks / total, a0 = a, a1 = a + share * Math.PI; a = a1;
       const g = svgEl('g', { class: 'slice', tabindex: '0', role: 'img', 'aria-label': `${p.name}: ${hr(p.blocks) ? 'about ' + hr(p.blocks) + ', ' : ''}${(share * 100).toFixed(1)}% of the hashrate, ${p.blocks} blocks` });
       const hue = poolHue(i), top = p.miners.slice(0, 8), rest = p.blocks - top.reduce((s, x) => s + x[1], 0);
-      // a pool's miners as rings, the biggest miner innermost (as on mempool.guide)
+      // a pool's miners as rings, the biggest miner innermost
       const rings = top.length ? [...top, ...(rest > 0 ? [['other miners', rest]] : [])] : [[p.name, p.blocks]];
       let r = R0; const sum = rings.reduce((s, x) => s + x[1], 0);
       rings.forEach(([, n], k) => {

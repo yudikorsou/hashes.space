@@ -251,7 +251,7 @@
   var MINING_SITES = { sha256: 'btc.hashes.space', blake2b: 'btcb2.hashes.space', dogecoin: 'doge.hashes.space', monero: 'xmr.hashes.space' };
   var MINING_FALLBACK = { monero: 'mempool.hashes.space' };
   // served from hashes.space, the two Bitcoin chains can also be asked through the hashes.space app, which passes the
-  // statistics on with a single CORS header (mempool.guide sends two, so a browser refuses its answer)
+  // statistics on with a single CORS header
   // anywhere else (a preview, a copy of the page on another site) the same app is asked at its public address, so everyone gets the node's numbers
   const NODE_HOST = /(^|\.)hashes\.space$/.test(location.hostname) ? location.host : 'mempool.hashes.space';
   // Served from hashes.space, the two Bitcoin chains are asked first of the hashes.space app itself, which works the global hashrate
@@ -488,7 +488,7 @@
     renderCalc(); fillPools(); renderPoolCalc();
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
-  // A block needs on average difficulty × 2^32 hashes on Bitcoin; mempool.guide gives the BLAKE2b difficulty in hashes per block.
+  // A block needs on average difficulty × 2^32 hashes on Bitcoin; the BLAKE2b explorer gives the difficulty in hashes per block.
   // hashrate units offered by the calculators: Monero is mined on CPUs, so it gets the small ones
   var CALC_UNITS = { monero: [['1e3', 'kH/s'], ['1e6', 'MH/s'], ['1e9', 'GH/s']] };
   var CALC_UNITS_DEFAULT = [['1e9', 'GH/s'], ['1e12', 'TH/s'], ['1e15', 'PH/s']];
@@ -708,7 +708,7 @@
       const share = p.blocks / total, a0 = a, a1 = a + share * Math.PI; a = a1;
       const g = svgEl('g', { class: 'slice', tabindex: '0', role: 'img', 'aria-label': `${p.name}: ${hr(p.blocks) ? 'about ' + hr(p.blocks) + ', ' : ''}${(share * 100).toFixed(1)}% of the hashrate, ${p.blocks} blocks` });
       const hue = poolHue(i), top = p.miners.slice(0, 8), rest = p.blocks - top.reduce((s, x) => s + x[1], 0);
-      // a pool's miners as rings, the biggest miner innermost (as on mempool.guide)
+      // a pool's miners as rings, the biggest miner innermost
       const rings = top.length ? [...top, ...(rest > 0 ? [['other miners', rest]] : [])] : [[p.name, p.blocks]];
       let r = R0; const sum = rings.reduce((s, x) => s + x[1], 0);
       rings.forEach(([, n], k) => {

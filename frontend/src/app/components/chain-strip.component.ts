@@ -7,7 +7,7 @@ import { MEMPOOL_COLORS, feeColor, formatAgo } from '../lib/format';
 
 /**
  * mempool-style strip: projected blocks (left) | mined blocks (right).
- * Colours follow mempool (as on mempool.guide): projected blocks are filled with the fee colour
+ * Colours follow mempool: projected blocks are filled with the fee colour
  * of their median fee, mined blocks with mempool's purple→blue gradient; the
  * empty part of a block shows how far it is from full.
  *
@@ -114,7 +114,7 @@ export class ChainStripComponent implements AfterViewInit, OnDestroy {
   private subs = new Subscription();
   private tick = signal(0);
 
-  /** block page link of the stream shown (mempool.guide); none for your own node */
+  /** block page link of the stream shown; none for your own node */
   readonly explorer = computed(() => this.socket.network()?.explorerBlockUrl);
   readonly sharesThisBlock = signal(0);
   private minerId = computed(() => this.socket.miner()?.id);

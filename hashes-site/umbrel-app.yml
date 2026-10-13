@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.26"
+version: "1.9.27"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -14,7 +14,7 @@ description: >-
   Published on the internet (for example with the Cloudflare Tunnel app), the page streams blocks
   live. Monero and Dogecoin come from your own full nodes through the Monero Explorer and Dogecoin
   Explorer apps, so no third party sees what your visitors look at. Bitcoin SHA-256 is read from your own node through the Bitcoin Explorer app (btc.hashes.space), pruned
-  or not, with no mempool.space behind it; Bitcoin BLAKE2b the same way, from your Bitcoin Knots node through the Bitcoin BLAKE2b Explorer
+  or not, with no third party behind it; Bitcoin BLAKE2b the same way, from your Bitcoin Knots node through the Bitcoin BLAKE2b Explorer
   app (btcb2.hashes.space).
 
 
@@ -35,8 +35,9 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  mempool.guide is no longer used anywhere on the page: the Bitcoin BLAKE2b blocks come only from your own Bitcoin BLAKE2b Explorer, and the block links open it.
-  The View more link is gone from the mining pools sections, and Bitcoin BLAKE2b no longer uses mempool.guide for them: the pools, hashrate and difficulty come only from your own nodes, and the sections stay hidden until your node answers.
+  The page, the apps and the docs no longer name any third-party mempool site: Bitcoin and Bitcoin BLAKE2b blocks come only from your own explorers, and the block links open them.
+  The Bitcoin BLAKE2b blocks come only from your own Bitcoin BLAKE2b Explorer, and the block links open it.
+  The View more link is gone from the mining pools sections, and for Bitcoin BLAKE2b too the pools, hashrate and difficulty come only from your own nodes, and the sections stay hidden until your node answers.
   The mining pools black holes glow like the labels under the mined blocks: red for a centralised pool, orange for OCEAN on Bitcoin and CONVOY on Bitcoin BLAKE2b, and on Monero green for P2Pool and red for the rest.
   The top of every block now leans the same way as its shaded side, so the blocks look like solid boxes seen from the right.
   The shaded side of every block is filled with the same colour as the block, a shade darker, so the side fills up with the block.
@@ -62,9 +63,9 @@ releaseNotes: >-
   The proof-of-work and coin picker is now its own RAM module, separate from the search bar next to it, which still finds a block height or mining pool on the chosen chain. The first block is tagged Fee Auction.
   The header block on the Find Mempool page now shows the merkle root, version, bits and time of the block being hashed, read from the explorer's block template, and a nonce that searches through its range.
   The line between the blocks still to be mined and the mined blocks is now a spinning 3D fan: the blocks pass through it to the mined side.
-  mempool.space is no longer asked. While the explorer's node is still syncing, the chain shows simulated blocks and tries again every minute.
+  While the explorer's node is still syncing, the chain shows simulated blocks and tries again every minute.
   The Bitcoin BLAKE2b chain now streams from the new Bitcoin BLAKE2b Explorer app (btcb2.hashes.space), which reads blocks, fees,
-  mining pools and the mempool from your Bitcoin Knots app, pruned or not; mempool.guide is used only while that explorer does
-  not answer or its node is still syncing. The Bitcoin SHA-256 chain streams from the new Bitcoin Explorer app (btc.hashes.space), which reads blocks, fees,
-  mining pools and the mempool from your Bitcoin Node app, pruned or not; mempool.space is used only while that explorer
-  does not answer or its node is still syncing. The Academy has seven chapter videos, one at a time with arrows.
+  mining pools and the mempool from your Bitcoin Knots app, pruned or not. While that explorer does
+  not answer or its node is still syncing, simulated blocks show. The Bitcoin SHA-256 chain streams from the new Bitcoin Explorer app (btc.hashes.space), which reads blocks, fees,
+  mining pools and the mempool from your Bitcoin Node app, pruned or not. While that explorer
+  does not answer or its node is still syncing, simulated blocks show. The Academy has seven chapter videos, one at a time with arrows.

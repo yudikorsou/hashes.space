@@ -4,7 +4,7 @@ import { ChainBlock, ProjectedBlock } from '../types';
 
 /**
  * Relays the public WebSocket of any mempool-compatible instance
- * (mempool.guide, or a self-hosted mempool).
+ * (a self-hosted mempool, or the hashes.space explorers).
  *
  * Protocol (the standard mempool frontend protocol):
  *   -> {"action":"init"}

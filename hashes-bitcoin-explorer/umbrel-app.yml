@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.16.0"
+version: "1.16.1"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -11,14 +11,14 @@ description: >-
   newest blocks, which is what a live view needs. Search by block height, block hash or transaction id.
 
 
-  It also offers mempool.space's API and WebSocket (/api/v1/blocks, /api/v1/fees/mempool-blocks,
+  It also offers mempool's API and WebSocket (/api/v1/blocks, /api/v1/fees/mempool-blocks,
   /api/v1/ws) and the global hashrate and mining pool statistics, worked out from your node, so the
   hashes.space Find Mempool page can stream Bitcoin from your own node. Publish it on the internet (for
   example with the Cloudflare Tunnel app, as btc.hashes.space) to make it the Bitcoin explorer of your website.
 
 
   Requires the Bitcoin Node app, synced. While it is still syncing, the explorer says so and the page
-  uses mempool.space. /api/v1/status shows what the explorer sees of your node.
+  shows simulated blocks. /api/v1/status shows what the explorer sees of your node.
 developer: hashes.space
 website: https://hashes.space
 dependencies:
@@ -33,6 +33,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  Housekeeping: the explorer no longer mentions any outside site; while it syncs the page shows simulated blocks.
   New /api/v1/mining/solo/<period>: the hashrate of miners that use no pool, estimated from the blocks of solo services and the blocks with no known pool, times the network's hashrate (an upper bound).
   The Find Mempool page's hashrate section now shows the combined hashrate of the mining pools (14 days, 1 month, 6 months, 1 year) instead of the whole network's: new /api/v1/mining/pool-hashrate/<period>, the network's hashrate times the share of blocks that pools mined. The share of blocks per day is kept on disk, so on a pruned node the 6-month and 1-year charts keep growing beyond the 30 days it can read.
   New /api/v1/block-template: the header of the block being mined now, from your node's getblocktemplate, with the merkle root of that template (the nonce is only known once a block is found).
