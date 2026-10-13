@@ -41,9 +41,11 @@
   /* blockchain strip */
   .strip { --s: 125px; --d: 16px; position: relative; display: grid; grid-template-columns: 1fr auto 1fr; grid-template-rows: auto auto; align-items: center; padding: 22px 0 18px; background: var(--bg); border-bottom: 1px solid var(--line); overflow: hidden; }
   /* the two headlines sit on either side of the fan: what happens inside the miners, and the chain they build */
-  .strip-head { grid-row: 1; margin: 0 0 4px; font: 600 15px/1.2 var(--display); letter-spacing: .04em; color: var(--text); white-space: nowrap; }
-  .strip-head.left { grid-column: 1; justify-self: end; margin-right: calc(40px + (3 * (var(--s) + var(--d)) + 80px) / 2); transform: translateX(50%); }   /* centred over the three blocks */
-  .strip-head.right { grid-column: 3; justify-self: start; padding-left: 48px; }   /* in line with the newest mined block */
+  .strip-head { grid-row: 1; display: flex; align-items: center; gap: 12px; width: calc(3 * (var(--s) + var(--d)) + 80px); max-width: calc(100% - 24px); margin: 0 0 6px; font: 600 12.5px/1 var(--display); letter-spacing: .16em; text-transform: uppercase; color: var(--text); white-space: nowrap; }
+  .strip-head::before, .strip-head::after { content: ""; flex: 1; height: 1px; background: var(--line-strong); }
+  .strip-head::before { background: linear-gradient(90deg, transparent, var(--line-strong)); } .strip-head::after { background: linear-gradient(90deg, var(--line-strong), transparent); }
+  .strip-head.left { grid-column: 1; justify-self: end; margin-right: 40px; }      /* over the three blocks before the fan */
+  .strip-head.right { grid-column: 3; justify-self: start; margin-left: 48px; }    /* over the three newest mined blocks */
   .strip > .half, .strip > .gate { grid-row: 2; }
   .strip > .half.projected { grid-column: 1; } .strip > .gate { grid-column: 2; } .strip > .half.mined { grid-column: 3; }
   /* each side scrolls on its own; a block that would only half fit is kept out of sight until it does */
@@ -331,8 +333,8 @@
 
   @media (max-width: 720px) {
     .strip { --s: 92px; }
-    .strip-head { font-size: 12px; }
-    .strip-head.left { margin-right: 10px; transform: none; } .strip-head.right { padding-left: 40px; }
+    .strip-head { font-size: 10px; letter-spacing: .1em; gap: 8px; width: auto; }
+    .strip-head.left { margin-right: 10px; } .strip-head.right { margin-left: 40px; }
     .datum-badge { font-size: 9px; padding: 3px 6px; letter-spacing: .02em; }
     .txt { padding: 8px 4px; }
     .txt .range, .txt .txs { display: none; }
