@@ -43,6 +43,7 @@ import re
 import struct
 import threading
 import time
+import urllib.parse
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -973,6 +974,142 @@ def need_live():
         return STATE["blocks"], STATE["mempool"]
 
 
+# ---------- DATUM verified community: payout addresses are shown only to members who signed in with Discord ----------
+# The explorer never shows the addresses a pool pays out to (block page, transaction list, animation, transaction and address pages) until the visitor
+# has signed in with Discord and holds the DATUM Verified role on the community server. Setup: put a file discord.json in this app's data folder:
+#   {"client_id": "...", "client_secret": "...", "guild_id": "<server id>", "role_id": "<DATUM Verified role id>", "public_url": "https://btc.hashes.space"}
+# (or the environment variables DISCORD_CLIENT_ID, DISCORD_CLIENT_SECRET, DISCORD_GUILD_ID, DISCORD_ROLE_ID, PUBLIC_URL). In the Discord developer portal add
+# <public_url>/auth/discord/callback as a redirect of the application. Without that file nobody is verified and the addresses stay hidden.
+STATE_DIR = os.environ.get("STATE_DIR", "/state")
+VERIFY_DAYS = 7
+REQ = threading.local()                       # per request: ok (verified), path, host, cookies to set
+
+
+def discord_cfg():
+    cfg = {}
+    try:
+        with open(os.path.join(STATE_DIR, "discord.json")) as f:
+            cfg = json.load(f)
+    except (OSError, ValueError):
+        pass
+    for k, env in (("client_id", "DISCORD_CLIENT_ID"), ("client_secret", "DISCORD_CLIENT_SECRET"), ("guild_id", "DISCORD_GUILD_ID"), ("role_id", "DISCORD_ROLE_ID"), ("public_url", "PUBLIC_URL")):
+        if os.environ.get(env):
+            cfg[k] = os.environ[env]
+    return cfg if all(cfg.get(k) for k in ("client_id", "client_secret", "guild_id", "role_id")) else None
+
+
+_SECRET = []
+
+
+def session_secret():
+    if not _SECRET:
+        f = os.path.join(STATE_DIR, "session.key")
+        try:
+            with open(f, "rb") as fh:
+                _SECRET.append(fh.read())
+        except OSError:
+            key = os.urandom(32)
+            try:
+                with open(f, "wb") as fh:
+                    fh.write(key)
+            except OSError:
+                pass
+            _SECRET.append(key)
+    return _SECRET[0]
+
+
+def sign(text):
+    import hmac
+    return hmac.new(session_secret(), text.encode(), hashlib.sha256).hexdigest()
+
+
+def make_cookie(name, value, days):
+    exp = int(time.time()) + int(days * 86400)
+    return "{}={}.{}.{}; Path=/; Max-Age={}; HttpOnly; Secure; SameSite=Lax".format(name, value, exp, sign(name + "|" + value + "|" + str(exp)), int(days * 86400))
+
+
+def read_cookie(header, name):
+    """the value of a signed cookie made by make_cookie, or None when absent, expired or forged"""
+    import hmac
+    for part in (header or "").split(";"):
+        k, _, v = part.strip().partition("=")
+        if k == name:
+            try:
+                value, exp, sig = v.rsplit(".", 2)
+                if int(exp) > time.time() and hmac.compare_digest(sig, sign(name + "|" + value + "|" + exp)):
+                    return value
+            except ValueError:
+                return None
+    return None
+
+
+def is_verified():
+    return bool(getattr(REQ, "ok", False))
+
+
+def out_label(o, short=False):
+    """what a transaction output shows: its address (hidden for visitors who are not verified), or its script type"""
+    spk = o.get("scriptPubKey", {})
+    a = spk.get("address")
+    if not a:
+        return spk.get("type", "")
+    if not is_verified():
+        return "hidden"
+    return short_addr(a) if short else a
+
+
+def verify_box(note="Payout addresses are only shown to members of the DATUM verified community."):
+    nxt = urllib.request.quote(getattr(REQ, "path", "/") or "/", safe="/")
+    return ("<span class=locked><span class=lock aria-hidden=true>&#128274;</span> <a class=verify href='/auth/discord?next=" + nxt + "'>Get verified</a> <span class=muted>" + note + "</span></span>")
+
+
+def discord_call(url, data=None, token=None):
+    req = urllib.request.Request(url, data=urllib.parse.urlencode(data).encode() if data else None,
+                                 headers={"User-Agent": "hashes-space-explorer (+https://hashes.space)", **({"Authorization": "Bearer " + token} if token else {}),
+                                          **({"Content-Type": "application/x-www-form-urlencoded"} if data else {})})
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        return json.loads(resp.read().decode())
+
+
+def auth_start(next_path):
+    cfg = discord_cfg()
+    if not cfg:
+        return None, page("Get verified", "<h1>Get verified</h1><section class=card><p>Payout addresses are shown to members of the DATUM verified community. Sign-in with Discord is not set up on this explorer yet, "
+                          "so they stay hidden for now.</p><p><a href='/'>Back to the explorer</a></p></section>")
+    state = os.urandom(12).hex()
+    REQ.cookies.append(make_cookie("dvs", state + "~" + urllib.request.quote(next_path, safe="/"), 0.01))
+    redirect = (cfg.get("public_url") or "https://" + getattr(REQ, "host", "")).rstrip("/") + "/auth/discord/callback"
+    url = "https://discord.com/oauth2/authorize?" + urllib.parse.urlencode({"client_id": cfg["client_id"], "response_type": "code", "redirect_uri": redirect,
+                                                                           "scope": "identify guilds.members.read", "state": state, "prompt": "none"})
+    return url, None
+
+
+def auth_callback(params, cookie_header):
+    """Discord sends the visitor back with a code: swap it for a token, read the visitor's roles on the community server, and sign the visit when the DATUM Verified role is there"""
+    cfg = discord_cfg()
+    saved = read_cookie(cookie_header, "dvs") or ""
+    state, _, nxt = saved.partition("~")
+    nxt = urllib.request.unquote(nxt)
+    if not nxt.startswith("/") or nxt.startswith("//"):
+        nxt = "/"
+    if not cfg or not state or params.get("state") != state or not params.get("code"):
+        return None, page("Get verified", "<h1>Sign-in did not finish</h1><section class=card><p>The sign-in expired or was cancelled. <a href='/auth/discord?next=" + urllib.request.quote(nxt, safe="/") + "'>Try again</a>.</p></section>")
+    redirect = (cfg.get("public_url") or "https://" + getattr(REQ, "host", "")).rstrip("/") + "/auth/discord/callback"
+    try:
+        tok = discord_call("https://discord.com/api/oauth2/token", {"client_id": cfg["client_id"], "client_secret": cfg["client_secret"], "grant_type": "authorization_code",
+                                                                      "code": params["code"], "redirect_uri": redirect})
+        member = discord_call("https://discord.com/api/users/@me/guilds/" + str(cfg["guild_id"]) + "/member", token=tok["access_token"])
+    except (OSError, ValueError, KeyError):
+        return None, page("Get verified", "<h1>You are not in the DATUM verified community yet</h1><section class=card><p>Join the community and verify with the DATUM Verify bot first (only miners "
+                          "that submit shares through DATUM Gateway can join), then sign in again.</p><p><a href='https://datumgateway.org'>datumgateway.org</a> · <a href='" + nxt + "'>Back</a></p></section>")
+    if str(cfg["role_id"]) not in [str(x) for x in member.get("roles", [])]:
+        return None, page("Get verified", "<h1>The DATUM Verified role is missing</h1><section class=card><p>You are on the server, but the DATUM Verify bot has not verified you yet. "
+                          "Verify with the bot, then sign in again.</p><p><a href='https://datumgateway.org'>datumgateway.org</a> · <a href='" + nxt + "'>Back</a></p></section>")
+    REQ.cookies.append(make_cookie("dv", "1", VERIFY_DAYS))
+    REQ.cookies.append("dvs=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax")
+    return nxt, None
+
+
 # ---------- HTML ----------
 
 CSS = """
@@ -993,6 +1130,7 @@ dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{c
 .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:#0b0d17;border:1px solid var(--line);font-size:12.5px;color:var(--muted)}.chip b{color:var(--gold);font-weight:600}
 .bhash{display:grid;gap:2px}.bhash small{color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}.bhash .mono{word-break:break-all;font-size:13px}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:3px;align-content:start;min-width:0}.tile small{color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}.tile b{font:600 20px/1.2 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.tile em{font-style:normal;color:var(--muted);font-size:12.5px}.tile .meter{height:6px;border-radius:3px;background:#0b0d17;border:1px solid var(--line);overflow:hidden;margin-top:4px}.tile .meter i{display:block;height:100%;background:var(--gold)}
+.locked{display:inline-flex;flex-wrap:wrap;align-items:center;gap:6px 10px}.verify{display:inline-block;background:var(--gold);color:#1a1406;border-radius:8px;padding:4px 12px;font-weight:600;font-size:13px}.verify:hover{text-decoration:none;filter:brightness(1.1)}
 .groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:14px}.groups .card h2{margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}.groups dl{grid-template-columns:minmax(96px,max-content) 1fr;gap:8px 16px}.groups dd{min-width:0}
 .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}.stat b{display:block;font:600 20px/1.2 ui-monospace,Menlo,monospace}
 .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:14px}.chart svg{width:100%;height:auto;color:var(--muted)}.chart h2{margin:0 0 4px}
@@ -1110,7 +1248,7 @@ def old_tx_page(txid):
     if not found:
         raise ValueError("Transaction not found. This node is pruned: it knows transactions in its mempool, in the blocks it still keeps, and any with an unspent output; "
                          "a transaction whose outputs are all spent and whose block is pruned cannot be read. Open it from its block, or use a full-node explorer.")
-    rows = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")) + "</td><td class=r>"
+    rows = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(out_label(o)) + "</td><td class=r>"
                    + btc(round(float(o["value"]) * 1e8)) + "</td><td class=r>" + "{:,}".format(o.get("confirmations", 0)) + "</td></tr>" for n, o in found)
     return page("Transaction", "<h1>Transaction</h1><section class=card><dl><dt>Txid</dt><dd class=mono>" + txid + "</dd></dl></section><section class=card><h2>Unspent outputs</h2><table>"
                 "<tr><th>#</th><th>Address</th><th class=r>Value</th><th class=r>Confirmations</th></tr>" + rows + "</table></section><section class=card><p class=muted>This node is pruned and no longer has the "
@@ -1317,10 +1455,10 @@ def block_animation(b, h):
                 ins.append(["Coinbase", "newly created coins"])
                 continue
             po = i.get("prevout") or {}
-            who = short_addr(po.get("scriptPubKey", {}).get("address") or "")
+            who = out_label(po, True) if po.get("scriptPubKey", {}).get("address") else ""
             ins.append({"h": i["txid"], "n": i["vout"]})
         ins = ins[:2]
-        outs = [[short_addr(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")), btc(round(float(o["value"]) * 1e8))] for o in t["vout"][:3]]
+        outs = [[out_label(o, True), btc(round(float(o["value"]) * 1e8))] for o in t["vout"][:3]]
         if len(t["vout"]) > 3:
             outs[2] = ["+" + str(len(t["vout"]) - 2) + " more outputs", ""]
         rate = round(float(t["fee"]) * 1e8 / t["vsize"], 1) if "fee" in t and t.get("vsize") else 0
@@ -1440,7 +1578,7 @@ def block_page(ident):
     pool = POOLS.find(text, addrs)
     rows = ""
     for t in txs[:500]:
-        outs = ", ".join(html.escape(o.get("scriptPubKey", {}).get("address") or "?") for o in t["vout"][:2]) + (" …" if len(t["vout"]) > 2 else "")
+        outs = ", ".join(html.escape(out_label(o) or "?") for o in t["vout"][:2]) + (" …" if len(t["vout"]) > 2 else "")
         rate = ("{:.1f}".format(float(t["fee"]) * 1e8 / t["vsize"]) + " sat/vB") if "fee" in t and t.get("vsize") and t is not cb else ""
         rows += ("<tr><td class=mono><a href='/tx/" + t["txid"] + "?b=" + h + "'>" + t["txid"][:16] + "…</a></td><td>" + ("coinbase" if t is cb else str(len(t["vin"])) + " in")
                  + "</td><td class='mono wrap'>" + outs + "</td><td class=r>" + btc(round(sum(float(o["value"]) for o in t["vout"]) * 1e8)) + "</td><td class=r>" + rate + "</td></tr>")
@@ -1452,7 +1590,7 @@ def block_page(ident):
              ("Fullness", "{:.1f}%".format(full), "of the weight limit", full),
              ("Size", "{:,} B".format(b["size"]), "{:,} weight units".format(b["weight"]) + (" · {:,} B stripped".format(b["strippedsize"]) if "strippedsize" in b else ""), None)]
     mining = [("Pool", html.escape(pool)), ("Coinbase text", "<span class=mono>" + html.escape("".join(c if 32 <= ord(c) < 127 else "·" for c in text)) + "</span>"),
-              ("Paid to", "<span class=mono>" + html.escape(", ".join(dict.fromkeys(addrs)) or "-") + "</span>")]
+              ("Paid to", ("<span class=mono>" + html.escape(", ".join(dict.fromkeys(addrs)) or "-") + "</span>") if is_verified() else verify_box())]
     hdr = [("Difficulty", "{:,.0f}".format(b.get("difficulty", 0)))] + header_rows(b)
     return page("Block " + str(b["height"]), block_layout(b["height"], b.get("previousblockhash"), b.get("nextblockhash"), pool,
                 time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["time"])) + " (" + ago(b["time"]) + ")", h, tiles,
@@ -1470,7 +1608,7 @@ def tx_page(txid, block_hash):
         except RuntimeError:
             return old_tx_page(txid)
     ins = "".join("<tr><td class='mono wrap'>" + ("coinbase" if "coinbase" in i else "<a href='/tx/" + i["txid"] + "'>" + i["txid"][:16] + "…</a>:" + str(i["vout"])) + "</td></tr>" for i in tx["vin"])
-    outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(o.get("scriptPubKey", {}).get("address") or o.get("scriptPubKey", {}).get("type", "")) + "</td><td class=r>"
+    outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(out_label(o)) + "</td><td class=r>"
                    + btc(round(float(o["value"]) * 1e8)) + "</td></tr>" for n, o in enumerate(tx["vout"]))
     bh = tx.get("blockhash")
     rows = [("Txid", "<span class=mono>" + tx["txid"] + "</span>"),
@@ -1499,6 +1637,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Cache-Control", "public, max-age=" + str(cache) if cache else "no-store")
+        for c in getattr(REQ, "cookies", []):
+            self.send_header("Set-Cookie", c)
         self.end_headers()
         self.wfile.write(data)
 
@@ -1508,7 +1648,19 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):  # noqa: N802
         path, _, query = self.path.partition("?")
         params = dict(p.split("=", 1) for p in query.split("&") if "=" in p)
+        REQ.cookies, REQ.path, REQ.host = [], self.path, self.headers.get("X-Forwarded-Host") or self.headers.get("Host", "")
+        REQ.ok = read_cookie(self.headers.get("Cookie"), "dv") == "1"
         try:
+            if path == "/auth/discord":
+                nxt = urllib.request.unquote(params.get("next", "/"))
+                url, html_ = auth_start(nxt if nxt.startswith("/") and not nxt.startswith("//") else "/")
+                return self.redirect(url) if url else self.send(200, html_)
+            if path == "/auth/discord/callback":
+                url, html_ = auth_callback({k: urllib.request.unquote(v) for k, v in params.items()}, self.headers.get("Cookie"))
+                return self.redirect(url) if url else self.send(200, html_)
+            if path == "/auth/logout":
+                REQ.cookies.append("dv=; Path=/; Max-Age=0; HttpOnly; Secure; SameSite=Lax")
+                return self.redirect("/")
             if path == "/api/v1/ws" and self.headers.get("Upgrade", "").lower() == "websocket":
                 return self.websocket()
             if path == "/api/v1/blocks":
@@ -1531,12 +1683,16 @@ class Handler(BaseHTTPRequestHandler):
             if m:
                 return self.json(tx_projection(m.group(1).lower()), 5)
             m = re.fullmatch(r"/api/v1/address/([A-Za-z0-9]{14,90})", path)
+            if m and not is_verified():
+                return self.send(403, json.dumps({"error": "address lookups are for members of the DATUM verified community: sign in at /auth/discord"}), "application/json")
             if m:
                 st = address_scan(m.group(1))
                 return self.json(st["result"] if st["state"] == "done" else {"state": st["state"], "error": st.get("error")}, 0)
             if path == "/forks":
                 return self.send(200, forks_page())
             m = re.fullmatch(r"/address/([A-Za-z0-9]{14,90})", path)
+            if m and not is_verified():
+                return self.send(200, page("Address", "<h1>Address</h1><section class=card><p>" + verify_box("Addresses are only shown to members of the DATUM verified community.") + "</p></section>"))
             if m:
                 return self.send(200, address_page(m.group(1)))
             if path == "/api/v1/block-template":
@@ -1595,6 +1751,8 @@ class Handler(BaseHTTPRequestHandler):
     def redirect(self, to):
         self.send_response(302)
         self.send_header("Location", to)
+        for c in getattr(REQ, "cookies", []):
+            self.send_header("Set-Cookie", c)
         self.send_header("Content-Length", "0")
         self.end_headers()
 

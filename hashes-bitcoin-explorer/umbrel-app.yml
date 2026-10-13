@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.16.2"
+version: "1.17.0"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -33,6 +33,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  Payout addresses are now hidden behind a Get verified button on the block, transaction and address pages and in the block animation, until the visitor signs in with Discord and holds the DATUM Verified role (set it up with a discord.json file in the app's data folder, see the README).
   The block page has a structured layout: title row with the pool, time, confirmations and previous/next buttons, key figures as tiles (transactions, fees, reward, fullness, size), then the details grouped in Mining and Header cards.
   Housekeeping: the explorer no longer mentions any outside site; while it syncs the page shows simulated blocks.
   New /api/v1/mining/solo/<period>: the hashrate of miners that use no pool, estimated from the blocks of solo services and the blocks with no known pool, times the network's hashrate (an upper bound).
