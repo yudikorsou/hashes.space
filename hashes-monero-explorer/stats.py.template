@@ -762,7 +762,7 @@ $('am').textContent=still||t>=SS[1]+1700?sh(D.root):scramble(sh(D.root).replace(
 var segs=document.querySelectorAll('#abar i'),bytes=0;for(var q=0;q<segs.length;q++){var on=still||t>=SS[3]+200+q*380;segs[q].style.opacity=on?1:.12;if(on)bytes+=D.segs[q][0]}
 $('cbstate').textContent=ph<3?TXT[ph]:(bytes>=D.total?'ready · '+D.total+' B':bytes+' / '+D.total+' B');
 stepOn(ph);
-var st=document.querySelectorAll('.cbstage .st');for(var q=0;q<st.length;q++){var u2=still?1:ease((t-SS[q]-100)/650);st[q].style.opacity=u2*out;st[q].style.transform='translateY('+((1-u2)*16)+'px)'}
+var st=document.querySelectorAll('.cbstage .st');for(var q=0;q<st.length;q++){var u2=still?1:ease((t-SS[q]-100)/650);if(q<2){u2=1;out=1}st[q].style.opacity=u2*out;st[q].style.transform='translateY('+((1-u2)*16)+'px)'}
 if(!still)requestAnimationFrame(frame)}
 function tick(){if(busy||document.hidden)return;busy=true;fetch('/block-assembly.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
 var c=$('chips');if(c)c.innerHTML=d.chips+'<span class=chip id=upd></span>';
