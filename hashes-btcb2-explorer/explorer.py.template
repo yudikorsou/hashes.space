@@ -1043,8 +1043,17 @@ def read_cookie(header, name):
     return None
 
 
+PROTECTED_POOL = "OCEAN"     # on the Bitcoin (SHA-256) explorer only blocks mined by this pool are for the verified community; on the BLAKE2b explorer every pool's blocks are
+
+
+def protect(pool):
+    """mark the page being built as showing a pool's payout information: the BLAKE2b explorer protects every pool, the Bitcoin explorer only OCEAN"""
+    REQ.protected = CHAIN == "blake2b" or pool == PROTECTED_POOL
+
+
 def is_verified():
-    return bool(getattr(REQ, "ok", False))
+    """may this visitor see payout addresses and the whole block: yes when signed in with the DATUM Verified role, and always for blocks that are not protected"""
+    return bool(getattr(REQ, "ok", False)) or not getattr(REQ, "protected", True)
 
 
 def out_label(o, short=False):
@@ -1604,6 +1613,7 @@ def block_page(ident):
     text = bytes.fromhex(cb["vin"][0].get("coinbase", "")).decode("latin-1")
     addrs = [o.get("scriptPubKey", {}).get("address") for o in cb.get("vout", []) if o.get("scriptPubKey", {}).get("address")]
     pool = POOLS.find(text, addrs)
+    protect(pool)
     subsidy = SUBSIDY0 >> (b["height"] // 210000)
     full = b["weight"] / 40000
     tiles = [("Transactions", "{:,}".format(len(txs)), "", None), ("Fees", btc(fees), "", None),
@@ -1619,6 +1629,13 @@ def block_page(ident):
                 + block_animation(b, h) + block_diagrams(b) + block_stats_card(h))
 
 
+def pool_of_hash(block_hash):
+    """the pool that mined a block, from its coinbase"""
+    cb = NODE.call("getrawtransaction", NODE.call("getblock", block_hash, 1)["tx"][0], True, block_hash)
+    addrs = [o.get("scriptPubKey", {}).get("address") for o in cb.get("vout", []) if o.get("scriptPubKey", {}).get("address")]
+    return POOLS.find(bytes.fromhex(cb["vin"][0].get("coinbase", "")).decode("latin-1"), addrs)
+
+
 def tx_page(txid, block_hash):
     try:
         tx = NODE.call("getrawtransaction", txid, 2, *([block_hash] if block_hash else []))
@@ -1627,6 +1644,11 @@ def tx_page(txid, block_hash):
             tx = NODE.call("getrawtransaction", txid, True, *([block_hash] if block_hash else []))
         except RuntimeError:
             return old_tx_page(txid)
+    if CHAIN != "blake2b" and (tx.get("blockhash") or block_hash):      # Bitcoin: only transactions of blocks mined by the protected pool hide their addresses
+        try:
+            protect(pool_of_hash(tx.get("blockhash") or block_hash))
+        except (RuntimeError, ValueError, KeyError, IndexError):
+            pass
     ins = "".join("<tr><td class='mono wrap'>" + ("coinbase" if "coinbase" in i else "<a href='/tx/" + i["txid"] + "'>" + i["txid"][:16] + "…</a>:" + str(i["vout"])) + "</td></tr>" for i in tx["vin"])
     outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(out_label(o)) + "</td><td class=r>"
                    + btc(round(float(o["value"]) * 1e8)) + "</td></tr>" for n, o in enumerate(tx["vout"]))
@@ -1670,6 +1692,7 @@ class Handler(BaseHTTPRequestHandler):
         params = dict(p.split("=", 1) for p in query.split("&") if "=" in p)
         REQ.cookies, REQ.path, REQ.host = [], self.path, self.headers.get("X-Forwarded-Host") or self.headers.get("Host", "")
         REQ.ok = read_cookie(self.headers.get("Cookie"), "dv") == "1"
+        REQ.protected = CHAIN == "blake2b"      # block and transaction pages narrow this down to the pool that mined the block
         try:
             if path == "/auth/discord":
                 nxt = urllib.request.unquote(params.get("next", "/"))
