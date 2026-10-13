@@ -369,12 +369,12 @@
   .netsearch:focus-within { border-color: var(--algo); box-shadow: 0 0 0 3px color-mix(in srgb, var(--algo) 24%, transparent); }
   /* left half: the proof-of-work network. right half: the block you are looking for */
   .ns-pick { display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; padding: 5px 14px 5px 12px; color: var(--text); cursor: pointer; }
-  /* RAM module (a DIMM) in the colours of the search bar: gold contacts with the key notch off-centre, the two latch notches at the ends,
-     and the hash function as an IC chip with legs on the board */
+  /* RAM module (a DIMM) in the colours of the search bar: silver contacts with the key notch off-centre, the two latch notches at the ends,
+     and the hash function as an IC chip with gold legs on the board: the only yellow on the module */
   .ns-pick.ram { position: relative; border: 1px solid #bfc8dc; border-radius: 4px; transition: border-color .2s, box-shadow .2s;
     background:
       linear-gradient(var(--bg), var(--bg)) left 34% bottom 0 / 9px 5px no-repeat,
-      repeating-linear-gradient(90deg, rgba(226,179,60,.85) 0 2px, transparent 2px 7px) left 14px bottom 0 / calc(100% - 28px) 4px no-repeat,
+      repeating-linear-gradient(90deg, rgba(191,200,220,.5) 0 2px, transparent 2px 7px) left 14px bottom 0 / calc(100% - 28px) 4px no-repeat,
       linear-gradient(90deg, rgba(191,200,220,.14), rgba(191,200,220,.14)) left 8px bottom 7px / calc(100% - 16px) 1px no-repeat,
       var(--surface); }
   .ns-pick.ram::before, .ns-pick.ram::after { content: ""; position: absolute; bottom: 12px; width: 7px; height: 12px; background: var(--bg); border: 1px solid #bfc8dc; }
@@ -382,7 +382,7 @@
   .ns-pick.ram::after { right: -1px; border-right: 0; border-radius: 7px 0 0 7px; }
   .ns-pick.ram:hover, .ns-pick.ram[aria-expanded="true"] { box-shadow: 0 0 0 3px color-mix(in srgb, #bfc8dc 24%, transparent); }
   .ns-pick.ram .ns-chip .algo { position: relative; z-index: 0; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(0,0,0,.35); }
-  .ns-pick.ram .ns-chip .algo::before, .ns-pick.ram .ns-chip .algo::after { content: ""; position: absolute; top: 2px; bottom: 2px; width: 4px; z-index: -1; background: repeating-linear-gradient(0deg, #bfc8dc 0 2px, transparent 2px 4px); }
+  .ns-pick.ram .ns-chip .algo::before, .ns-pick.ram .ns-chip .algo::after { content: ""; position: absolute; top: 2px; bottom: 2px; width: 4px; z-index: -1; background: repeating-linear-gradient(0deg, #e2b33c 0 2px, transparent 2px 4px); }
   .ns-pick.ram .ns-chip .algo::before { left: -3px; } .ns-pick.ram .ns-chip .algo::after { right: -3px; }
   .ns-pick:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
   .ns-pick[aria-expanded="true"] .chev { transform: rotate(180deg); }
