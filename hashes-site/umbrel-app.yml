@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.22"
+version: "1.9.23"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The top of every block now leans the same way as its shaded side, so the blocks look like solid boxes seen from the right.
   The shaded side of every block is filled with the same colour as the block, a shade darker, so the side fills up with the block.
   All blocks, the ones being built and the mined ones, now show their shaded side on the right.
   The blocks being built before the fan (Block assembly and Candidate block) now show their shaded side on the right.
