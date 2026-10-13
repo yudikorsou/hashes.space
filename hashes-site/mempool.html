@@ -696,11 +696,6 @@
   /* Find Mempool: mining pools and hashrate & difficulty, as on mempool.guide/mining (Bitcoin BLAKE2b only) */
   .mstats { max-width: 1280px; margin: 0 auto; padding: 20px 20px 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-areas: 'hrh poolsh' 'hr pools' 'src src'; align-items: stretch; gap: 20px; row-gap: 14px; }
   /* the period for both charts: a row of pills, the chosen one filled */
-  .mrange { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-  .mrange button { padding: 7px 14px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--muted); font: 500 12.5px/1 var(--sans); cursor: pointer; transition: border-color .15s, background .15s, color .15s; }
-  .mrange button:hover { border-color: var(--muted); color: var(--text); }
-  .mrange button[aria-pressed="true"] { background: var(--surface); border-color: var(--muted); color: var(--text); }
-  .mrange button:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   .mhead { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 18px 18px 0; min-width: 0; align-self: start; }
   .mhead .kpis { width: 100%; }
   .m-hr-head { grid-area: hrh; } .m-pools-head { grid-area: poolsh; }
@@ -721,7 +716,6 @@
   .mstats.calcpage.both { grid-template-columns: repeat(2, minmax(0, 560px)); grid-template-areas: 'head head' 'one two' 'src src'; align-items: start; column-gap: 36px; }
   @media (max-width: 1000px) { .mstats.calcpage.both { grid-template-columns: minmax(0, 640px); grid-template-areas: 'head' 'one' 'two' 'src'; } }
   .mstats.calcpage.both .mcard.m-pcalc { grid-area: two; }
-  .mrange { align-self: center; }
   .calc-link[hidden] { display: none !important; }
   @media (max-width: 900px) {
     .mstats { grid-template-columns: minmax(0, 1fr); grid-template-areas: 'hrh' 'hr' 'poolsh' 'pools' 'src'; }
@@ -778,10 +772,10 @@
   .back-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   @media (max-width: 1239px) { .mcard .calc-link { position: static; order: 99; align-self: flex-start; } }   /* the corner is only free of "View more »" when the card is wide */
   /* the fleet: one little spaceship per mining pool, flying over the chart; hover one for its name and hashrate */
-  .pool-sky { position: relative; width: 100%; height: 210px; margin: -2px 0 6px; border-radius: 28px; overflow: hidden; background: radial-gradient(ellipse 80% 90% at 50% 50%, rgba(60, 70, 140, .16), rgba(60, 70, 140, 0) 75%); }
+  .pool-sky { position: relative; width: 100%; height: 280px; margin: -2px 0 6px; border-radius: 28px; overflow: hidden; background: radial-gradient(ellipse 80% 90% at 50% 50%, rgba(60, 70, 140, .16), rgba(60, 70, 140, 0) 75%); }
   .pool-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .pool-sky .sky-cap { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; color: var(--muted); font: 400 11.5px/1.3 var(--sans); pointer-events: none; }
-  @media (max-width: 520px) { .pool-sky { height: 180px; } }
+  @media (max-width: 520px) { .pool-sky { height: 230px; } }
   .mcard .hrsub { margin: 4px 0 0; text-align: center; color: var(--muted); font: 400 12px/1.35 var(--sans); }
   .mstats .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
   .mcard svg { width: 100%; height: auto; display: block; overflow: visible; }
@@ -1280,13 +1274,8 @@
   <article class="mcard m-hr" aria-labelledby="hr-title">
     <a class="calc-link" id="calc-link" href="#calc">More insights<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate of the mining pools</h2>
-    <div class="pool-sky" id="pool-sky" role="img" aria-label="A spaceship for every mining pool; hover one to see its hashrate"><canvas id="pool-sky-cv"></canvas><p class="sky-cap" id="sky-cap"></p></div>
+    <div class="pool-sky" id="pool-sky" role="img" aria-label="A hovering UFO for every mining pool; hover one to see its hashrate"><canvas id="pool-sky-cv"></canvas><p class="sky-cap" id="sky-cap"></p></div>
     <p class="hrsub" id="ms-hash-sub"></p>
-    <div class="mrange" id="mrange" role="group" aria-label="Period shown in the pool hashrate chart">
-    <button type="button" data-range="14d">14 days</button><button type="button" data-range="1m">1 month</button><button type="button" data-range="6m">6 months</button><button type="button" data-range="1y">1 year</button>
-    </div>
-    <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Hashrate of the mining pools and their share of the network"></svg>
-    <ul class="key"><li><i style="background:#f6c177"></i>Pool hashrate</li><li><i style="background:#e8862a"></i><span id="ms-key-avg">Pool hashrate (7-day average)</span></li><li><i style="background:#d6336c"></i>Share of the network</li></ul></div>
     <a class="more" id="ms-more-hr" href="#dashboard">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
@@ -3890,7 +3879,6 @@ window.__coins = COIN_LOGOS;
   var MEMPOOL_HASH = { '24h': '24h', '14d': '1m', '1m': '1m', '6m': '6m', '1y': '1y' };
   var MEMPOOL_POOLS = { '24h': '24h', '14d': '1m', '1m': '1m', '6m': '6m', '1y': '1y' };
   var range = '1m';
-  try { const saved = localStorage.getItem('mining-range'); if (saved && saved !== '24h' && RANGE_INFO[saved]) range = saved; } catch { /* no storage: the default stands */ }
   var rangeBy = {}, rangeBusy = {};
   // cut a series to the last stretch of time it covers; a step series (difficulty) keeps the value that held at the start
   function trimSeries(pts, sec, step) {
@@ -3972,16 +3960,12 @@ window.__coins = COIN_LOGOS;
   setInterval(() => { const g = phBy[netId + ':' + range]; if (g && !g.ok && Date.now() > g.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
   // what the headline figure and the line under it say
   function poolHashSub(ph, info, period, net) {
-    if (!ph || !ph.ok) return ph ? `Your ${net === 'monero' ? 'Monero' : 'node'} did not answer yet: the pool hashrate comes from the explorer on your Umbrel (update it if it is an older version).` : 'Asking your node for the hashrate of the mining pools…';
+    if (!ph || !ph.ok) return ph ? 'Your node did not answer yet: the pool hashrate comes from the explorer on your Umbrel (update it if it is an older version).' : 'Asking your node for the hashrate of the mining pools…';
     const who = ph.pool ? `${ph.pool} miners` : 'the mining pools';
-    let t = `Combined hashrate of ${who}, averaged over ${windowSpoken(period)}. Right now ${si(ph.hash, 1)}H/s — ${(ph.shareNow * 100).toFixed(1)}% of the network's ${si(ph.network, 1)}H/s.`;
-    if (!ph.complete && ph.since) t += ` Your node has told the pools apart since ${new Date(ph.since * 1000).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}; the chart fills in as it keeps reading blocks.`;
-    if (ph.sampled) t += ' Over a long period the pool shares come from an evenly spread sample of the blocks.';
-    return t;
+    return `Combined hashrate of ${who} right now: ${(ph.shareNow * 100).toFixed(1)}% of the network's ${si(ph.network, 1)}H/s. Hover a UFO to see what each pool contributes.`;
   }
   // a period that only came in part (a source still computing it) is asked for again every so often
   setInterval(() => { const got = rangeBy[netId + ':' + range]; if (got && got.partial && Date.now() > got.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
-  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('#mrange button'); if (b) setRange(b.dataset.range); });
   const onCalcPage = () => typeof view !== 'undefined' && (view === 'calc' || view === 'poolcalc');
   // the charts belong to the mempool page; the Learn page carries no chain of its own
   const onMempoolPage = () => typeof view === 'undefined' || view === 'dashboard';
@@ -4030,13 +4014,11 @@ window.__coins = COIN_LOGOS;
     const pr = POOLS_RANGE[netId] ?? '14d', rp = rangeView(netId, pr, m), pinfo = RANGE_INFO[pr];   // the pools do not follow the picker
     { const got = rangeBy[netId + ':' + pr]; if (pr !== range && miningBy[netId].live && (!got || (got.partial && Date.now() > got.retry))) loadRangeFor(netId, pr); }
     { const got = rangeBy[netId + ':' + range]; if (miningBy[netId].live && (!got || (got.partial && Date.now() > got.retry))) loadRangeFor(netId, range); }
-    for (const b of document.querySelectorAll('#mrange button')) b.setAttribute('aria-pressed', String(b.dataset.range === range));
     // each headline carries the period its chart shows; the pools say so honestly when the source can't give the chosen one
     $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
     $('pools-period').textContent = WINDOW_NAME[rp.window] ?? rp.window;
-    $('ms-hash-period').textContent = info.label;
+    $('ms-hash-period').textContent = 'right now';
     $('ms-hash-title').textContent = PH_TITLE[netId] ?? 'Mining pool hashrate';
-    $('ms-key-avg').textContent = `Pool hashrate (${info.avg[0]} average)`;
     loadPoolHashFor(netId, range);
     const ph = phBy[netId + ':' + range], phv = ph && ph.ok ? { pool: true, ok: true, hashrates: ph.hashrates, difficulty: ph.share, hash: ph.hash } : { pool: true, ok: false, hashrates: [], difficulty: [], hash: 0, failed: !!ph };
     $('ms-pie').setAttribute('aria-label', `Hashrate per mining pool, ${windowSpoken(rp.window)}`);
@@ -4046,13 +4028,12 @@ window.__coins = COIN_LOGOS;
       + (rp.window !== pr ? ` ${windowSpoken(rp.window).replace(/^the /, 'The ')} is the nearest period this source offers for ${pinfo.label}.` : '')
       + (rp.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '')
       + (rp.summed ? ' The 14 days are summed from the daily hashrate of each pool.' : '');
-    $('ms-hash').textContent = ph && ph.ok ? si(meanOf(ph.hashrates) || ph.hash, 1) + 'H/s' : '–';   // the pools' average over the chosen period
+    $('ms-hash').textContent = ph && ph.ok ? si(ph.hash, 1) + 'H/s' : '–';   // the pools' hashrate right now
     $('ms-hash-sub').textContent = poolHashSub(ph, info, range, netId);
     $('ms-source').textContent = m.live
       ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
     if (!sec.hidden && netId !== 'sha256') drawPie(rp);
-    if (!sec.hidden) drawChart(phv, range);
     { // the fleet flies only on what your own node reported
       const own = m.live && (m.node || netId === 'dogecoin' || netId === 'monero');
       skyStart();
@@ -4332,7 +4313,7 @@ window.__coins = COIN_LOGOS;
     sky.ships = items.map((x, i) => {
       const share = total ? x.blocks / total : 0, prev = old[x.name];
       return { name: x.name, share, blocks: x.blocks, hash: share * (hashNow || 0), win, len: 26 + 78 * Math.sqrt(Math.min(1, share)),
-        lane: ((i * stride) % n + 0.5) / n, x: prev ? prev.x : ((i * 0.61803) % 1) * 640, speed: 10 + 26 * (1 - Math.min(1, share * 2.2)), phase: (i * 1.7) % 6.28, color: skyColor(x.name) };
+        lane: ((i * stride) % n + 0.5) / n, x: prev ? prev.x : ((i * 0.61803) % 1) * 640, speed: 5 + 11 * (1 - Math.min(1, share * 2.2)), phase: (i * 1.7) % 6.28, color: skyColor(x.name) };
     });
   }
   const gcd = (a, b) => (b ? gcd(b, a % b) : a);
@@ -4342,8 +4323,8 @@ window.__coins = COIN_LOGOS;
     if (r.width !== sky.w || r.height !== sky.h) { sky.w = r.width; sky.h = r.height; cv.width = Math.round(r.width * sky.dpr); cv.height = Math.round(r.height * sky.dpr); }
   }
   function skyPos(sh, t) {
-    const pad = 26, span = sky.h - 2 * pad - 20;
-    return { x: sh.x, y: pad + sh.lane * span + Math.sin(t / 900 + sh.phase) * 7 };
+    const pad = 34, span = sky.h - 2 * pad - 24;
+    return { x: sh.x + Math.sin(t / 2100 + sh.phase) * 9, y: pad + sh.lane * span + Math.sin(t / 1100 + sh.phase) * 8 };   // it hovers: a slow sway and bob while it drifts
   }
   function skyDraw(t) {
     const cv = $('pool-sky-cv'), g = cv.getContext('2d');
@@ -4351,22 +4332,26 @@ window.__coins = COIN_LOGOS;
     const muted = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || '#9aa3c7';
     if (sky.msg) { g.fillStyle = muted; g.font = '14px sans-serif'; g.textAlign = 'center'; g.fillText(sky.msg, sky.w / 2, sky.h / 2); return; }
     for (const sh of sky.ships) {
-      const { x, y } = skyPos(sh, t), L = sh.len, W = L * 0.34, hot = sky.hover === sh;
-      g.save(); g.translate(x, y);
-      // engine trail and flame
-      const fl = L * (0.32 + 0.1 * Math.sin(t / 70 + sh.phase));
-      const tr = g.createLinearGradient(-L / 2 - L * 1.6, 0, -L / 2, 0); tr.addColorStop(0, 'rgba(255,255,255,0)'); tr.addColorStop(1, sh.color.replace(')', ' / .28)'));
-      g.fillStyle = tr; g.fillRect(-L / 2 - L * 1.6, -W * 0.1, L * 1.6, W * 0.2);
-      g.beginPath(); g.moveTo(-L / 2, -W * 0.22); g.quadraticCurveTo(-L / 2 - fl, 0, -L / 2, W * 0.22); g.fillStyle = '#ffb347'; g.fill();
-      // wings, hull, cockpit
-      g.fillStyle = sh.color; g.globalAlpha = .85;
-      g.beginPath(); g.moveTo(-L * 0.28, 0); g.lineTo(-L * 0.46, -W * 0.95); g.lineTo(L * 0.02, -W * 0.38); g.closePath(); g.fill();
-      g.beginPath(); g.moveTo(-L * 0.28, 0); g.lineTo(-L * 0.46, W * 0.95); g.lineTo(L * 0.02, W * 0.38); g.closePath(); g.fill();
-      g.globalAlpha = 1;
-      const hull = g.createLinearGradient(0, -W / 2, 0, W / 2); hull.addColorStop(0, '#f2f5ff'); hull.addColorStop(1, '#8a93b8');
-      g.fillStyle = hull; g.beginPath(); g.moveTo(L / 2, 0); g.quadraticCurveTo(L * 0.22, -W * 0.62, -L / 2, -W * 0.3); g.lineTo(-L / 2, W * 0.3); g.quadraticCurveTo(L * 0.22, W * 0.62, L / 2, 0); g.fill();
-      g.fillStyle = sh.color; g.beginPath(); g.ellipse(L * 0.14, 0, L * 0.12, W * 0.2, 0, 0, 6.3); g.fill();
-      if (hot) { g.strokeStyle = sh.color; g.lineWidth = 1.5; g.globalAlpha = .9; g.beginPath(); g.ellipse(0, 0, L * 0.62, W * 1.25, 0, 0, 6.3); g.stroke(); }
+      const { x, y } = skyPos(sh, t), W = sh.len * 1.05, hot = sky.hover === sh, tilt = Math.sin(t / 1500 + sh.phase) * 0.06;
+      g.save(); g.translate(x, y); g.rotate(tilt);
+      // the tractor beam under it: faint always, bright under the one the pointer is on
+      const beam = g.createLinearGradient(0, W * 0.12, 0, W * 0.95);
+      beam.addColorStop(0, sh.color.replace(')', ` / ${hot ? .5 : .2})`)); beam.addColorStop(1, sh.color.replace(')', ' / 0)'));
+      g.fillStyle = beam; g.beginPath(); g.moveTo(-W * 0.2, W * 0.12); g.lineTo(W * 0.2, W * 0.12); g.lineTo(W * 0.46, W * 0.95); g.lineTo(-W * 0.46, W * 0.95); g.closePath(); g.fill();
+      // a soft glow, the glass dome, the metal disc and the rim lights
+      const glow = g.createRadialGradient(0, 0, 0, 0, 0, W * 0.75); glow.addColorStop(0, sh.color.replace(')', ` / ${hot ? .35 : .16})`)); glow.addColorStop(1, sh.color.replace(')', ' / 0)'));
+      g.fillStyle = glow; g.beginPath(); g.arc(0, 0, W * 0.75, 0, 6.3); g.fill();
+      const dome = g.createRadialGradient(-W * 0.06, -W * 0.2, 1, 0, -W * 0.1, W * 0.26);
+      dome.addColorStop(0, 'rgba(255,255,255,.9)'); dome.addColorStop(0.45, sh.color.replace(')', ' / .75)')); dome.addColorStop(1, sh.color.replace(')', ' / .35)'));
+      g.fillStyle = dome; g.beginPath(); g.ellipse(0, -W * 0.06, W * 0.2, W * 0.2, 0, Math.PI, 0); g.fill();
+      const disc = g.createLinearGradient(0, -W * 0.1, 0, W * 0.14); disc.addColorStop(0, '#f4f6ff'); disc.addColorStop(0.5, '#a9b1d3'); disc.addColorStop(1, '#5b6490');
+      g.fillStyle = disc; g.beginPath(); g.ellipse(0, 0, W * 0.5, W * 0.13, 0, 0, 6.3); g.fill();
+      g.fillStyle = 'rgba(30,35,70,.45)'; g.beginPath(); g.ellipse(0, W * 0.05, W * 0.34, W * 0.05, 0, 0, 6.3); g.fill();
+      for (let i = 0; i < 5; i++) {
+        const a = (i - 2) / 2, lx = a * W * 0.34, on = (Math.floor(t / 280) + i) % 5 === 0;
+        g.fillStyle = on ? '#fff6c8' : sh.color; g.globalAlpha = on ? 1 : 0.75; g.beginPath(); g.arc(lx, W * 0.03 + Math.abs(a) * W * 0.03, Math.max(1.6, W * 0.022), 0, 6.3); g.fill(); g.globalAlpha = 1;
+      }
+      if (hot) { g.strokeStyle = sh.color; g.lineWidth = 1.5; g.beginPath(); g.ellipse(0, 0, W * 0.62, W * 0.34, 0, 0, 6.3); g.stroke(); }
       g.restore();
     }
   }
@@ -4374,7 +4359,7 @@ window.__coins = COIN_LOGOS;
     if (!sky.on) return;
     const dt = Math.min(0.05, (t - (sky.last || t)) / 1000); sky.last = t;
     skySize();
-    if (!sky.still) for (const sh of sky.ships) { sh.x += sh.speed * dt * (sky.hover === sh ? 0.15 : 1); if (sh.x - sh.len * 2 > sky.w) sh.x = -sh.len * 2; }
+    if (!sky.still) for (const sh of sky.ships) { sh.x += sh.speed * dt * (sky.hover === sh ? 0.1 : 1); if (sh.x - sh.len > sky.w) sh.x = -sh.len; }
     else sky.ships.forEach((sh, i) => { sh.x = (i + 0.5) / sky.ships.length * sky.w; });
     skyDraw(t);
     requestAnimationFrame(skyStep);
@@ -4387,7 +4372,7 @@ window.__coins = COIN_LOGOS;
     const find = (e) => {
       const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, t = performance.now();
       let best = null, bd = 1e9;
-      for (const sh of sky.ships) { const p = skyPos(sh, t), dx = (px - p.x) / (sh.len * 0.62 + 6), dy = (py - p.y) / (sh.len * 0.34 * 1.25 + 6), d = dx * dx + dy * dy; if (d <= 1 && d < bd) { best = sh; bd = d; } }
+      for (const sh of sky.ships) { const p = skyPos(sh, t), dx = (px - p.x) / (sh.len * 0.6 + 6), dy = (py - p.y) / (sh.len * 0.36 + 6), d = dx * dx + dy * dy; if (d <= 1 && d < bd) { best = sh; bd = d; } }
       return best;
     };
     el.addEventListener('pointermove', (e) => {
@@ -4422,95 +4407,6 @@ window.__coins = COIN_LOGOS;
     const every = Math.ceil((span * 12) / (B - T)); // skip decades when they would crowd
     const ticks = []; for (let e = Math.log10(lo); e <= Math.log10(hi) + 1e-9; e += 1) ticks.push(10 ** Math.round(e));
     return { log: true, Y: (v) => (v > 0 ? B - Math.max(0, Math.min(1, Math.log10(v / lo) / span)) * (B - T) : B), ticks: ticks.filter((_, i, a) => i === a.length - 1 || i % every === 0) };
-  }
-  function drawChart(m, rng) {
-    const svg = $('ms-chart'); svg.replaceChildren();
-    const L = 72, Rt = 548, T = 12, B = 280, hs = m.hashrates, ds0 = m.difficulty, short = rng === '24h' || rng === '14d';
-    if (hs.length < 2) {
-      const msg = !m.pool ? `No data for ${RANGE_INFO[rng].label} from this source yet.`
-        : m.failed ? 'Your node has not sent the pool hashrate yet.' : m.ok ? 'The pool hashrate fills in as your node reads more blocks.' : 'Asking your node for the pool hashrate…';
-      svg.appendChild(svgEl('text', { x: 300, y: 150, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 14 }, msg));
-      return;
-    }
-    const t1 = Math.max(hs[hs.length - 1][0], ds0.length ? ds0[ds0.length - 1][0] : 0);
-    // the pools' line starts where the node began telling them apart; the time axis still spans the whole period
-    const t0 = m.pool ? Math.min(hs[0][0], t1 - RANGE_INFO[rng].sec) : hs[0][0];
-    const ds = ds0.map(([t, v]) => [Math.max(t, t0), v]);   // a value that held before the first point starts at the left edge
-    const X = (t) => L + ((t - t0) / (t1 - t0 || 1)) * (Rt - L);
-    const hAx = axisScale(hs.map((x) => x[1]), T, B);
-    // the pools' share of the network: a plain 0 – top% scale
-    const shareAxis = () => { const mx = Math.max(...ds.map((x) => x[1]), 0.05), step = niceStep(mx * 1.05, 4), top = Math.ceil(mx / step) * step, ticks = []; for (let v = step; v <= top + step / 1e6; v += step) ticks.push(v); return { log: false, Y: (v) => B - Math.max(0, Math.min(1, v / top)) * (B - T), ticks }; };
-    const dAx = m.pool ? shareAxis() : axisScale(ds.map((x) => x[1]), T, B);
-    const YH = hAx.Y, YD = dAx.Y;
-    for (const v of hAx.ticks) {
-      svg.appendChild(svgEl('line', { x1: L, x2: Rt, y1: YH(v), y2: YH(v), stroke: 'var(--line)', 'stroke-dasharray': '2 4' }));
-      svg.appendChild(svgEl('text', { x: L - 8, y: YH(v) + 4, 'text-anchor': 'end', fill: 'var(--muted)', 'font-size': 12 }, siShort(v) + 'H/s'));
-    }
-    for (const v of dAx.ticks) svg.appendChild(svgEl('text', { x: Rt + 8, y: YD(v) + 4, fill: 'var(--muted)', 'font-size': 12 }, m.pool ? `${+(v * 100).toFixed(1)}%` : siShort(v).replace(' ', '')));
-    if (hAx.log) svg.appendChild(svgEl('text', { x: L + 6, y: T + 12, fill: 'var(--muted)', 'font-size': 11 }, 'log scale · every step is 10×'));
-    svg.appendChild(svgEl('line', { x1: L, x2: Rt, y1: B, y2: B, stroke: 'var(--line-strong)' }));
-    // along the bottom: hours for a day, days for two weeks or a month, months for longer
-    const tick = (t, text, strong) => {
-      const x = X(t); if (x < L - 1 || x > Rt + 1) return;
-      svg.appendChild(svgEl('line', { x1: x, x2: x, y1: B, y2: B + 5, stroke: 'var(--line-strong)' }));
-      svg.appendChild(svgEl('text', { x, y: B + 20, 'text-anchor': 'middle', fill: strong ? 'var(--text)' : 'var(--muted)', 'font-size': 12, 'font-weight': strong ? 600 : 400 }, text));
-    };
-    if (rng === '24h' || rng === '14d' || rng === '1m') {
-      const every = { '24h': 4 * 3600, '14d': 2 * 86400, '1m': 5 * 86400 }[rng], first = Math.ceil(t0 / every) * every;
-      for (let t = first; t <= t1; t += every) {
-        const d = new Date(t * 1000);
-        if (rng === '24h') tick(t, String(d.getUTCHours()).padStart(2, '0') + ':00', d.getUTCHours() === 0);
-        else tick(t, d.toLocaleDateString('en', { day: 'numeric', month: 'short', timeZone: 'UTC' }), false);
-      }
-    } else {
-      const d = new Date(t0 * 1000); d.setUTCDate(1); d.setUTCHours(0, 0, 0, 0);
-      const gap = rng === '6m' ? 1 : 2;
-      for (d.setUTCMonth(d.getUTCMonth() + 1); d.getTime() / 1000 <= t1; d.setUTCMonth(d.getUTCMonth() + gap)) {
-        const jan = d.getUTCMonth() === 0;
-        tick(d.getTime() / 1000, jan ? String(d.getUTCFullYear()) : d.toLocaleDateString('en', { month: 'short', timeZone: 'UTC' }), jan);
-      }
-    }
-    const line = (pts, color, w) => svg.appendChild(svgEl('polyline', { points: pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' '), fill: 'none', stroke: color, 'stroke-width': w, 'stroke-linejoin': 'round' }));
-    line(hs.map(([t, v]) => [X(t), YH(v)]), '#f6c177', 1);
-    // the smoothed line averages over a stretch that suits the period (3 hours for a day … 7 days for a year)
-    const spacing = (hs[hs.length - 1][0] - hs[0][0]) / (hs.length - 1) || 1, k = Math.max(1, Math.round(RANGE_INFO[rng].avg[1] / spacing));
-    const avg = hs.map(([t], i) => { const w = hs.slice(Math.max(0, i - k + 1), i + 1); return w.reduce((s, x) => s + x[1], 0) / w.length; });
-    line(hs.map(([t], i) => [X(t), YH(avg[i])]), '#e8862a', 2.6);
-    // difficulty only changes at an adjustment: a step line
-    if (ds.length && m.pool) line(ds.map(([t, v]) => [X(t), YD(v)]), '#d6336c', 2.4);
-    else if (ds.length) {
-      const steps = []; ds.forEach(([t, v], i) => { if (i) steps.push([X(t), YD(ds[i - 1][1])]); steps.push([X(t), YD(v)]); }); steps.push([X(t1), YD(ds[ds.length - 1][1])]);
-      steps.unshift([L, YD(ds[0][1])]); line(steps, '#d6336c', 2.4);
-    }
-    // where the chain stands now: a dot on the last point with its value beside it
-    const last = hs[hs.length - 1], lx = X(last[0]), now = m.hash > 0 ? m.hash : last[1], ly = YH(now);
-    svg.appendChild(svgEl('line', { x1: L, x2: Rt, y1: ly, y2: ly, stroke: '#f6c177', 'stroke-width': 1, 'stroke-dasharray': '3 5', opacity: .5 }));
-    svg.appendChild(svgEl('circle', { cx: lx, cy: ly, r: 4, fill: '#f6c177', stroke: 'var(--surface)', 'stroke-width': 2 }));
-    const nowText = si(now, 1) + 'H/s', tw = nowText.length * 7.2 + 14, flip = lx + tw > Rt;
-    const bx = flip ? lx - tw - 8 : lx + 8, by = Math.max(T + 2, Math.min(B - 22, ly - 10));
-    svg.appendChild(svgEl('rect', { x: bx, y: by, width: tw, height: 20, rx: 4, fill: 'var(--surface)', stroke: '#f6c177', 'stroke-width': 1, opacity: .96 }));
-    svg.appendChild(svgEl('text', { x: bx + tw / 2, y: by + 14, 'text-anchor': 'middle', fill: '#f6c177', 'font-size': 12.5, 'font-weight': 700 }, nowText));
-    // reading the chart: a crosshair that names the date, the hashrate and the difficulty under the pointer
-    const cross = svgEl('g', { visibility: 'hidden' });
-    const vline = svgEl('line', { y1: T, y2: B, stroke: 'var(--line-strong)', 'stroke-width': 1 });
-    const dotH = svgEl('circle', { r: 3.5, fill: '#e8862a' }), dotD = svgEl('circle', { r: 3.5, fill: '#d6336c' });
-    cross.append(vline, dotH, dotD); svg.appendChild(cross);
-    const hit = svgEl('rect', { x: L, y: T, width: Rt - L, height: B - T, fill: 'transparent', style: 'cursor:crosshair' });
-    const at = (e) => {
-      const r = svg.getBoundingClientRect(), vb = 600 / r.width, t = t0 + ((e.clientX - r.left) * vb - L) / (Rt - L) * (t1 - t0);
-      let i = 0; hs.forEach(([ht], j) => { if (Math.abs(ht - t) < Math.abs(hs[i][0] - t)) i = j; });
-      const d = m.pool ? ds[i] : ds.filter(([dt]) => dt <= hs[i][0]).pop() ?? ds[0];
-      cross.setAttribute('visibility', 'visible');
-      vline.setAttribute('x1', X(hs[i][0])); vline.setAttribute('x2', X(hs[i][0]));
-      dotH.setAttribute('cx', X(hs[i][0])); dotH.setAttribute('cy', YH(avg[i]));
-      dotD.setAttribute('cx', X(hs[i][0])); dotD.setAttribute('cy', d ? YD(d[1]) : B);
-      tip(e, `<b>${new Date(hs[i][0] * 1000).toLocaleString('en', short ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' } : { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}${short ? ' UTC' : ''}</b><br>`
-        + `${m.pool ? 'Pool hashrate' : 'Hashrate'} ${si(hs[i][1], 1)}H/s<br>${RANGE_INFO[rng].avg[0]} average ${si(avg[i], 1)}H/s`
-        + (d ? (m.pool ? `<br>Share of the network ${(d[1] * 100).toFixed(1)}%` : `<br>Difficulty ${si(d[1], 2).replace(' ', '')}`) : ''));
-    };
-    hit.addEventListener('mousemove', at);
-    hit.addEventListener('mouseleave', (e) => { cross.setAttribute('visibility', 'hidden'); tip(e, null); });
-    svg.appendChild(hit);
   }
   // ---------- a mining pool's own page: every block it mined ----------
   var poolView = null;          // the pool the page is showing
