@@ -277,6 +277,14 @@ def mempool_blocks():
     return out
 
 
+def mempool_top(n=8):
+    """the transactions that head the block being mined: best fee rate first (the site's Coinbase & Merkle Root animation hashes these)"""
+    pool = rpc("getrawmempool", True)
+    best = sorted(pool.items(), key=lambda kv: kv[1]["fee"] / max(1, kv[1]["size"]), reverse=True)[:n]
+    return {"height": int(rpc("getblockcount")) + 1, "nTx": len(pool),
+            "txs": [{"txid": k, "size": v["size"], "fee": round(v["fee"] * COIN)} for k, v in best]}
+
+
 def mempool_json(b):
     """a block in mempool's /api/v1/blocks format"""
     r = round(b["avgFee"], 2)
@@ -669,6 +677,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json([mempool_json(b) for b in last_blocks(10)], 10)
             if path == "/api/v1/fees/mempool-blocks":
                 return self.json(_state["mempool"] or mempool_blocks(), 5)
+            if path == "/api/v1/mempool/top":
+                return self.json(mempool_top(), 8)
             m = re.fullmatch(r"/api/v1/mining/(hashrate|pools|pool-hashrate|solo)/(\w+)", path)
             if m:
                 data = _mining[m.group(1)].get(m.group(2))

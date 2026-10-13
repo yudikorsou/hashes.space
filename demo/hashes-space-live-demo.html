@@ -676,6 +676,13 @@
   .txt.pk { grid-template-rows: auto 1fr auto; align-content: stretch; padding: 4px 0 2px; }
   .txt.pk .fee { white-space: nowrap; font-size: calc(12.5px * var(--k, 1)); }
   .txt.pk .txs { font-size: calc(10.5px * var(--k, 1)); line-height: 1.2; padding-top: 2px; }
+  .mksvg { display: block; width: 100%; height: 100%; min-height: 0; overflow: visible; }
+  .mksvg text { font: 600 8px var(--mono); fill: #fff; text-anchor: middle; dominant-baseline: central; }
+  .mksvg .cap { font-size: 5.4px; fill: rgba(255,255,255,.6); letter-spacing: .04em; }
+  .mksvg .nd { fill: #4a78c9; stroke: rgba(255,255,255,.35); stroke-width: .6; }
+  .mksvg .cb { fill: #d9a21b; } .mksvg .tx1 { fill: #2fb585; } .mksvg .l1 { fill: #5d6280; }
+  .mksvg .root { fill: #1bd8f4; stroke: #fff; } .mksvg .root + text { fill: #0b1220; }
+  .mksvg .ln { fill: none; stroke: rgba(255,255,255,.55); stroke-width: .8; }
   .pkgsvg { display: block; width: 100%; height: 100%; min-height: 0; overflow: visible; }
   .pkgsvg text { font: 600 8px var(--mono); fill: #fff; text-anchor: middle; dominant-baseline: central; }
   .pkgsvg .tx { stroke: rgba(255,255,255,.35); stroke-width: .6; }
@@ -1877,6 +1884,72 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
           ${pair('p-c', 4, 16, '10', 'lo', 'hi')}${pair('p-a', 2, 38, '20', 'lo', 'hi')}<g class="pk p-b">${tx('mid', 0, 12, 36)}</g></svg>
         <span class="txs">best fee rate first</span></div></div>`;
   }
+  // Dogecoin: Coinbase & Merkle Root. The coinbase transaction is built first, then the best-paying transactions of the node's mempool come in,
+  // each id is hashed in pairs (double SHA-256, as in the block header) up to the merkle root. The ids are the real head of the mempool
+  // (hashes Dogecoin Explorer, /api/v1/mempool/top); the SubtleCrypto hashes are computed here. Without that node the ids are simulated.
+  const MK = { txids: [], height: 0, key: '', nodes: null, live: false };
+  const MK_API = 'https://doge.hashes.space/api/v1/mempool/top';
+  const hexBytes = (h) => Uint8Array.from(h.match(/../g) ?? [], (x) => parseInt(x, 16));
+  const bytesHex = (u) => [...u].map((x) => x.toString(16).padStart(2, '0')).join('');
+  async function sha256d(u) { const d = crypto.subtle.digest.bind(crypto.subtle); return new Uint8Array(await d('SHA-256', await d('SHA-256', u))); }
+  const rev = (u) => Uint8Array.from(u).reverse();
+  async function mkCompute(height, ids) {
+    const key = height + ids.join(','); if (key === MK.key || !crypto?.subtle) return;
+    MK.key = key;
+    try {
+      const cb = new TextEncoder().encode(`coinbase|${height}|/hashes.space/`);
+      const leaves = [await sha256d(cb), ...ids.slice(0, 3).map((i) => rev(hexBytes(i)))];
+      const pair = async (a, b) => sha256d(Uint8Array.from([...a, ...b]));
+      const a = await pair(leaves[0], leaves[1]), b = await pair(leaves[2], leaves[3]), root = await pair(a, b);
+      if (MK.key === key) MK.nodes = { leaves: leaves.map((x) => bytesHex(rev(x)).slice(0, 5)), l1: [a, b].map((x) => bytesHex(rev(x)).slice(0, 5)), root: bytesHex(rev(root)).slice(0, 8) };
+    } catch { /* no SubtleCrypto: the shortened ids are shown */ }
+  }
+  function mkIds() {
+    if (MK.txids.length >= 3) return MK.txids;
+    let x = Math.floor(now() / 60_000) + 7; // simulated until the node answers: a new set every minute
+    return [0, 1, 2].map(() => Array.from({ length: 64 }, () => ((x = (x * 1103515245 + 12345) >>> 0) >>> 16 & 15).toString(16)).join(''));
+  }
+  async function fetchMempoolTop() {
+    try {
+      const r = await fetch(MK_API, { signal: AbortSignal.timeout(8000) });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (Array.isArray(j.txs) && j.txs.length >= 3) { MK.txids = j.txs.slice(0, 3).map((t) => t.txid); MK.height = j.height; MK.live = true; }
+    } catch { /* the explorer is not reachable: simulated ids */ }
+  }
+  fetchMempoolTop(); setInterval(fetchMempoolTop, 10000);
+  function merkleCube() {
+    const leaf = (i, cls, tag) => { const x = 3 + i * 32; return `<g class="mk" data-k="leaf" data-i="${i}" data-x="${x}" data-y="9"><text class="cap" x="${x + 14}" y="3.5">${tag}</text><rect class="nd ${cls}" x="${x}" y="8" width="28" height="13" rx="2"/><text class="v" x="${x + 14}" y="14.8"></text></g>`; };
+    const node = (id, x, y, w, cls) => `<g class="mk" data-k="${id}"><rect class="nd ${cls}" x="${x}" y="${y}" width="${w}" height="13" rx="2"/><text class="v" x="${x + w / 2}" y="${y + 6.8}"></text></g>`;
+    const ln = (id, x1, y1, x2, y2) => `<path class="ln mk" data-k="${id}" pathLength="1" d="M${x1} ${y1}L${x2} ${y2}"/>`;
+    return `<div class="cube bare"><div class="txt fp pk">
+        <span class="fee">Merkle tree</span>
+        <svg class="mksvg" viewBox="0 0 130 82" aria-hidden="true" focusable="false">
+          ${ln('la', 17, 21, 33, 38)}${ln('lb', 49, 21, 33, 38)}${ln('lc', 81, 21, 97, 38)}${ln('ld', 113, 21, 97, 38)}${ln('ra', 33, 51, 65, 66)}${ln('rb', 97, 51, 65, 66)}
+          ${leaf(0, 'cb', 'coinbase')}${leaf(1, 'tx1', 'tx 1')}${leaf(2, 'tx1', 'tx 2')}${leaf(3, 'tx1', 'tx 3')}
+          ${node('n0', 19, 38, 28, 'l1')}${node('n1', 83, 38, 28, 'l1')}${node('root', 41, 66, 48, 'root')}</svg>
+        <span class="txs" id="mk-cap">coinbase transaction</span></div></div>`;
+  }
+  const MK_P = 9000, mkT0 = performance.now(), MK_AT = { leaf: [400, 1500, 2100, 2700], la: 3300, lb: 3300, lc: 3600, ld: 3600, n0: 3900, n1: 4200, ra: 5000, rb: 5000, root: 5500 };
+  function mkFrame(now) {
+    const svg = document.querySelector('.mksvg'); if (!svg) return;
+    const t = STILL.matches ? 7000 : (now - mkT0) % MK_P, out = t > MK_P - 700 ? 1 - (t - (MK_P - 700)) / 700 : 1;
+    mkCompute(MK.height || (chain().blocks[0]?.height ?? chain().tipHeight) + 1, mkIds());
+    const nd = MK.nodes, ids = mkIds();
+    const txt = { leaf: [nd?.leaves[0] ?? 'cb', ...[1, 2, 3].map((i) => nd?.leaves[i] ?? ids[i - 1].slice(0, 5))], n0: nd?.l1[0] ?? '·····', n1: nd?.l1[1] ?? '·····', root: nd?.root ?? 'merkle' };
+    for (const g of svg.querySelectorAll('.mk')) {
+      const k = g.dataset.k, i = +(g.dataset.i ?? 0), t0 = k === 'leaf' ? MK_AT.leaf[i] : MK_AT[k];
+      const p = easeOut(Math.max(0, Math.min(1, (t - t0) / (g.tagName === 'path' ? 600 : 450))));
+      if (g.tagName === 'path') { g.style.strokeDasharray = '1'; g.style.strokeDashoffset = String(1 - p); g.style.opacity = String(out); continue; }
+      g.style.opacity = String(p * out);
+      g.setAttribute('transform', `translate(0 ${((1 - p) * -9).toFixed(1)})`);
+      const v = g.querySelector('.v'), want = k === 'leaf' ? txt.leaf[i] : txt[k];
+      if (v && v.textContent !== want) v.textContent = want;
+    }
+    const cap = t < 1500 ? 'coinbase transaction' : t < 3300 ? 'adding mempool transactions' : t < 5300 ? 'hashing pairs' : MK.live ? 'merkle root of the mempool' : 'merkle root';
+    const c = $('mk-cap'); if (c && c.textContent !== cap) c.textContent = cap;
+  }
+  requestAnimationFrame(function mkLoop(now) { if (!document.hidden) mkFrame(now); requestAnimationFrame(mkLoop); });
   // the block subsidy halves every 210,000 blocks (Bitcoin and Bitcoin BLAKE2b)
   const subsidy = (h) => (h >= 6_930_000 ? 0 : 50 / 2 ** Math.floor(h / 210_000));
   // Block assembly: the block is built up from nothing. The coinbase goes in first, then the transactions in the order of their fee rate,
@@ -1946,7 +2019,8 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
     el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
       <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : 'Fee Auction'}</span></div></div>
-      ${chain().xmr ? '' : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
+      ${chain().xmr ? '' : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
+      <div class="below"><span class="datum-badge plain">Coinbase &amp; Merkle Root</span></div></div>` : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
       <div class="below"><span class="datum-badge plain">Create new block</span></div></div>`}
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
       <div class="below"><span class="datum-badge plain">Block assembly</span></div></div>
