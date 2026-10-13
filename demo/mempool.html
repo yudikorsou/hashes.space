@@ -4311,7 +4311,7 @@ window.__coins = COIN_LOGOS;
   function skySet(list, total, hashNow, win, note) {
     sky.msg = list ? '' : (note || 'Waiting for your node…');
     const ranked = (list || []).filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
-    const top = ranked.slice(0, SKY_MAX - 1), rest = ranked.slice(SKY_MAX - 1), items = ranked.length > SKY_MAX ? [...top, { name: `${rest.length} smaller pools`, blocks: rest.reduce((a, x) => a + x.blocks, 0) }] : ranked;
+    const PIN = /^(OCEAN|CONVOY)$/i, head = ranked.slice(0, SKY_MAX - 1), top = [...head, ...ranked.slice(SKY_MAX - 1).filter((x) => PIN.test(x.name))], rest = ranked.slice(SKY_MAX - 1).filter((x) => !PIN.test(x.name)), items = rest.length ? [...top, { name: `${rest.length} smaller pools`, blocks: rest.reduce((a, x) => a + x.blocks, 0) }] : ranked;
     const sig = items.map((x) => x.name + ':' + x.blocks).join('|') + '|' + Math.round(hashNow || 0);
     if (sig === sky.names) return;
     sky.names = sig; sky.laid = '';
