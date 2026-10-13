@@ -848,19 +848,35 @@
     }
     if (netId === 'dogecoin') skyShip(g, t);
   }
-  // Bitcoin only: a sun in the top right corner of the black holes. Drawn like a real star: a limb-darkened, granulated surface, a thin bright edge, hot sparks thrown off the surface and the same drifting dust as the holes.
-  // It is only decoration (it has no meaning in the data) and stands still when the visitor prefers less motion.
+  // Bitcoin only: a sun in the background of the black holes, modelled on a real extreme-ultraviolet photograph of the sun: a deep orange disc covered in dark red and bright yellow mottling, white-hot active regions, a red glowing edge and small prominences.
+  // The surface is a texture made once with noise and wrapped round a sphere that slowly turns. It is only decoration (no meaning in the data) and stands still when the visitor prefers less motion.
   const sunBits = Array.from({ length: 70 }, (_, k) => ({ f: 1.5 + rnd(k, 11) * 1.4, th: rnd(k, 12) * 6.283, w: 0.45 + rnd(k, 13) * 0.8, s: 0.5 + rnd(k, 14) * 0.9, h: rnd(k, 15) }));
-  const sunCells = Array.from({ length: 260 }, (_, k) => ({ lon: rnd(k, 21) * 6.283, lat: Math.asin((rnd(k, 22) - 0.5) * 1.9), s: 0.045 + rnd(k, 23) * 0.075, w: 0.05 + rnd(k, 24) * 0.05, dark: rnd(k, 25) > 0.55 }));
-  const sunSparks = Array.from({ length: 110 }, (_, k) => ({ a: rnd(k, 31) * 6.283, d: 0.5 + Math.pow(rnd(k, 32), 1.6) * 2.3, sp: 0.16 + rnd(k, 33) * 0.3, ph: rnd(k, 34), cv: (rnd(k, 35) - 0.5) * 0.9, sz: 0.6 + rnd(k, 36) * 1.1 }));
-  const skySunAt = () => { const R = Math.max(16, Math.min(36, sky.w / 24)); return { R, x: sky.w * 0.7, y: Math.max(R * 2.3 + 6, (sky.h - 30) * 0.3) }; };   // far away in the background, a little in from the corner
+  const sunSparks = Array.from({ length: 80 }, (_, k) => ({ a: rnd(k, 31) * 6.283, d: 0.5 + Math.pow(rnd(k, 32), 1.6) * 2.3, sp: 0.16 + rnd(k, 33) * 0.3, ph: rnd(k, 34), cv: (rnd(k, 35) - 0.5) * 0.9, sz: 0.6 + rnd(k, 36) * 1.1 }));
+  const skySunAt = () => { const R = Math.max(18, Math.min(40, sky.w / 21)); return { R, x: sky.w * 0.7, y: Math.max(R * 2.3 + 6, (sky.h - 30) * 0.3) }; };   // far away in the background, a little in from the corner
+  const sunTex = { w: 512, h: 256, d: null };
+  function sunTexture() {   // wrapping value noise: coarse patches, then fine ridged mottling, plus a few bright active regions
+    if (sunTex.d) return sunTex.d; const W = sunTex.w, H = sunTex.h, d = new Float32Array(W * H * 3), hs = (x, y, k) => { const v = Math.sin(x * 127.1 + y * 311.7 + k * 74.7) * 43758.5453; return v - Math.floor(v); };
+    const noise = (u, v, f, k) => { const x = u * f, y = v * f, xi = Math.floor(x), yi = Math.floor(y), xf = x - xi, yf = y - yi, sx = xf * xf * (3 - 2 * xf), sy = yf * yf * (3 - 2 * yf), X = (i) => ((i % f) + f) % f;
+      const a = hs(X(xi), yi, k), b = hs(X(xi + 1), yi, k), c = hs(X(xi), yi + 1, k), e = hs(X(xi + 1), yi + 1, k); return a + (b - a) * sx + (c - a) * sy + (a - b - c + e) * sx * sy; };
+    const act = [[0.18, 0.62, 0.05], [0.62, 0.3, 0.045], [0.86, 0.7, 0.035], [0.4, 0.78, 0.03]];
+    for (let j = 0; j < H; j++) for (let i = 0; i < W; i++) {
+      const u = i / W, v = j / H; let n = 0, amp = 0.5, tot = 0;
+      for (const [f, k] of [[8, 1], [16, 2], [32, 3], [64, 4], [128, 5], [256, 6]]) { n += (1 - Math.abs(noise(u, v, f, k) * 2 - 1)) * amp; tot += amp; amp *= 0.85; }
+      n = Math.min(1, Math.max(0, (n / tot - 0.3) * 2.2)); n = n * n; let act2 = 0; for (const [cu, cv, r] of act) { const du = Math.min(Math.abs(u - cu), 1 - Math.abs(u - cu)) * 2, dv = v - cv; act2 += Math.exp(-(du * du + dv * dv) / (r * r)); }
+      const t = Math.min(1, n * 1.9 + act2 * 0.55), o = (j * W + i) * 3;   // 0 dark red ... 1 white-hot
+      const r = 150 + 105 * Math.min(1, t * 1.5), gg = 28 + 190 * Math.pow(t, 1.25), bb = 4 + 150 * Math.pow(t, 3);
+      d[o] = r; d[o + 1] = gg; d[o + 2] = bb;
+    }
+    return (sunTex.d = d);
+  }
+  const sunBuf = { c: null, S: 0 };
   function skySun(g, t) {
     const { R, x, y } = skySunAt(), still = sky.still, T = still ? 4000 : t, TAU = 6.2832, tilt = -0.28;
     g.save(); g.translate(x, y);
-    // the halo: a smooth falloff from white-hot to deep amber, like the glow of the holes
-    const halo = g.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 4.4);
-    [[0, 'rgba(255,214,150,.5)'], [0.1, 'rgba(255,184,100,.32)'], [0.26, 'rgba(255,140,60,.15)'], [0.5, 'rgba(255,110,40,.055)'], [1, 'rgba(255,90,30,0)']].forEach(([o, c]) => halo.addColorStop(o, c));
-    g.fillStyle = halo; g.beginPath(); g.arc(0, 0, R * 4.4, 0, TAU); g.fill();
+    // the halo: a smooth falloff from red-orange to nothing, like the glow of the holes
+    const halo = g.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 4.2);
+    [[0, 'rgba(255,120,40,.5)'], [0.1, 'rgba(255,90,25,.3)'], [0.28, 'rgba(230,60,20,.13)'], [0.55, 'rgba(200,50,20,.045)'], [1, 'rgba(180,40,20,0)']].forEach(([o, c]) => halo.addColorStop(o, c));
+    g.fillStyle = halo; g.beginPath(); g.arc(0, 0, R * 4.2, 0, TAU); g.fill();
     // the sparks: hot specks thrown off the surface that streak outwards, curve a little, cool from white to orange to red and die out, like heat leaving the sun
     g.save(); g.globalCompositeOperation = 'lighter'; g.lineCap = 'round';
     for (const p of sunSparks) {
@@ -868,7 +884,7 @@
       const pos = (q) => { const r = R * (1 + p.d * q), an = p.a + p.cv * q; return [Math.cos(an) * r, Math.sin(an) * r]; };
       const [x1, y1] = pos(e), [x0, y0] = pos(Math.max(0, e - 0.1 - 0.05 * p.d));
       const fade = Math.pow(1 - u, 1.4) * Math.min(1, u * 14), c = u < 0.25 ? '255,244,205' : u < 0.6 ? '255,178,80' : '255,104,40';
-      g.strokeStyle = `rgba(${c},${0.85 * fade})`; g.lineWidth = Math.max(1 / sky.dpr, R * 0.026 * p.sz * (1 - u * 0.6));
+      g.strokeStyle = `rgba(${c},${0.7 * fade})`; g.lineWidth = Math.max(1 / sky.dpr, R * 0.026 * p.sz * (1 - u * 0.6));
       g.beginPath(); g.moveTo(x0, y0); g.lineTo(x1, y1); g.stroke();
       if (p.sz > 1.1 && fade > 0.2) { g.fillStyle = `rgba(${c},${0.35 * fade})`; g.beginPath(); g.arc(x1, y1, R * 0.045 * p.sz, 0, TAU); g.fill(); }
     }
@@ -882,26 +898,29 @@
       g.beginPath(); g.arc(Math.cos(th) * R * b.f, Math.sin(th) * R * b.f * 0.27, b.s * (0.6 + near * 0.7) * Math.max(0.7, R / 30), 0, TAU); g.fill();
     } };
     bits(false); g.restore();
-    // the surface: a white-hot centre that darkens and reddens towards the edge
-    const core = g.createRadialGradient(0, 0, 0, 0, 0, R);
-    [[0, '#fffdf2'], [0.45, '#fff2c4'], [0.72, '#ffd88a'], [0.9, '#ffb04e'], [1, '#e8782a']].forEach(([o, c]) => core.addColorStop(o, c));
-    g.fillStyle = core; g.beginPath(); g.arc(0, 0, R, 0, TAU); g.fill();
-    // granulation: a few hundred tiny bright and dark cells that slowly rotate across the face
-    g.save(); g.beginPath(); g.arc(0, 0, R * 0.995, 0, TAU); g.clip();
-    for (const c of sunCells) {
-      const lon = c.lon + T / 1000 * c.w, vis = Math.cos(lon) * Math.cos(c.lat); if (vis <= 0.04) continue;
-      const cx = R * Math.cos(c.lat) * Math.sin(lon), cy = R * Math.sin(c.lat), rr = R * c.s * (0.45 + vis * 0.7), cg = g.createRadialGradient(cx, cy, 0, cx, cy, rr);
-      const col = c.dark ? '214,110,30' : '255,250,225', al = (c.dark ? 0.2 : 0.3) * vis;
-      cg.addColorStop(0, `rgba(${col},${al})`); cg.addColorStop(1, `rgba(${col},0)`);
-      g.fillStyle = cg; g.beginPath(); g.arc(cx, cy, rr, 0, TAU); g.fill();
+    // the surface: the texture wrapped round a turning sphere, darker and redder towards the edge
+    const S = Math.ceil(R * 2 * sky.dpr) + 2;
+    if (!sunBuf.c || sunBuf.S !== S) { sunBuf.c = document.createElement('canvas'); sunBuf.c.width = sunBuf.c.height = S; sunBuf.S = S; }
+    const bc = sunBuf.c.getContext('2d'), img = bc.createImageData(S, S), px = img.data, tx = sunTexture(), W = sunTex.w, H = sunTex.h, half = S / 2, rot = (T / 1000) * 0.05;
+    for (let j = 0; j < S; j++) for (let i = 0; i < S; i++) {
+      const nx = (i + 0.5 - half) / (half - 1), ny = (j + 0.5 - half) / (half - 1), r2 = nx * nx + ny * ny; if (r2 >= 1.02) continue;
+      const nz = Math.sqrt(Math.max(0, 1 - r2)), lon = Math.atan2(nx, nz) + rot, lat = Math.asin(Math.max(-1, Math.min(1, ny)));
+      const u = (((lon / TAU) % 1) + 1) % 1, o = (Math.min(H - 1, Math.floor((lat / 3.1416 + 0.5) * H)) * W + Math.min(W - 1, Math.floor(u * W))) * 3;
+      const k = 0.5 + 0.5 * Math.pow(nz, 0.45), edge = Math.pow(1 - nz, 3), q = (j * S + i) * 4;
+      px[q] = Math.min(255, tx[o] * k + edge * 90); px[q + 1] = tx[o + 1] * k * (1 - edge * 0.5); px[q + 2] = tx[o + 2] * k * (1 - edge * 0.8);
+      px[q + 3] = Math.round(255 * Math.max(0, Math.min(1, (1 - Math.sqrt(r2)) * half * 0.9 + 0.5)));
     }
-    const sh = g.createRadialGradient(0, 0, R * 0.55, 0, 0, R); sh.addColorStop(0, 'rgba(140,50,0,0)'); sh.addColorStop(1, 'rgba(140,50,0,.4)');   // limb darkening
-    g.fillStyle = sh; g.fillRect(-R, -R, R * 2, R * 2);
-    g.restore();
-    // a thin bright edge, finer than the holes' ring, and a soft chromosphere just outside it
-    const chrom = g.createRadialGradient(0, 0, R * 0.98, 0, 0, R * 1.22); chrom.addColorStop(0, 'rgba(255,190,110,.5)'); chrom.addColorStop(0.3, 'rgba(255,140,60,.2)'); chrom.addColorStop(1, 'rgba(255,110,40,0)');
-    g.fillStyle = chrom; g.beginPath(); g.arc(0, 0, R * 1.22, 0, TAU); g.fill();
-    g.strokeStyle = 'rgba(255,238,210,.75)'; g.lineWidth = Math.max(1 / sky.dpr, R * 0.022); g.beginPath(); g.arc(0, 0, R * 1.005, 0, TAU); g.stroke();
+    bc.putImageData(img, 0, 0); g.imageSmoothingEnabled = true; g.drawImage(sunBuf.c, -R * S / (S - 2) , -R * S / (S - 2), 2 * R * S / (S - 2), 2 * R * S / (S - 2));
+    // the red glowing edge (chromosphere) and a few small prominences that rise from the limb and fall back
+    const chrom = g.createRadialGradient(0, 0, R * 0.97, 0, 0, R * 1.3); chrom.addColorStop(0, 'rgba(255,90,25,.65)'); chrom.addColorStop(0.3, 'rgba(235,55,20,.3)'); chrom.addColorStop(1, 'rgba(200,40,20,0)');
+    g.fillStyle = chrom; g.beginPath(); g.arc(0, 0, R * 1.3, 0, TAU); g.fill();
+    g.lineCap = 'round';
+    for (let i = 0; i < 4; i++) {
+      const a = i * 1.7 + 0.9 + T / 40000, hgt = R * (0.1 + 0.07 * (still ? 0.5 : 0.5 + 0.5 * Math.sin(T / 2300 + i * 2.4))), w = 0.11 + 0.03 * (i % 2);
+      const x0 = Math.cos(a - w) * R * 0.99, y0 = Math.sin(a - w) * R * 0.99, x1 = Math.cos(a + w) * R * 0.99, y1 = Math.sin(a + w) * R * 0.99, mx = Math.cos(a) * (R + hgt * 2), my = Math.sin(a) * (R + hgt * 2);
+      g.strokeStyle = 'rgba(255,80,25,.35)'; g.lineWidth = Math.max(2, R * 0.07); g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(mx, my, x1, y1); g.stroke();
+      g.strokeStyle = 'rgba(255,170,90,.7)'; g.lineWidth = Math.max(1, R * 0.022); g.beginPath(); g.moveTo(x0, y0); g.quadraticCurveTo(mx, my, x1, y1); g.stroke();
+    }
     // near dust, in front of the sun
     g.save(); g.rotate(tilt); bits(true); g.restore();
     g.restore();
