@@ -367,6 +367,12 @@ body.g{background:radial-gradient(900px 520px at 8% -8%,rgba(242,104,34,.11),tra
 .g .st.on{background:linear-gradient(90deg,rgba(27,216,244,.10),rgba(27,216,244,0) 70%);border:0;box-shadow:none}.g .st.on .n{background:rgba(27,216,244,.16);border-color:var(--link);color:var(--link);box-shadow:0 0 0 4px rgba(27,216,244,.10),0 0 18px rgba(27,216,244,.35)}.g .st.on .stt b{color:var(--link)}
 .g .fill{background:rgba(255,255,255,.07);border-color:transparent;height:6px}
 @media(max-width:860px){.g .big2{font-size:22px}}
+.pgnav{display:flex;flex-wrap:wrap;gap:8px}.pgnav a,.pgnav span{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:999px;padding:5px 14px;font-size:13px;color:var(--text);white-space:nowrap}.pgnav a:hover{border-color:var(--gold);text-decoration:none}.pgnav .here{border-color:var(--gold);color:var(--gold)}
+.cbstage .cbleft{display:grid;justify-items:center;align-content:center}
+.fsstage{width:100%;max-width:330px;margin:0 auto;display:grid;justify-items:center;gap:6px;padding:8px 0}.fstop{font:700 22px/1.2 system-ui}.fscap{color:var(--muted);font-size:13px}
+.fsbars{position:relative;width:100%;height:150px}.fb{position:absolute;left:0;top:0;bottom:0;width:calc(100%/7);display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;padding:0 5px;will-change:transform}.fb i{display:block;width:100%;border-radius:4px 4px 2px 2px;background:linear-gradient(180deg,#e8ebf5,#9aa3c4)}.fb:first-child i{background:linear-gradient(180deg,#9ad9e8,#1bd8f4)}.fb u{text-decoration:none;font:600 10.5px ui-monospace,Menlo,monospace;color:var(--muted)}
+.dbstage{width:100%;max-width:330px;margin:0 auto;display:grid;justify-items:center;gap:4px}.dbt{font:700 20px/1.2 system-ui}.dbsvg{width:100%;height:auto;overflow:visible}.dbsvg .db-bar{fill:#7a6cd6}.dbsvg .db-base,.dbsvg .db-ax{stroke:#5d6280;stroke-width:.6;fill:none}.dbsvg .db-med{stroke:#1bd8f4;stroke-width:1;fill:none}.dbsvg .db-lim{stroke:#d9a21b;stroke-width:1;stroke-dasharray:3 2;fill:none}.dbsvg .db-curve{fill:none;stroke:#ff8a80;stroke-width:1.6}.dbsvg .db-dot{fill:#fff;stroke:#ff8a80;stroke-width:1.4}
+.dbcap{color:var(--muted);font-size:13px;text-align:center}
 details{margin-top:14px}summary{display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;color:var(--text);font-size:13.5px;font-weight:600;padding:10px 14px;border:1px solid var(--line);border-radius:10px;background:#0b0d17;list-style:none}summary::-webkit-details-marker{display:none}summary::before{content:'▸';color:var(--link);transition:transform .15s}details[open] summary::before{transform:rotate(90deg)}summary:hover{border-color:var(--link)}details[open] summary{margin-bottom:10px}
 """
 
@@ -488,6 +494,20 @@ def tx_page(txid):
     return page("Transaction " + txid[:12], body)
 
 
+def mst(n, title, cap, body, cls=""):
+    return ("<div class='st " + cls + "'><span class=n>" + n + "</span><div class=stt><b>" + title + "</b><em>" + cap + "</em></div><div class=stb>" + body + "</div></div>")
+
+
+def mstage(left, steps, h2, intro, caption=""):
+    return ("<section class='card main cbstage'><div class=cbleft>" + left + ("<p class=cbcap>" + caption + "</p>" if caption else "") + "</div>"
+            "<div class=cbright><h2>" + h2 + "</h2><p class=muted style='margin:0 0 12px'>" + intro + "</p><div class=sts id=steps>" + steps + "</div></div></section>")
+
+
+def pgnav(here):
+    names = [("/fee-ranking", "Fee-per-byte ranking"), ("/block-size", "Dynamic block size"), ("/block-assembly", "Block assembly"), ("/block-candidate", "Candidate block")]
+    return "<nav class=pgnav>" + "".join("<a href='" + p + "'>" + n + "</a>" if p != here else "<span class=here>" + n + "</span>" for p, n in names) + "</nav>"
+
+
 def ranking_parts():
     """the Fee-Per-Byte Ranking of the block that is being mined, as the pieces of the page that change: the node's pool of waiting transactions, from the highest fee rate down"""
     info = rpc("get_info")
@@ -539,7 +559,20 @@ def ranking_parts():
     full = lines(list(range(min(total, 200))))
     table = ("<table class=rank>" + th + short + "</table>" + ("<details><summary>Show all " + "{:,}".format(total) + (" (first 200)" if total > 200 else "") + "</summary><table class=rank>" + th + full + "</table></details>" if total > 12 else "")
              if rows else "<p class=muted>No transactions are waiting right now: the next block is empty apart from its miner reward.</p>")
-    return {"chips": chips, "tiles": tl, "table": table, "height": height, "fit": fit, "used": used, "median": median, "total": total, "low": round(rates[fit - 1], 1) if fit else None,
+    unit = "nXMR/B"
+    pool_kb = sum(r[2] for r in rows) / 1000.0
+    steps = (mst("1", "Collect what waits", "the unconfirmed transactions in your node's pool",
+                 "<div class=big2>" + "{:,}".format(total) + " <small>transactions</small></div><div class=sub>" + "{:,.1f}".format(pool_kb) + " kB waiting</div>", "s1")
+             + mst("2", "Rate each one", "fee ÷ bytes: what it pays the miner for every byte it takes",
+                   "<div class=big2>" + "{:,.0f}".format(top) + " <small>" + unit + " at the top</small></div><div class=sub>median " + "{:,.0f}".format(med) + " " + unit + "</div>", "s2")
+             + mst("3", "Sort, best rate first", "the highest rate goes first, whatever its total fee",
+                   "<div class=big2>#1 → #" + "{:,}".format(total) + "</div><div class=sub>" + ("the top rate is " + "{:,.0f}".format(top / med) + "× the median" if med else "nothing is waiting") + "</div>", "s3")
+             + mst("4", "Fill the block", "from the top until the effective median (" + "{:,}".format(median) + " bytes) is reached",
+                   "<div class=big2>" + "{:,}".format(fit) + " <small>of " + "{:,}".format(total) + " fit</small></div><div class=fill><i style='width:" + "{:.0f}".format(min(100, used / median * 100)) + "%'></i></div>"
+                   "<div class=sub>" + "{:,.1f}".format(used / 1000.0) + " kB" + (" · about " + "{:,.0f}".format(rates[fit - 1]) + " " + unit + " gets in" if fit and total > fit else "") + "</div>", "s4"))
+    n = len(rates)
+    bars = [round(rates[int(i * (n - 1) / 6)], 1) for i in range(7)] if n >= 2 else []
+    return {"chips": chips, "steps": steps, "bars": bars, "med": med, "tiles": tl, "table": table, "height": height, "fit": fit, "used": used, "median": median, "total": total, "low": round(rates[fit - 1], 1) if fit else None,
             "rows": [[x[3], round(x[0], 1), x[1], x[2]] for x in rows[:5000]]}
 
 
@@ -605,7 +638,18 @@ def blocksize_parts():
                   "<table class=rank><tr><th>Tx</th><th class=r>Bytes</th><th class=r>Block size</th><th class=r>Fee (XMR)</th><th class=r>Extra penalty (XMR)</th><th>Verdict</th></tr>" + trs + "</table>")
     else:
         txhtml = "<p class=muted style='margin:0'>All " + "{:,}".format(len(txs)) + " waiting transactions (" + kb(waiting) + ") fit under the median of " + kb(M) + ": no penalty applies to the next block right now.</p>"
-    return {"chips": chips, "tiles": tl, "chart": chart, "txs": txhtml, "height": height, "median": M, "waiting": waiting, "base": base, "raw": int(med)}
+    q = waiting / M
+    steps = (mst("1", "Look at the last 100 blocks", "how big they were, one bar for each",
+                 "<div class=big2>" + kb(med) + " <small>median</small></div><div class=sub>" + "{:,}".format(int(med)) + " bytes · the middle one when the blocks are put in order</div>", "s1")
+             + mst("2", "Set the effective median", "never below 300 kB, so a quiet chain does not shrink the blocks",
+                   "<div class=big2>" + kb(M) + "</div><div class=sub>the size a block may reach without any penalty</div>", "s2")
+             + mst("3", "Draw the limit", "a block may be at most twice the effective median",
+                   "<div class=big2>" + kb(2 * M) + "</div><div class=sub>a block bigger than this is invalid</div>", "s3")
+             + mst("4", "Charge for what is above the median", "the base reward shrinks by (block size ÷ median − 1)²; the fees are not cut",
+                   "<div class=big2>" + ("{:.0f}".format(penalty(waiting, M) * 100) + "% <small>cut if everything waiting went in</small>" if waiting > M else "no penalty <small>right now</small>") + "</div>"
+                   "<div class=sub>" + kb(waiting) + " is waiting, " + "{:.0f}".format(q * 100) + "% of the median</div>", "s4"))
+    bars = [w for _, w in ws[-8:]]
+    return {"chips": chips, "steps": steps, "bars": bars, "tiles": tl, "chart": chart, "txs": txhtml, "height": height, "median": M, "waiting": waiting, "base": base, "raw": int(med)}
 
 
 BS_JS = r"""(function(){
@@ -625,14 +669,26 @@ var d=document.getElementById('area');d.setAttribute('d','M12 106'+Array.from({l
 var pq=poolQ(),pm=document.getElementById('poolmk');pm.style.left='calc('+((pq-1)*100)+'% + '+(13-(pq-1)*100*.26)+'px)';pm.hidden=D.waiting<=D.median;
 document.getElementById('poolbtn').hidden=D.waiting<=D.median;document.getElementById('poolbtn').textContent='Everything waiting ('+kb(Math.min(D.waiting,2*D.median))+')'}
 function set(v){touched=true;sl.value=Math.round(v*100);draw()}
+var still=matchMedia('(prefers-reduced-motion: reduce)').matches,t0=performance.now(),P=10500;
+function cl(x){return Math.max(0,Math.min(1,x))}function ease(u){return 1-Math.pow(1-cl(u),3)}
+function stepOn(n){[].forEach.call(document.querySelectorAll('.st'),function(e){e.classList.toggle('on',e.classList.contains('s'+(n+1)))})}
+function dbframe(now){var svg=document.querySelector('.dbsvg'),M=D.median,sizes=D.bars,t=still?9000:(now-t0)%P,out=t>P-600?1-(t-(P-600))/600:1,Y=function(v){return 70-(v/(2.2*M))*58},ab=t<5800?1:1-cl((t-5800)/400),co=cl((t-6000)/400);
+svg.querySelector('.dbA').style.opacity=ab*out;svg.querySelector('.dbC').style.opacity=co*out;
+svg.querySelectorAll('.db-bar').forEach(function(e,i){var v=sizes[i]||0,k=ease((t-200-i*150)/500),h=Math.max(0,70-Y(v))*k;e.setAttribute('y',(70-h).toFixed(1));e.setAttribute('height',h.toFixed(1));e.style.opacity=t>3400?.45:1});
+var mk=ease((t-2000)/700),lk=ease((t-3600)/700),ml=svg.querySelector('.db-med'),ll=svg.querySelector('.db-lim');ml.setAttribute('y1',Y(M));ml.setAttribute('y2',Y(M));ml.style.opacity=mk;ll.setAttribute('y1',Y(2*M));ll.setAttribute('y2',Y(2*M));ll.style.opacity=lk;
+var cv=svg.querySelector('.db-curve'),ck=ease((t-6000)/900);cv.style.strokeDasharray='1';cv.style.strokeDashoffset=1-ck;
+var q=1+.45*ease((t-7000)/1800),keep=1-(q-1)*(q-1),dot=svg.querySelector('.db-dot');dot.setAttribute('cx',(12+(q-1)*108).toFixed(1));dot.setAttribute('cy',(18+(1-keep)*52).toFixed(1));dot.style.opacity=cl((t-6900)/200);
+var ph=t<2000?0:t<3600?1:t<6000?2:3,dt=document.getElementById('dbt'),tx=t<2000?sizes.length+' recent blocks':t<3600?'median '+kb(M):t<6000?'limit '+kb(2*M):t<7000?'penalty (B/M − 1)²':'B '+kb(q*M)+' · '+Math.round(keep*100)+'%';
+if(dt.textContent!==tx)dt.textContent=tx;var cap=t<3400?'median calculation':t<5800?'effective limit':t<8900?'penalty function':'fee > penalty ✓',cp=document.getElementById('dbcap');if(cp.textContent!==cap)cp.textContent=cap;
+stepOn(ph);if(!still)requestAnimationFrame(dbframe)}
 function put(id,h){var e=document.getElementById(id);if(e&&e.innerHTML!==h)e.innerHTML=h}
 function tick(){if(busy||document.hidden)return;busy=true;
 fetch('/block-size.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
-D=d;put('chips',d.chips+'<span class=chip id=upd></span>');put('tiles',d.tiles);put('chart',d.chart);put('txs',d.txs);if(!touched)sl.value=Math.round(poolQ()*100);draw();
+D=d;put('steps',d.steps);put('chips',d.chips+'<span class=chip id=upd></span>');put('tiles',d.tiles);put('chart',d.chart);put('txs',d.txs);if(!touched)sl.value=Math.round(poolQ()*100);draw();
 document.getElementById('upd').innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=document.getElementById('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
 sl.addEventListener('input',function(){touched=true;draw()});
 document.getElementById('p1').onclick=function(){set(1)};document.getElementById('p2').onclick=function(){set(1.25)};document.getElementById('p3').onclick=function(){set(1.5)};document.getElementById('p4').onclick=function(){set(2)};document.getElementById('poolbtn').onclick=function(){set(poolQ())};
-sl.value=Math.round(poolQ()*100);draw();setInterval(tick,5000);document.addEventListener('visibilitychange',tick);
+sl.value=Math.round(poolQ()*100);draw();setInterval(tick,5000);document.addEventListener('visibilitychange',tick);requestAnimationFrame(dbframe);
 })();"""
 
 
@@ -659,7 +715,14 @@ def blocksize_page():
            "<div class=presets><button type=button id=p1>At the median</button><button type=button id=p2>+25%</button><button type=button id=p3>+50%</button><button type=button id=p4>At the limit</button><button type=button id=poolbtn hidden>Everything waiting</button></div>"
            "<p class=formula>Penalty = <span id=form>–</span> of the base reward</p></div></div></section>")
     script = "<script>" + BS_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>"
-    body = (head + pen + "<div class=tiles id=tiles>" + d["tiles"] + "</div>" + how + "<section class=card><h2>The last 100 blocks</h2><div id=chart>" + d["chart"] + "</div></section>"
+    bars = "".join("<rect class=db-bar data-i=" + str(i) + " x=" + str(8 + i * 14) + " y=70 width=9 height=0 rx=1 />" for i in range(8))
+    pts = "L".join("{:.1f} {:.1f}".format(12 + i / 20 * 108, 18 + (i / 20) ** 2 * 52) for i in range(21))
+    left = ("<div class=dbstage><b class=dbt id=dbt>last blocks</b><svg class=dbsvg viewBox='0 0 130 82' aria-hidden=true focusable=false><g class=dbA>" + bars
+            + "<line class=db-base x1=4 y1=70.5 x2=126 y2=70.5 /><line class=db-med x1=4 x2=126 y1=44.6 y2=44.6 /><line class=db-lim x1=4 x2=126 y1=17.3 y2=17.3 /></g>"
+            "<g class=dbC><path class=db-ax d='M12 14V70.5H122'/><path class=db-curve pathLength=1 d='M" + pts + "'/><circle class=db-dot r=3 cx=12 cy=18 /></g></svg><span class=dbcap id=dbcap>median calculation</span></div>")
+    stg = mstage(left, d["steps"], "How the size of a block is decided", "Monero has no fixed block size: the last 100 blocks set a median, and a block above it pays for the extra space out of its reward.",
+                 "Drawn from the sizes of the latest blocks your node knows.")
+    body = (head + pgnav("/block-size") + stg + pen + "<div class=tiles id=tiles>" + d["tiles"] + "</div>" + how + "<section class=card><h2>The last 100 blocks</h2><div id=chart>" + d["chart"] + "</div></section>"
             + "<section class=card><h2>What it costs a transaction</h2><div id=txs>" + d["txs"] + "</div></section>" + script)
     return page("Dynamic block size", body, True)
 
@@ -736,7 +799,7 @@ def assembly_page():
              "<div class=cbright><h2>The block your node would build right now</h2>"
              "<p class=muted style='margin:0 0 12px'>Nobody has mined it yet. Four steps, top to bottom, give the block miners will start hashing.</p>"
              "<div class=sts id=steps>" + d["steps"] + "</div></div></section>")
-    body = (head + stage + "<section class=card id=details>" + d["details"] + "</section><script>" + AS_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>")
+    body = (head + pgnav("/block-assembly") + stage + "<section class=card id=details>" + d["details"] + "</section><script>" + AS_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>")
     return page("Block assembly", body, True)
 
 
@@ -824,7 +887,7 @@ def candidate_page():
              "<div class=cbright><h2>The block miners are hashing right now</h2>"
              "<p class=muted style='margin:0 0 12px'>A candidate is a finished block header waiting for the right nonce. Miners try nonce after nonce until one hash is low enough.</p>"
              "<div class=sts id=steps>" + d["steps"] + "</div></div></section>")
-    body = head + stage + "<script>" + CAND_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>"
+    body = head + pgnav("/block-candidate") + stage + "<script>" + CAND_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>"
     return page("Block candidate", body, True)
 
 
@@ -867,15 +930,22 @@ var R=D.rows,m=R.map(function(r,i){return r[0].indexOf(v)===0||r[0].indexOf(v)>0
 hit.hidden=false;if(!m.length){hit.className='hit miss';hit.innerHTML='<b>Not in the ranking.</b> The transaction may already be mined, or this node has not seen it yet.'+(/^[0-9a-f]{64}$/.test(v)?' <a href="/tx/'+v+'">Look it up</a>':'');return}
 var i=m[0],r=R[i],inb=i<D.fit,w=r[3];hit.className='hit '+(inb?'in':'out');
 hit.innerHTML='<div class=hn>#'+(i+1)+'</div><div><b>'+(inb?'In the next block':'Waiting for a later block')+'</b><br>Rate <b>'+nx(r[1])+'</b> nXMR/B for '+nx(w)+' bytes. '+(inb?(i)+' transactions pay more per byte.':'The block is full after #'+D.fit+'; a rate of about '+nx(D.low)+' nXMR/B or more gets in.')+' <a href="/tx/'+r[0]+'">Open transaction</a>'+(m.length>1?' ('+m.length+' matches, first shown)':'')+'</div>';}
+function ease(u){u=Math.max(0,Math.min(1,u));return 1-Math.pow(1-u,3)}
+var still=matchMedia('(prefers-reduced-motion: reduce)').matches,t0=performance.now(),ORDER=[3,0,5,2,6,1,4],P=7600;
+function bars(){var h='';D.bars.forEach(function(v,i){h+='<div class=fb data-i="'+i+'"><u>'+nx(Math.round(v))+'</u><i style="height:'+Math.max(10,Math.round(v/D.bars[0]*100))+'%"></i></div>'});document.getElementById('fsbars').innerHTML=h;document.getElementById('fscap').textContent=D.total.toLocaleString('en')+' unconfirmed transactions';document.getElementById('fstop').textContent='~'+nx(Math.round(D.med))+' nXMR/B'}
+function stepOn(n){[].forEach.call(document.querySelectorAll('.st'),function(e){e.classList.toggle('on',e.classList.contains('s'+(n+1)))})}
+function frame(now){var t=still?P*.7:(now-t0)%P,ph=t<1400?0:t<4600?1:t<6000?2:3,out=t>P-500?1-(t-(P-500))/500:1,els=document.querySelectorAll('#fsbars .fb'),w=document.getElementById('fsbars').clientWidth/Math.max(1,els.length);
+els.forEach(function(e,i){var k=ease((t-1400-i*320)/900),slot=ORDER[i]+(i-ORDER[i])*k,o=Math.min(1,t/400)*out;e.style.transform='translateX('+(slot*w).toFixed(1)+'px)';e.style.opacity=still?1:o;e.firstChild.style.opacity=k});
+stepOn(ph);if(!still)requestAnimationFrame(frame)}
 function put(id,html){var e=document.getElementById(id);if(e&&e.innerHTML!==html)e.innerHTML=html}
 function tick(){if(busy||document.hidden)return;busy=true;
 fetch('/fee-ranking.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
 var det=document.querySelector('#rk details'),open=det&&det.open,top=det?det.getBoundingClientRect().top:0;
 var same=d.height===D.height&&d.total===D.total&&JSON.stringify(d.rows.slice(0,40))===JSON.stringify(D.rows.slice(0,40))&&d.fit===D.fit;
-D=d;if(!same){put('chips',d.chips+'<span class=chip id=upd></span>');put('tiles',d.tiles);put('rk',d.table);var nd=document.querySelector('#rk details');if(nd&&open)nd.open=true;run()}
+D=d;put('steps',d.steps);bars();if(!same){put('chips',d.chips+'<span class=chip id=upd></span>');put('tiles',d.tiles);put('rk',d.table);var nd=document.querySelector('#rk details');if(nd&&open)nd.open=true;run()}
 upd=document.getElementById('upd');if(upd)upd.innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=document.getElementById('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
 q.addEventListener('input',run);document.getElementById('go').addEventListener('click',run);q.addEventListener('keydown',function(e){if(e.key==='Enter')run()});
-setInterval(tick,5000);document.addEventListener('visibilitychange',tick);
+bars();setInterval(tick,5000);document.addEventListener('visibilitychange',tick);requestAnimationFrame(frame);
 })();"""
 
 
@@ -891,7 +961,10 @@ def ranking_page():
               "<div id=hit class=hit hidden></div>")
     legend = "<p class=legend><span class=k1></span> in the next block <span class=k2></span> waiting</p>"
     script = "<script>" + RANK_JS.replace("__DATA__", json.dumps(d, separators=(",", ":"))) + "</script>"
-    body = (head + how + "<div class=tiles id=tiles>" + d["tiles"] + "</div><section class=card><h2>The ranking</h2>" + finder + legend + "<div id=rk>" + d["table"] + "</div></section>" + script)
+    left = "<div class=fsstage><span class=fstop id=fstop></span><div class=fsbars id=fsbars aria-hidden=true></div><span class=fscap id=fscap></span></div>"
+    stg = mstage(left, d["steps"], "How your node fills the next block", "Miners take the transactions that pay the most per byte, not the most in total. This is the order your own node would use, and it changes as transactions arrive.",
+                 "The bars are the rates of your node's waiting transactions, sorting themselves from the highest down.")
+    body = (head + pgnav("/fee-ranking") + stg + how + "<div class=tiles id=tiles>" + d["tiles"] + "</div><section class=card><h2>The ranking</h2>" + finder + legend + "<div id=rk>" + d["table"] + "</div></section>" + script)
     return page("Fee-per-byte ranking", body, True)
 
 
