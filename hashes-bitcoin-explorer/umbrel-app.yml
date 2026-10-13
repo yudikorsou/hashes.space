@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.13.1"
+version: "1.14.0"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -33,4 +33,5 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  New /api/v1/block-template: the header of the block being mined now, from your node's getblocktemplate, with the merkle root of that template (the nonce is only known once a block is found).
   Block animation headline: Every transaction hash going into block <number>.

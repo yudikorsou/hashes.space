@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.8.0"
+version: "1.9.0"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The header block on the Find Mempool page now shows the merkle root, version, bits and time of the block being hashed, read from the explorer's block template, and a nonce that searches through its range.
   The line between the blocks still to be mined and the mined blocks is now a spinning 3D fan: the blocks pass through it to the mined side.
   mempool.space is no longer asked. While the explorer's node is still syncing, the chain shows simulated blocks and tries again every minute.
     The Bitcoin BLAKE2b chain now streams from the new Bitcoin BLAKE2b Explorer app (btcb2.hashes.space), which reads blocks, fees,

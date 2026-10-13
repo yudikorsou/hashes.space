@@ -1160,36 +1160,56 @@
   const subsidy = (h) => (h >= 6_930_000 ? 0 : 50 / 2 ** Math.floor(h / 210_000));
   function assemblyCube(b) {
     const c = chain(), tk = network()?.ticker ?? 'BTC', unit = c.feeUnit ?? 'sat/vB', btc = !c.xmr && !c.doge && netId !== 'scrypt';
-    const height = (c.blocks[0]?.height ?? c.tipHeight) + 1, hasFees = typeof b.totalFees === 'number' && b.totalFees > 0;
+    const t = templateFor(c), height = (c.blocks[0]?.height ?? c.tipHeight) + 1, fees = t ? t.fees : b.totalFees, hasFees = typeof fees === 'number' && fees > 0;
     const fill = Math.max(0, Math.min(100, Math.round(b.vsize / 1e4)));
     const rows = [
-      btc && hasFees ? ['Coinbase', fmt(subsidy(height) + b.totalFees / 1e8, 4) + ' ' + tk] : ['Coinbase', '1 tx'],
+      btc && t ? ['Coinbase', fmt(t.coinbasevalue / 1e8, 4) + ' ' + tk] : btc && hasFees ? ['Coinbase', fmt(subsidy(height) + fees / 1e8, 4) + ' ' + tk] : ['Coinbase', '1 tx'],
       ['Transactions', fmt(b.nTx)],
       ['Size', c.xmr || c.doge ? sizeLabel(b.bytes ?? b.vsize) : fmt(b.vsize / 1e6, 2) + ' MvB'],
-      hasFees && btc ? ['Fees', fmt(b.totalFees / 1e8, 4) + ' ' + tk] : ['Fee', '~' + fmt(b.medianFee) + ' ' + unit],
+      hasFees && btc ? ['Fees', fmt(fees / 1e8, 4) + ' ' + tk] : ['Fee', '~' + fmt(b.medianFee) + ' ' + unit],
       ['Filled', fill + '%']];
     return `<div class="cube"><div class="face front" style="background:${frontBg(b, false)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr asm">
         ${rows.map(([k, v]) => `<div><i>${k}</i><b>${v}</b></div>`).join('')}
         <span class="asm-bar" aria-hidden="true"><u style="--w:${fill}%"></u></span></div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
-  const diffLabel = (d) => (d >= 1e12 ? fmt(d / 1e12, 2) + ' T' : d >= 1e9 ? fmt(d / 1e9, 2) + ' G' : d >= 1e6 ? fmt(d / 1e6, 2) + ' M' : fmt(d));
+  // The node's block template (hashes Explorer apps, /api/v1/block-template): the real previous block, version, bits, time and merkle root
+  // of the block that is being hashed. Used when it builds on the tip this page shows; the nonce is not public data until a block is found.
+  const TEMPLATE_API = { sha256: 'https://btc.hashes.space/api/v1/block-template', blake2b: 'https://btcb2.hashes.space/api/v1/block-template' };
+  const templates = {}, templateTried = new Set();
+  const templateFor = (c) => { const t = templates[netId], tip = c.blocks[0]; return t && tip && t.previousblockhash === tip.hash ? t : null; };
+  async function fetchTemplate(id = netId) {
+    if (!TEMPLATE_API[id]) return;
+    try {
+      const r = await fetch(TEMPLATE_API[id], { signal: AbortSignal.timeout(8000) });
+      if (r.ok) { templates[id] = await r.json(); if (id === netId) renderProjected(); }
+    } catch { /* the explorer is not reachable: the header keeps to what the latest block tells */ }
+  }
+  setInterval(() => fetchTemplate(), 10000);
+  const hex8 = (n) => (n >>> 0).toString(16).padStart(8, '0');
   function candidateCube(b) {
-    const c = chain(), tip = c.blocks[0] ?? {}, now = new Date(), prev = tip.hash ?? '', time = now.toISOString().slice(11, 19);
+    const c = chain(), tip = c.blocks[0] ?? {}, t = templateFor(c), prev = tip.hash ?? '', time = new Date((t?.time ?? Date.now() / 1000) * 1000).toISOString().slice(11, 19);
+    const version = t?.version ?? tip.version, bits = t?.bits ?? (typeof tip.bits === 'number' ? hex8(tip.bits) : undefined);
     const rows = [['Height', fmt((tip.height ?? c.tipHeight) + 1)], ['Prev', shortHash(prev)], ['Time', time]];
     if (!c.xmr) {
-      if (typeof tip.version === 'number') rows.splice(1, 0, ['Version', '0x' + tip.version.toString(16).padStart(8, '0')]);
-      if (typeof tip.bits === 'number') rows.push(['Bits', tip.bits.toString(16).padStart(8, '0')]);
-      if (typeof tip.difficulty === 'number') rows.push(['Difficulty', diffLabel(tip.difficulty)]);
+      if (typeof version === 'number') rows.splice(1, 0, ['Version', '0x' + hex8(version)]);
+      if (t?.merkleroot) rows.splice(rows.findIndex((x) => x[0] === 'Time'), 0, ['Merkle', shortHash(t.merkleroot)]);
+      if (bits) rows.push(['Bits', bits]);
     }
-    const opt = new Set(['Version', 'Bits', 'Height', 'Time', 'Difficulty']);
+    rows.push(['Nonce', '<span id="cand-nonce">' + hex8(nonceCtr) + '</span>']);
+    const opt = new Set(['Version', 'Bits', 'Height', 'Time']);
     return `<div class="cube" id="mining-block"><div class="face front" style="background:${frontBg(b, false)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr">
-        ${rows.map(([k, v]) => `<div class="${opt.has(k) ? 'opt' : ''}"><i>${k}</i><b${k === 'Time' ? ' id="cand-time"' : ''}>${v}</b></div>`).join('')}</div>
+        ${rows.map(([k, v]) => `<div class="${opt.has(k) ? 'opt' : ''}"${k === 'Nonce' ? ' title="The nonce is only known once a block is found: this is the search through the 32-bit range"' : ''}><i>${k}</i><b${k === 'Time' ? ' id="cand-time"' : ''}>${v}</b></div>`).join('')}</div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
-  // the header's time moves on with the clock; every other field changes only with the template or the tip
-  setInterval(() => { const t = $('cand-time'); if (t) t.textContent = new Date().toISOString().slice(11, 19); }, 1000);
+  // the header's time moves on with the clock when there is no template; the nonce is the search itself, trying one value after the other
+  let nonceCtr = 0;
+  setInterval(() => {
+    const n = $('cand-nonce'); if (n && !STILL.matches) { nonceCtr = (nonceCtr + 1_000_003) >>> 0; n.textContent = hex8(nonceCtr); }
+  }, 90);
+  setInterval(() => { const t = $('cand-time'); if (t && !templateFor(chain())) t.textContent = new Date().toISOString().slice(11, 19); }, 1000);
   function renderProjected() {
+    if (TEMPLATE_API[netId] && !templateTried.has(netId)) { templateTried.add(netId); fetchTemplate(netId); }
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
     el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
       <div class="below"><span class="datum-badge plain">Fee Priority</span></div></div>

@@ -24,6 +24,7 @@ Reads everything from the node's RPC, pruned or not, and serves:
   /api/v1/chain-tips                  chain forks and stale blocks (getchaintips); /forks is the page
   /api/v1/tx/<txid>/projection        where a mempool transaction lands (block, ETA), its CPFP package and whether it can be replaced
   /api/v1/address/<address>           balance and unspent outputs of one address (scantxoutset: slow, runs in the background, cached)
+  /api/v1/block-template              the header of the block being mined now (getblocktemplate): previous block, merkle root of the template, bits, time; the nonce stays null
   /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
   /api/v1/status         what the explorer sees of the node (for when something does not show up)
 
@@ -474,6 +475,97 @@ class ChainStats:
 
 NODE = BtcRpc(os.environ["RPC_HOST"], os.environ.get("RPC_PORT", "8332"), os.environ["RPC_USER"], os.environ["RPC_PASS"])
 STATS = ChainStats(CHAIN, NODE)
+
+
+# ---------- the block being hashed: header of the node's block template ----------
+# A miner builds its block from the node's getblocktemplate. The merkle root follows from that template: the coinbase
+# (the miner's own, here a placeholder with the real height, reward and witness commitment) and the txids of the
+# transactions chosen by fee rate. The nonce is not part of any public data: it is only known once a block is found,
+# so the template reports it as null and the block it finds shows the real one (getblockheader "nonce").
+
+def _dsha(b):
+    return hashlib.sha256(hashlib.sha256(b).digest()).digest()
+
+
+def _blake(b):
+    return hashlib.blake2b(b, digest_size=32).digest()
+
+
+def _varint(n):
+    return bytes([n]) if n < 0xfd else b"\xfd" + struct.pack("<H", n) if n <= 0xffff else b"\xfe" + struct.pack("<I", n)
+
+
+def _height_push(h):
+    """BIP34: the block height as the first push of the coinbase script"""
+    b = h.to_bytes((h.bit_length() + 8) // 8, "little")
+    return bytes([len(b)]) + b
+
+
+def merkle_root(leaves, fn):
+    level = list(leaves)
+    while len(level) > 1:
+        if len(level) % 2:
+            level.append(level[-1])
+        level = [fn(level[i] + level[i + 1]) for i in range(0, len(level), 2)]
+    return level[0]
+
+
+def merkle_branch(leaves, fn):
+    """the hashes a miner combines with its own coinbase txid to get the merkle root (stratum's merkle branch)"""
+    branch, level = [], list(leaves)
+    while len(level) > 1:
+        if len(level) % 2:
+            level.append(level[-1])
+        branch.append(level[1])
+        level = [fn(level[i] + level[i + 1]) for i in range(0, len(level), 2)]
+    return branch
+
+
+MERKLE = {"fn": None, "name": "unverified"}
+
+
+def merkle_hash():
+    """Which hash builds the merkle tree of this chain: checked once against the merkle root of the node's own tip block."""
+    if MERKLE["fn"]:
+        return MERKLE["fn"], MERKLE["name"]
+    try:
+        tip = NODE.call("getblock", NODE.call("getblockhash", int(NODE.call("getblockcount"))), 1)
+        leaves = [bytes.fromhex(t)[::-1] for t in tip["tx"]]
+        for name, fn in (("sha256d", _dsha), ("blake2b", _blake)):
+            if merkle_root(leaves, fn)[::-1].hex() == tip.get("merkleroot"):
+                MERKLE["fn"], MERKLE["name"] = fn, name
+                return fn, name
+    except Exception as exc:
+        log("merkle check: " + str(exc))
+    return _dsha, "unverified"
+
+
+TEMPLATE = {"at": 0, "data": None}
+TEMPLATE_LOCK = threading.Lock()
+
+
+def block_template():
+    with TEMPLATE_LOCK:
+        if TEMPLATE["data"] and time.time() - TEMPLATE["at"] < 8:
+            return TEMPLATE["data"]
+        t = NODE.call("getblocktemplate", {"rules": ["segwit"]})
+        fn, how = merkle_hash()
+        tag = b"/hashes.space/"
+        script = _height_push(t["height"]) + bytes([len(tag)]) + tag
+        outs = [(t["coinbasevalue"], b"\x51")]
+        if t.get("default_witness_commitment"):
+            outs.append((0, bytes.fromhex(t["default_witness_commitment"])))
+        cb = struct.pack("<I", 2) + b"\x01" + b"\x00" * 32 + b"\xff\xff\xff\xff" + _varint(len(script)) + script + b"\xff\xff\xff\xff"
+        cb += _varint(len(outs)) + b"".join(struct.pack("<q", v) + _varint(len(s_)) + s_ for v, s_ in outs) + struct.pack("<I", 0)
+        leaves = [fn(cb)] + [bytes.fromhex(x["txid"])[::-1] for x in t.get("transactions", [])]
+        tip = NODE.call("getblockheader", t["previousblockhash"])
+        data = {"height": t["height"], "version": t["version"], "previousblockhash": t["previousblockhash"], "merkleroot": merkle_root(leaves, fn)[::-1].hex(),
+                "merklebranch": [h.hex() for h in merkle_branch(leaves, fn)], "merkleHash": how, "coinbase": "placeholder",
+                "time": t["curtime"], "bits": t["bits"], "target": t["target"], "nonce": None,
+                "nTx": len(leaves), "fees": sum(int(x.get("fee", 0)) for x in t.get("transactions", [])), "coinbasevalue": t["coinbasevalue"],
+                "weight": sum(int(x.get("weight", 0)) for x in t.get("transactions", [])), "tipNonce": tip.get("nonce")}
+        TEMPLATE["data"], TEMPLATE["at"] = data, time.time()
+        return data
 
 
 def difficulty_adjustment():
@@ -1319,6 +1411,8 @@ class Handler(BaseHTTPRequestHandler):
             m = re.fullmatch(r"/address/([A-Za-z0-9]{14,90})", path)
             if m:
                 return self.send(200, address_page(m.group(1)))
+            if path == "/api/v1/block-template":
+                return self.json(block_template(), 8)
             if path == "/api/v1/difficulty-adjustment":
                 return self.json(difficulty_adjustment(), 30)
             if path == "/api/v1/fees/recommended":
