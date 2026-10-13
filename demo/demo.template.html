@@ -624,7 +624,22 @@
   /* Centralised (red): any other pool */
   .block-wrap.datum-central .cube { --glow: 255,77,77; animation: datum-glow 4s ease-in-out infinite; }
   .datum-badge.central { color: #ff6b6b; border-color: rgba(255,77,77,.55); background: rgba(255,77,77,.1); }
-  #mined .below { display: grid; justify-items: center; gap: 6px; }
+  #mined .below, #projected .below { display: grid; justify-items: center; gap: 6px; }
+  .datum-badge.plain { color: var(--text); border-color: var(--line); background: rgba(255,255,255,.06); }
+  /* Fee Priority: the unconfirmed transactions, sorting themselves by fee rate (bars tall to short) */
+  .txt.fp { grid-template-rows: auto auto 1fr auto; }
+  .txt.fp .txs { font-size: 10.5px; line-height: 1.2; padding-top: 4px; }
+  .sortbars { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
+  .sortbars i { display: block; width: 7px; height: var(--h); border-radius: 1px; background: rgba(255,255,255,.88); transform: translateX(calc(var(--o) * 10px)); animation: fp-sort 4.8s ease-in-out infinite; }
+  @keyframes fp-sort { 0%, 10% { transform: translateX(calc(var(--o) * 10px)); } 45%, 80% { transform: translateX(0); } 95%, 100% { transform: translateX(calc(var(--o) * 10px)); } }
+  /* Candidate block: the header of the block that is being hashed */
+  .txt.hdr { display: flex; flex-direction: column; justify-content: center; gap: 1px; padding: 8px 8px 6px; text-align: left; font: 400 9.5px/1.3 var(--mono); }
+  .front:has(.cube-coin) .txt.hdr { padding-top: 22px; }
+  .txt.hdr div { display: flex; justify-content: space-between; gap: 6px; white-space: nowrap; }
+  .txt.hdr i { font-style: normal; color: rgba(255,255,255,.72); }
+  .txt.hdr b { font-weight: 600; font-variant-numeric: tabular-nums; }
+  @media (max-width: 640px) { .txt.hdr { font-size: 8px; padding: 6px 5px 4px; } .front:has(.cube-coin) .txt.hdr { padding-top: 16px; } .txt.hdr .opt { display: none; } .sortbars { height: 18px; } }
+  @media (prefers-reduced-motion: reduce) { .sortbars i { animation: none; transform: none; } }
   .datum-badge { display: inline-block; max-width: 100%; text-align: center; font: 600 10.5px/1.25 var(--sans); letter-spacing: .04em; text-transform: uppercase; color: #f7931a; border: 1px solid rgba(247,147,26,.55); background: rgba(247,147,26,.1); border-radius: 999px; padding: 4px 8px; }
   .datum-badge.verified { color: #3ce26b; border-color: rgba(60,226,107,.55); background: rgba(60,226,107,.1); }
   @keyframes datum-glow { 0%, 100% { filter: drop-shadow(0 0 5px rgba(var(--glow),.65)) drop-shadow(0 0 14px rgba(var(--glow),.3)); } 50% { filter: drop-shadow(0 0 8px rgba(var(--glow),.85)) drop-shadow(0 0 22px rgba(var(--glow),.4)); } }
@@ -1120,11 +1135,52 @@
   addEventListener('resize', scheduleClip);
   document.addEventListener('visibilitychange', scheduleClip);
   for (const id of ['projected', 'mined']) $(id).addEventListener('scroll', scheduleClip, { passive: true });
+  // The two blocks before the fan show how the block that is being hashed came to be:
+  //   Fee Priority    the unconfirmed transactions, sorted by fee rate (satoshis per vbyte)
+  //   Candidate block the header of the block that the miners are hashing now
+  const pseudoHash = (str) => { // a stable 64-digit hex digest of the template, for the merkle root of a block still being built
+    let out = '';
+    for (let k = 0; k < 8; k++) { let h = 0x811c9dc5 ^ (k * 0x9e3779b1); for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 0x01000193) >>> 0; out += (h >>> 0).toString(16).padStart(8, '0'); }
+    return out;
+  };
+  const shortHash = (h) => (h && h.length > 12 ? h.slice(0, 5) + '…' + h.slice(-5) : h || '—');
+  const FP_ORDER = [3, 0, 5, 2, 6, 1, 4];   // where each bar (tall to short) starts before it sorts itself into place
+  function feePriorityCube() {
+    const c = chain(), unit = c.feeUnit ?? 'sat/vB', scale = 1, list = c.projected.filter((b) => b.nTx > 0);
+    const n = list.reduce((a, b) => a + b.nTx, 0), vsize = list.reduce((a, b) => a + b.vsize, 0);
+    const hi = list.length ? Math.max(...list.map((b) => b.feeRange[b.feeRange.length - 1])) : 0, lo = list.length ? Math.min(...list.map((b) => b.feeRange[0])) : 0;
+    const med = n ? list.reduce((a, b) => a + b.medianFee * b.nTx, 0) / n : 0;
+    const bg = frontBg({ vsize: Math.max(vsize, 1e6 * 0.6), medianFee: med }, false);
+    const bars = FP_ORDER.map((p, k) => `<i style="--h:${20 - k * 2.6}px;--o:${p - k}"></i>`).join('');
+    return `<div class="cube"><div class="face front" style="background:${bg}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt fp">
+        <span class="fee">~${fmt(med * scale)} ${unit}</span><span class="range">${fmt(hi)} → ${fmt(lo)} ${unit}</span>
+        <div class="sortbars" aria-hidden="true">${bars}</div>
+        <span class="txs">${fmt(n)} unconfirmed transactions</span></div>
+      </div><div class="face top"></div><div class="face side"></div></div>`;
+  }
+  function candidateCube(b) {
+    const c = chain(), tip = c.blocks[0] ?? {}, now = new Date();
+    const prev = tip.hash ?? '', tmpl = prev + ':' + b.nTx + ':' + Math.round(b.vsize);
+    const bitsHex = typeof tip.bits === 'number' ? tip.bits.toString(16).padStart(8, '0') : pseudoHash(prev).slice(0, 8);
+    const rows = c.xmr
+      ? [['Height', fmt((tip.height ?? c.tipHeight) + 1)], ['Prev', shortHash(prev)], ['Time', now.toISOString().slice(11, 19)], ['Nonce', '<span id="cand-nonce">00000000</span>']]
+      : [['Height', fmt((tip.height ?? c.tipHeight) + 1)], ['Version', '0x' + (typeof tip.version === 'number' ? tip.version : 0x20000000).toString(16).padStart(8, '0')], ['Prev', shortHash(prev)], ['Merkle', shortHash(pseudoHash(tmpl))], ['Time', now.toISOString().slice(11, 19)], ['Bits', bitsHex], ['Nonce', '<span id="cand-nonce">00000000</span>']];
+    const opt = new Set(['Version', 'Bits', 'Height', 'Time']);
+    return `<div class="cube" id="mining-block"><div class="face front" style="background:${frontBg(b, false)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr">
+        ${rows.map(([k, v]) => `<div class="${opt.has(k) ? 'opt' : ''}"><i>${k}</i><b${k === 'Time' ? ' id="cand-time"' : ''}>${v}</b></div>`).join('')}</div>
+      </div><div class="face top"></div><div class="face side"></div></div>`;
+  }
+  // the nonce the miners are trying; it moves on all the time, the other header fields only change with the template
+  setInterval(() => {
+    const n = $('cand-nonce'); if (n && !STILL.matches) n.textContent = (crypto.getRandomValues(new Uint32Array(1))[0]).toString(16).padStart(8, '0');
+    const t = $('cand-time'); if (t) t.textContent = new Date().toISOString().slice(11, 19);
+  }, 130);
   function renderProjected() {
-    const el = $('projected');
-    el.innerHTML = chain().projected.slice().reverse().map((b) => `<div class="block-wrap ${b.index === 0 ? 'mining' : ''}">
-      <div class="above">${b.index === 0 ? 'Hashing now' : ''}</div>${cube(b, false)}
-      <div class="below">${b.index === 0 ? `<span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span>` : ''}</div></div>`).join('');
+    const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
+    el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube()}
+      <div class="below"><span class="datum-badge plain">Fee Priority</span></div></div>
+      <div class="block-wrap mining"><div class="above">Hashing now</div>${candidateCube(b)}
+      <div class="below"><span class="datum-badge plain">Candidate block</span><span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span></div></div>`;
     pinProjected();
     scheduleClip();
   }
@@ -1200,7 +1256,7 @@
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
   const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://btc.hashes.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmr.hashes.space/block/' };
   const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,
-    medianFee: b.extras?.medianFee ?? 0, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0], totalFees: b.extras?.totalFees ?? 0, pool: b.extras?.pool?.name ?? '',
+    medianFee: b.extras?.medianFee ?? 0, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0], totalFees: b.extras?.totalFees ?? 0, pool: b.extras?.pool?.name ?? '', version: b.version, bits: b.bits,
     coinbase: typeof b.extras?.coinbaseRaw === 'string' ? (b.extras.coinbaseRaw.match(/../g) ?? []).map((h) => String.fromCharCode(parseInt(h, 16))).join('') : '' });
   // Monero: an Onion Monero Blockchain Explorer's JSON API (backend XmrchainSource), polled. Tried in order: your own explorer
   // (the hashes Monero Explorer app on your Umbrel, published on the internet) first, then xmrchain.net. Change the first address
