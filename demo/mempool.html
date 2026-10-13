@@ -776,7 +776,7 @@
   .back-link:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   @media (max-width: 1239px) { .mcard .calc-link { position: static; order: 99; align-self: flex-start; } }   /* the corner is only free of "View more »" when the card is wide */
   /* the pools as black holes in space; hover one for its name and hashrate */
-  .pool-sky { position: relative; width: 100%; height: 280px; margin: -2px 0 6px; border-radius: 28px; overflow: hidden; background: radial-gradient(ellipse 80% 90% at 50% 50%, rgba(60, 70, 140, .16), rgba(60, 70, 140, 0) 75%); }
+  .pool-sky { position: relative; width: 100%; height: 280px; margin: -2px 0 6px; background: none; }
   .pool-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .pool-sky .sky-cap { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; color: var(--muted); font: 400 11.5px/1.3 var(--sans); pointer-events: none; }
   @media (max-width: 520px) { .pool-sky { height: 230px; } }
@@ -4344,7 +4344,7 @@ window.__coins = COIN_LOGOS;
         const A = sky.ships[i], B = sky.ships[j], dx = B.hx - A.hx, dy = (B.hy - A.hy) * 1.15, d = Math.hypot(dx, dy) || 0.01, need = rc(A) + rc(B) - 10;
         if (d < need) { const push = (need - d) / 2 / d; A.hx -= dx * push; A.hy -= dy * push / 1.15; B.hx += dx * push; B.hy += dy * push / 1.15; }
       }
-      for (const sh of sky.ships) { const m = sh.r * 1.8 + 6; sh.hx = Math.max(m, Math.min(sky.w - m, sh.hx)); sh.hy = Math.max(sh.r * 1.2 + 6, Math.min(sky.h - 28 - Math.max(sh.r * 1.05, sh.r * 0.8 + 6) - 30, sh.hy)); }
+      for (const sh of sky.ships) { const m = sh.r * 2.3 + 4; sh.hx = Math.max(m, Math.min(sky.w - m, sh.hx)); sh.hy = Math.max(sh.r * 1.2 + 6, Math.min(sky.h - 28 - Math.max(sh.r * 1.05, sh.r * 0.8 + 6) - 30, sh.hy)); }
     }
   }
   const skyPos = (sh, t) => ({ x: sh.hx + Math.sin(t / 3600 + sh.phase) * 5, y: sh.hy + Math.cos(t / 4300 + sh.phase) * 4 });   // they hardly move: a slow sway
@@ -4359,8 +4359,8 @@ window.__coins = COIN_LOGOS;
       const { x, y } = skyPos(sh, t), R = sh.r, hot = sky.hover === sh, tilt = -0.28, spin = hot ? 1.8 : 1;
       g.save(); g.translate(x, y);
       // the pull of it: a soft glow in the pool's colour
-      const glow = g.createRadialGradient(0, 0, R * 0.8, 0, 0, R * 3.4); glow.addColorStop(0, skyA(sh.color, hot ? 0.42 : 0.26)); glow.addColorStop(1, skyA(sh.color, 0));
-      g.fillStyle = glow; g.beginPath(); g.arc(0, 0, R * 3.4, 0, 6.2832); g.fill();
+      const glow = g.createRadialGradient(0, 0, R * 0.9, 0, 0, R * 2.3); glow.addColorStop(0, skyA(sh.color, hot ? 0.34 : 0.18)); glow.addColorStop(1, skyA(sh.color, 0));
+      g.fillStyle = glow; g.beginPath(); g.arc(0, 0, R * 2.3, 0, 6.2832); g.fill();
       g.rotate(tilt);
       // the matter behind the hole, then the hole, then the matter in front of it
       const draw = (front) => {
