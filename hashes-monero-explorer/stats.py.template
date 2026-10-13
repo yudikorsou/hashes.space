@@ -283,6 +283,7 @@ h1{font:600 20px/1.3 system-ui;margin:0}h2{font:600 15px/1.3 system-ui;margin:0 
 .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto}
 .mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}.muted{color:var(--muted)}
 dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line);white-space:nowrap}th{color:var(--muted);font-weight:500;font-size:12.5px}td.r,th.r{text-align:right}.wrap{white-space:normal;word-break:break-all}
 footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
 .bhero{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}.bhero h1{font-size:24px}.bhero .navbtns{margin-left:auto;display:flex;gap:8px}.navbtns a{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--text)}.navbtns a:hover{border-color:var(--gold);text-decoration:none}.navbtns span.off{border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted);opacity:.5}
 .chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:#0b0d17;border:1px solid var(--line);font-size:12.5px;color:var(--muted)}.chip b{color:var(--gold);font-weight:600}
@@ -350,6 +351,65 @@ def block_page(ident):
     return page("Block " + str(height), head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>")
 
 
+def tx_page(txid):
+    """a transaction in the same design: where it was mined, its figures as tiles, then details, inputs and outputs in cards"""
+    out = NODE_RPC.post("/get_transactions", json.dumps({"txs_hashes": [txid.lower()], "decode_as_json": True}).encode(), 20)
+    if not out.get("txs"):
+        raise RuntimeError("transaction not found")
+    t = out["txs"][0]
+    tx = json.loads(t["as_json"])
+    vin, vout = tx.get("vin") or [], tx.get("vout") or []
+    coinbase = bool(vin) and "gen" in vin[0]
+    rct = tx.get("rct_signatures") or {}
+    fee = int(rct.get("txnFee") or 0)
+    size = len(t.get("as_hex", "")) // 2
+    extra = bytes(tx.get("extra") or [])
+    pubkey = extra[1:33].hex() if len(extra) >= 33 and extra[0] == 1 else ""
+    in_pool = bool(t.get("in_pool"))
+    height = t.get("block_height")
+    ts = t.get("block_timestamp")
+    conf = int(t.get("confirmations") or 0)
+    total = sum(int(o.get("amount") or 0) for o in vout)
+    indices = t.get("output_indices") or [[]]
+    indices = indices[0] if indices and isinstance(indices[0], list) else indices
+
+    def key_of(o):
+        tg = o.get("target") or {}
+        k = tg.get("tagged_key") or tg.get("key") or ""
+        return k.get("key", "") if isinstance(k, dict) else k
+
+    kind = "Miner reward (coinbase)" if coinbase else "Transaction"
+    chips = ("<span class=chip><b>" + kind + "</b></span>"
+             + (("<span class=chip>In block <a href='/block/" + str(height) + "'><b>" + "{:,}".format(int(height)) + "</b></a></span>") if height is not None and not in_pool else "<span class=chip><b>Waiting in the mempool</b></span>")
+             + (("<span class=chip>" + time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(int(ts))) + " (" + ago(ts) + ")</span>") if ts and not in_pool else "")
+             + ("<span class=chip><b>" + "{:,}".format(conf) + "</b> confirmation" + ("" if conf == 1 else "s") + "</span>" if not in_pool else ""))
+    head = ("<div class=bhero><h1>Transaction</h1>" + chips + "</div><div class=bhash><small>Transaction hash</small><span class=mono>" + esc(txid.lower()) + "</span></div>")
+    tiles = [("Outputs", "{:,}".format(len(vout)), ""), ("Inputs", "{:,}".format(0 if coinbase else len(vin)), "newly created coins" if coinbase else "")]
+    if coinbase:
+        tiles.append(("Total out", xmr(total), "XMR"))
+    else:
+        tiles.append(("Fee", xmr(fee), "XMR"))
+    tiles += [("Size", "{:,} B".format(size), ""), ("Version", str(tx.get("version", "")), "RingCT type " + str(rct.get("type", 0)))]
+    tl = "".join("<div class=tile><small>" + k + "</small><b style='font-size:18px'>" + v + "</b>" + (("<em>" + sub + "</em>") if sub else "") + "</div>" for k, v, sub in tiles)
+    details = ([("Block", "<a href='/block/" + str(height) + "'>" + "{:,}".format(int(height)) + "</a>")] if height is not None and not in_pool else []) + [
+        ("Version", str(tx.get("version", ""))), ("RingCT type", str(rct.get("type", 0))), ("Unlock time", "{:,}".format(int(tx.get("unlock_time") or 0)))] + (
+        [("Fee", xmr(fee) + " XMR")] if not coinbase else []) + ([("Tx public key", "<span class=mono>" + pubkey + "</span>")] if pubkey else []) + [
+        ("Extra", "<span class=mono>" + extra.hex() + "</span>")]
+    if coinbase:
+        ins = "<p class=muted>Newly created coins: the block reward" + (" of block " + "{:,}".format(int(vin[0]["gen"]["height"])) if isinstance(vin[0].get("gen"), dict) and "height" in vin[0]["gen"] else "") + ".</p>"
+    else:
+        ins = ("<table><tr><th>#</th><th>Key image</th><th class=r>Ring size</th></tr>" + "".join(
+            "<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + esc((i.get("key") or {}).get("k_image", "")) + "</td><td class=r>" + str(len((i.get("key") or {}).get("key_offsets") or [])) + "</td></tr>" for n, i in enumerate(vin)) + "</table>")
+    outs = ("<table><tr><th>#</th><th>Stealth address</th><th class=r>Amount</th><th class=r>Output index</th></tr>" + "".join(
+        "<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + esc(key_of(o)) + "</td><td class=r>" + (xmr(int(o["amount"])) + " XMR" if int(o.get("amount") or 0) else "<span class=muted>hidden</span>") + "</td><td class=r>"
+        + (("{:,}".format(indices[n])) if n < len(indices) else "") + "</td></tr>" for n, o in enumerate(vout)) + "</table>")
+    more = ("<section class=card><h2>Decode outputs or prove sending</h2><p class=muted>Check which outputs belong to a Monero address and view key, or prove a payment. The calculation runs on this server, so the address and view key are sent to it.</p>"
+            "<p><a href='/tx/" + esc(txid.lower()) + "?classic=1'>Open the classic explorer page for this transaction</a></p></section>")
+    body = (head + "<div class=tiles>" + tl + "</div><div class=groups><section class=card><h2>Details</h2><dl>" + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in details) + "</dl></section></div>"
+            "<section class=card><h2>" + ("Input" if coinbase else "Inputs (" + str(len(vin)) + ")") + "</h2>" + ins + "</section><section class=card><h2>Outputs (" + str(len(vout)) + ")</h2>" + outs + "</section>" + more)
+    return page("Transaction " + txid[:12], body)
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "hashes.space"
@@ -409,9 +469,10 @@ class Handler(http.server.BaseHTTPRequestHandler):
         if path.startswith("/api/v1/mining/") and self.command in ("GET", "HEAD"):
             return self.mining(path)
         m = re.fullmatch(r"/block/([0-9]{1,9}|[0-9a-fA-F]{64})", path)
-        if m and self.command == "GET" and NODE:
+        t = re.fullmatch(r"/tx/([0-9a-fA-F]{64})", path)
+        if (m or t) and self.command == "GET" and NODE and "classic=1" not in self.path:
             try:
-                body = block_page(m.group(1)).encode()
+                body = (block_page(m.group(1)) if m else tx_page(t.group(1))).encode()
             except Exception as exc:        # the node did not answer or does not know the block: the explorer's own page is the fallback
                 log("block page:", exc)
             else:
