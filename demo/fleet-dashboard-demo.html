@@ -664,6 +664,12 @@
   /* Fee Priority: the unconfirmed transactions, sorting themselves by fee rate (bars tall to short) */
   .txt.fp { grid-template-rows: auto auto 1fr auto; }
   .txt.fp .txs { font-size: calc(10.5px * var(--k, 1)); line-height: 1.2; padding-top: 4px; }
+  .xrank { position: relative; width: 100%; align-self: center; }
+  .xr { position: absolute; left: 0; right: 0; top: 0; height: 7px; display: flex; align-items: center; gap: 4px; font: 600 7px var(--mono); will-change: transform; }
+  .xr u { text-decoration: none; width: 14px; text-align: right; color: rgba(255,255,255,.65); }
+  .xr s { flex: 1; height: 4px; border-radius: 1px; background: rgba(255,255,255,.08); text-decoration: none; overflow: hidden; }
+  .xr s i { display: block; height: 100%; background: rgba(255,255,255,.88); border-radius: 1px; }
+  .xr b { width: 24px; text-align: right; color: #fff; } .xr.top s i { background: #1bd8f4; } .xr.top b { color: #1bd8f4; }
   .sortbars { display: flex; align-items: flex-end; gap: 3px; height: 20px; }
   .sortbars i { display: block; width: 7px; height: var(--h); border-radius: 1px; background: rgba(255,255,255,.88); transform: translateX(calc(var(--o) * 10px)); animation: fp-sort 4.8s ease-in-out infinite; }
   @keyframes fp-sort { 0%, 10% { transform: translateX(calc(var(--o) * 10px)); } 45%, 80% { transform: translateX(0); } 95%, 100% { transform: translateX(calc(var(--o) * 10px)); } }
@@ -1869,6 +1875,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   function feePriorityCube(b) {
     const c = chain(), unit = c.feeUnit ?? 'sat/vB', r = b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee];
     const hi = r[r.length - 1], lo = r[0];
+    if (c.xmr) return xmrRankCube(b, hi, lo, unit);
     const bars = FP_ORDER.map((p, k) => `<i style="--h:${20 - k * 2.6}px;--o:${p - k}"></i>`).join('');
     // no block here: the unconfirmed transactions are only data, set straight on the page
     return `<div class="cube bare"><div class="txt fp">
@@ -1876,6 +1883,28 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
         <div class="sortbars" aria-hidden="true">${bars}</div>
         <span class="txs">${fmt(b.nTx)} unconfirmed transactions</span></div></div>`;
   }
+  // Monero: Fee-Per-Byte Ranking. The unconfirmed transactions are ranked by their fee rate, the atomic units of XMR (piconero; here in nXMR) paid per byte of transaction weight.
+  // The rows start in the order they arrived, then move into place from the highest fee rate down. The rates run from the highest to the lowest of the first block of the node's pool.
+  const XR_ORDER = [3, 0, 5, 2, 4, 1], XR_P = 7600, XR_ROW = 8;
+  function xmrRankCube(b, hi, lo, unit) {
+    const n = XR_ORDER.length, rate = (i) => hi > 0 && lo > 0 ? hi * (lo / hi) ** (i / (n - 1) * (0.6 + 0.4 * i / (n - 1))) : hi;
+    const rows = Array.from({ length: n }, (_, i) => { const v = rate(i); return `<div class="xr" data-i="${i}"><u>#${i + 1}</u><s><i style="width:${Math.max(8, Math.round(v / hi * 100))}%"></i></s><b>${fmt(Math.round(v))}</b></div>`; }).join('');
+    return `<div class="cube bare"><div class="txt fp">
+        <span class="fee">~${fmt(b.medianFee)} ${unit}</span><span class="range">${fmt(hi)} → ${fmt(lo)} ${unit}</span>
+        <div class="xrank" aria-hidden="true" style="height:${n * XR_ROW}px">${rows}</div>
+        <span class="txs">${fmt(b.nTx)} unconfirmed transactions</span></div></div>`;
+  }
+  function xrFrame(now) {
+    const rows = document.querySelectorAll('.xrank .xr'); if (!rows.length) return;
+    const t = STILL.matches ? XR_P * 0.6 : (now - asmT0) % XR_P, out = t > XR_P - 600 ? 1 - (t - (XR_P - 600)) / 600 : 1;
+    rows.forEach((r, i) => {
+      const k = easeOut(Math.max(0, Math.min(1, (t - 1400 - i * 260) / 900))), from = XR_ORDER[i], y = (from + (i - from) * k) * XR_ROW;
+      const open = Math.min(1, t / 400) * out;
+      r.style.transform = `translateY(${y.toFixed(1)}px)`; r.style.opacity = String(open);
+      r.firstChild.style.opacity = String(k); r.classList.toggle('top', i === 0 && k > 0.99);
+    });
+  }
+  requestAnimationFrame(function xrLoop(now) { if (!document.hidden) xrFrame(now); requestAnimationFrame(xrLoop); });
   // Create new block: Bitcoin Core builds the block template from packages. A transaction is taken together with the ancestors it needs,
   // a package is ranked by the fee rate of the whole (a cheap parent rides along with a child that pays well), and the best packages fill the block first.
   function packageCube() {
@@ -2138,7 +2167,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     if (TEMPLATE_API[netId] && !templateTried.has(netId)) { templateTried.add(netId); fetchTemplate(netId); }
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
     el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
-      <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : 'Fee Auction'}</span></div></div>
+      <div class="below"><span class="datum-badge plain">${chain().doge ? 'Fee Sorting' : chain().xmr ? 'Fee-Per-Byte Ranking' : 'Fee Auction'}</span></div></div>
       ${chain().xmr ? '' : chain().doge ? `<div class="block-wrap fee-priority"><div class="above"></div>${merkleCube()}
       <div class="below"><span class="datum-badge plain">Coinbase &amp; Merkle Root</span></div></div>` : `<div class="block-wrap fee-priority"><div class="above"></div>${packageCube()}
       <div class="below"><span class="datum-badge plain">Create new block</span></div></div>`}
