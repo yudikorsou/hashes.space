@@ -807,7 +807,7 @@ def candidate_parts():
             "<div class=big2><span id=since>" + "{}:{:02d}".format(since // 60, since % 60) + "</span> <small>since the last block</small></div><div class=fill id=sfill><i style='width:" + "{:.0f}".format(pct) + "%'></i></div>"
             "<div class=sub>About <b id=tries>–</b> tries by all miners since then, <span id=ratio>–</span> × the difficulty. On average " + str(BLOCK_SECONDS // 60) + ":00; a block comes in the next minute with a chance of " + "{:.0f}".format(chance * 100) + "%.</div>", "s4")
     chips = "<span class=chip>Block being mined <b>" + "{:,}".format(d["height"]) + "</b></span><span class=chip>hashing now</span>"
-    return {"chips": chips, "steps": s1 + s2 + s3 + s4, "height": d["height"], "last": d["lastTime"], "diff": diff, "rate": rate, "zeros": zeros, "ntx": d["nTx"],
+    return {"chips": chips, "steps": s4 + s1 + s2 + s3, "height": d["height"], "last": d["lastTime"], "diff": diff, "rate": rate, "zeros": zeros, "ntx": d["nTx"],
             "prev": d["prevId"], "root": d["merkleroot"], "weight": d["weight"], "median": d["median"]}
 
 
@@ -835,7 +835,7 @@ function hx(v){return ('00000000'+(v>>>0).toString(16)).slice(-8)}
 function nf(v){var u=['','thousand','million','billion','trillion','quadrillion'],i=0;while(v>=1000&&i<5){v/=1000;i++}return v.toLocaleString('en',{maximumFractionDigits:v>=100?0:1})+(u[i]?' '+u[i]:'')}
 var Z=D.zeros;function meter(k){var h='';for(var i=0;i<Z;i++)h+='<i'+(i<k?' class=on':'')+'></i>';$('cbmeter').innerHTML=h+'<em>'+k+' of '+Z+' zeros</em>'}
 function foot(){$('cbfoot').textContent=D.ntx.toLocaleString('en')+' tx · '+Math.round(D.weight/1000)+' kB';$('cbfill').style.height=Math.min(100,D.weight/D.median*100)+'%'}
-function stepOn(n){[].forEach.call(document.querySelectorAll('.st'),function(e,i){e.classList.toggle('on',i===n)})}
+function stepOn(n){[].forEach.call(document.querySelectorAll('.st'),function(e){e.classList.toggle('on',e.classList.contains('s'+(n+1)))})}
 function clock(){var s=Math.max(0,Math.floor(Date.now()/1000)-last),e=$('since');if(e)e.textContent=Math.floor(s/60)+':'+('0'+s%60).slice(-2);var f=document.querySelector('#sfill i');if(f)f.style.width=Math.min(100,s/120*100)+'%';
 var tr=s*D.rate,a=$('tries');if(a)a.textContent=nf(tr);var r=$('ratio');if(r)r.textContent=(tr/D.diff).toFixed(1);$('cbt').textContent=new Date().toISOString().slice(11,19)}
 function fill(){$('cbh').textContent=D.height.toLocaleString('en');$('cbp').textContent=sh(D.prev);$('cbm').textContent=sh(D.root);foot();clock()}
@@ -845,7 +845,7 @@ if(!still&&found&&now<found){$('cbcube').classList.add('hit');$('cbstate').textC
 $('cbstate').textContent=TXT[ph]}
 var rows=document.querySelectorAll('.cbrows .r');for(var i=0;i<rows.length;i++){var u=ph===0&&!still?Math.max(0,Math.min(1,(t-i*260)/420)):1;rows[i].style.opacity=u;rows[i].style.transform='translateX('+((1-u)*-26)+'px)'}
 stepOn(ph);
-var st=document.querySelectorAll('.cbstage .st'),SS=[0,2600,6400,10200];for(var q=0;q<st.length;q++){var u=still?1:Math.max(0,Math.min(1,(t-SS[q]-100)/650));u=1-Math.pow(1-u,3);var o=still?1:Math.max(0,Math.min(1,(TOT-t)/400));if(q===3){u=1;o=1}st[q].style.opacity=u*o;st[q].style.transform='translateY('+((1-u)*16)+'px)'}
+var st=document.querySelectorAll('.cbstage .st:not(.s4)'),SS=[0,2600,6400,10200];for(var q=0;q<st.length;q++){var u=still?1:Math.max(0,Math.min(1,(t-SS[q]-100)/650));u=1-Math.pow(1-u,3);var o=still?1:Math.max(0,Math.min(1,(TOT-t)/400));st[q].style.opacity=u*o;st[q].style.transform='translateY('+((1-u)*16)+'px)'}
 if(ph===0&&!still){$('cbn').textContent='00000000';$('cbhash').textContent='—';meter(0)}
 else if(!still){if(((now/110)|0)!==frame.k){frame.k=(now/110)|0;nonce=(nonce+1000003+((Math.random()*4e6)|0))>>>0;var k=0;while(k<Z-1&&Math.random()<1/16)k++;var s='';for(var i=0;i<k;i++)s+='0';while(s.length<12)s+='0123456789abcdef'[(Math.random()*16)|0];if(k<12){}
 $('cbn').textContent=hx(nonce);$('cbhash').innerHTML='<u>'+s.slice(0,k)+'</u>'+s.slice(k,12)+'…';meter(k)}}
