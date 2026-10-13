@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-monero-explorer
 category: crypto
 name: Monero Explorer
-version: "0.18.5.1-4"
+version: "0.18.5.1-5"
 tagline: A Monero block explorer on your own Monero node
 description: >-
   An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
@@ -31,6 +31,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  New /api/v1/mining/pool-hashrate/<period>: Monero blocks name no pool, so this is the hashrate of the P2Pool miners (the only pool whose blocks show on the chain): the network's hashrate times the share of P2Pool blocks.
   The explorer now also serves the hashrate and payout-split statistics (/api/v1/mining/...) that the
   hashes.space Find Mempool page shows for Monero, computed from your own Monero node.
 

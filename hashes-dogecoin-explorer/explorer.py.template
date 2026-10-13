@@ -12,6 +12,7 @@ transactions and the mempool. Serves:
   /api/blocks/tip/height
   /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from your node (period: 24h, 14d, 1m, 6m, 1y)
   /api/v1/mining/pools/<period>     blocks per mining pool over the period (a sample of the blocks for the long ones)
+  /api/v1/mining/pool-hashrate/<period>  the hashrate of the mining pools together: the network's hashrate times the share of blocks that pools mined
   (1y and 1w are what older versions of the page ask for, and are still answered)
   /api/v1/ws             mempool.space's WebSocket: {"action":"want","data":["blocks","mempool-blocks"]}
 
@@ -287,7 +288,7 @@ def mempool_json(b):
 
 DAY, WEEK, YEAR_DAYS = 1440, 10080, 365  # Dogecoin: a block a minute
 _pool_by_height = {}
-_mining = {"hashrate": {}, "pools": {}, "at": 0}
+_mining = {"hashrate": {}, "pools": {}, "pool-hashrate": {}, "at": 0}
 # the periods the page offers: blocks in the period, and one hashrate point per STEP blocks (a block a minute)
 RANGES = {"24h": (1440, 60), "14d": (20160, 360), "1m": (43200, 720), "6m": (259200, 1440), "1y": (525600, 1440)}
 SAMPLE = 2500   # a long period reads about this many blocks for its pool shares (an estimate), a short one reads them all
@@ -384,6 +385,32 @@ def hashrate_range(tip, rng):
     return {"hashrates": points, "difficulty": diffs, "currentHashrate": rpc("getnetworkhashps", WEEK), "currentDifficulty": rpc("getdifficulty")}
 
 
+def pool_hashrate_range(tip, rng, hr):
+    """the hashrate of the pools together: the network's hashrate at each point times the share of the blocks around it that pools mined
+    (the blocks read for the pool shares: all of them for a short period, an evenly spread sample for a long one)"""
+    blocks, step = RANGES[rng]
+    first = max(1, tip - blocks + 1)
+    stride = max(1, blocks // SAMPLE)
+    reach = max(step, blocks // 52)                 # each point looks back over about a fiftieth of the period
+    sample = {h: _pool_by_height[h] for h in range(first, tip + 1) if h % stride == 0 and h in _pool_by_height}
+    at = {d["time"]: d["height"] for d in hr["difficulty"]}
+    points = []
+    for pt in hr["hashrates"]:
+        h = at.get(pt["timestamp"])
+        if h is None:
+            continue
+        names = [n for k, n in sample.items() if h - reach < k <= h]
+        if names:
+            share = sum(1 for n in names if n != "Unknown") / len(names)
+            points.append({"timestamp": pt["timestamp"], "avgHashrate": pt["avgHashrate"] * share, "share": share, "networkHashrate": pt["avgHashrate"]})
+    if not points:
+        raise RuntimeError("no data yet")
+    names = [n for k, n in sample.items() if k > tip - max(step, WEEK)]
+    now = sum(1 for n in names if n != "Unknown") / len(names) if names else points[-1]["share"]
+    return {"currentHashrate": hr["currentHashrate"] * now, "currentShare": now, "networkHashrate": hr["currentHashrate"], "complete": True,
+            "sampled": stride > 1, "hashrates": points}
+
+
 def hashrate_year(tip):
     heights = [tip - d * DAY for d in range(YEAR_DAYS) if tip - d * DAY > DAY][::-1]
     hashes = rpc_batch([("getblockhash", [h]) for h in heights])
@@ -413,6 +440,7 @@ def mining_stats():
             for rng in RANGES:          # the other periods follow, one by one (the long ones read more blocks)
                 _mining["hashrate"][rng] = hashrate_range(tip, rng)
                 _mining["pools"][rng] = pools_range(tip, rng)
+                _mining["pool-hashrate"][rng] = pool_hashrate_range(tip, rng, _mining["hashrate"][rng])
         except Exception as exc:  # noqa: BLE001
             log("mining stats: " + str(exc))
         time.sleep(600)
@@ -610,7 +638,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json([mempool_json(b) for b in last_blocks(10)], 10)
             if path == "/api/v1/fees/mempool-blocks":
                 return self.json(_state["mempool"] or mempool_blocks(), 5)
-            m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(\w+)", path)
+            m = re.fullmatch(r"/api/v1/mining/(hashrate|pools|pool-hashrate)/(\w+)", path)
             if m:
                 data = _mining[m.group(1)].get(m.group(2))
                 if data is None:

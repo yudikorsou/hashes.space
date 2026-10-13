@@ -26,4 +26,6 @@ services:
       POOL_BLOCKS: "4320"
     volumes:
       - ${APP_DATA_DIR}/explorer.py:/app/explorer.py:ro
+      # the share of blocks mined by pools, per day: kept here so the 6-month and 1-year pool hashrate keeps growing on a pruned node
+      - ${APP_DATA_DIR}:/state
     command: ["python3", "-u", "/app/explorer.py"]

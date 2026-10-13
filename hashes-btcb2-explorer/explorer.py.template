@@ -14,6 +14,7 @@ Reads everything from the node's RPC, pruned or not, and serves:
   /api/blocks/tip/height
   /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from the block headers (24h, 14d, 1m, 6m, 1y)
   /api/v1/mining/pools/<period>     blocks per mining pool, from the tags and payout addresses in each coinbase
+  /api/v1/mining/pool-hashrate/<period>  the hashrate of the mining pools together: the network's hashrate times the share of blocks that pools mined, per day
   /api/v1/mining/pool/<slug>/blocks   the latest blocks of one pool (the page's pool view)
   /api/v1/difficulty-adjustment       where the chain is in its difficulty period, and the change the period is heading for
   /api/v1/fees/recommended            fastest / half-hour / hour / economy / minimum fee rates, from your own mempool
@@ -212,6 +213,27 @@ class PoolList:
 POOLS = PoolList()
 
 
+SHARE_FILE = os.path.join(os.environ.get("STATE_DIR", "/state"), "pool-shares-" + CHAIN + ".json")
+
+
+def load_shares():
+    try:
+        with open(SHARE_FILE) as f:
+            return {int(d): [int(v[0]), int(v[1])] for d, v in json.load(f).items()}
+    except (OSError, ValueError, KeyError, IndexError, TypeError):
+        return {}
+
+
+def save_shares(days):
+    try:
+        tmp = SHARE_FILE + ".tmp"
+        with open(tmp, "w") as f:
+            json.dump({str(d): v for d, v in sorted(days.items())[-400:]}, f)
+        os.replace(tmp, SHARE_FILE)
+    except OSError as exc:
+        log("pool shares cannot be kept on disk (" + str(exc) + "): the history then restarts with the node's readable blocks")
+
+
 class ChainStats:
     def __init__(self, name, rpc):
         self.name, self.rpc, self.lock = name, rpc, threading.Lock()
@@ -220,6 +242,7 @@ class ChainStats:
         self.pool_rows = {}                # height -> the block as the pool view lists it
         self.history = {}                  # height -> block size, fees and fee rates (getblockstats), for the charts
         self.miner_of = {}                 # height -> the miner the pool names in the coinbase ("" when it names none)
+        self.share_day = load_shares()     # day number -> [blocks mined by pools, blocks that day]: kept on disk, so it outlives what a pruned node can still read
         self.tip, self.fine, self.coarse, self.now = None, [], [], (0, 0)
         self.ready, self.pruned_at, self.error = False, None, ""
         self.live_blocks, self.live = {}, None     # block hash -> the block as shown; the latest live view
@@ -452,6 +475,70 @@ class ChainStats:
                 e["miners"] = [{"name": k, "blockCount": v} for k, v in sorted(miners[n].items(), key=lambda x: -x[1])]
             out.append(e)
         return out
+
+    def update_shares(self):
+        """per day: how many blocks pools mined. The oldest day read is partial, so it is left out; a day is only ever replaced by a fuller count."""
+        with self.lock:
+            rows = [(h, p) for h, p in self.pool_of.items() if h in self.headers]
+        if not rows:
+            return
+        days = {}
+        for h, p in rows:
+            d = self.headers[h][0] // DAY
+            c = days.setdefault(d, [0, 0])
+            c[1] += 1
+            if p != "Unknown":
+                c[0] += 1
+        oldest = min(days)
+        changed = False
+        for d, (pool, total) in days.items():
+            if d == oldest and self.pruned_at is not None or d == oldest and len(rows) >= POOL_BLOCKS:
+                continue                  # cut off by the pruned blocks or by POOL_BLOCKS: part of the day is missing
+            old = self.share_day.get(d)
+            if not old or total >= old[1]:
+                if old != [pool, total]:
+                    self.share_day[d] = [pool, total]
+                    changed = True
+        if changed:
+            save_shares(self.share_day)
+
+    def pool_hashrate(self, period):
+        """the hashrate of the mining pools together: the network's hashrate that day times the share of that day's blocks that pools mined"""
+        with self.lock:
+            if not self.ready:
+                raise RuntimeError("no data yet")
+            (fine, coarse, (rate, _)) = self.fine[0], self.coarse[0], self.now
+            days = dict(self.share_day)
+        span = {"24h": DAY, "14d": 14 * DAY, "1m": 30 * DAY, "6m": 183 * DAY, "1y": YEAR}[period]
+        series = fine if span <= 30 * DAY and fine else coarse
+        if not days or not series:
+            raise RuntimeError("no data yet")
+        end = series[-1][0]
+
+        def network_at(t):
+            lo, hi = 0, len(series) - 1
+            if t <= series[0][0]:
+                return series[0][1]
+            while hi - lo > 1:
+                mid = (lo + hi) // 2
+                lo, hi = (mid, hi) if series[mid][0] <= t else (lo, mid)
+            (ta, va), (tb, vb) = series[lo], series[hi]
+            return va + (vb - va) * (t - ta) / (tb - ta) if tb > ta else va
+        points = []
+        for d in sorted(days):
+            t = d * DAY + DAY // 2
+            pool, total = days[d]
+            if total < 20 or t > end or t < end - span:
+                continue
+            share = pool / total
+            points.append({"timestamp": t, "avgHashrate": network_at(t) * share, "share": share, "networkHashrate": network_at(t)})
+        if not points:
+            raise RuntimeError("no data yet")
+        recent = [days[d] for d in sorted(days)[-7:]]
+        share_now = sum(x[0] for x in recent) / max(1, sum(x[1] for x in recent))
+        since = min(days) * DAY
+        return {"currentHashrate": rate * share_now, "currentShare": share_now, "networkHashrate": rate, "since": since,
+                "complete": since <= end - span + DAY, "hashrates": points}
 
     def pools(self, period):
         with self.lock:
@@ -770,6 +857,7 @@ def stats_worker():
             check_node()
             STATS.refresh_hashrate()
             STATS.refresh_pools()
+            STATS.update_shares()
             STATS.refresh_history()
             log("mining statistics ready (tip " + str(STATS.tip) + ")")
         except Exception as exc:  # noqa: BLE001
@@ -1427,6 +1515,9 @@ class Handler(BaseHTTPRequestHandler):
                          "mempool": STATE["mempool_count"], "pruned": STATE["info"].get("pruned"), "node": STATE["info"].get("subversion"), "chain": CHAIN, "syncing": STATE["info"].get("initialblockdownload"),
                          "statistics": STATS.ready, "statisticsError": STATS.error, "pools": len(POOLS.tags) > 0}
                 return self.json(s)
+            m = re.fullmatch(r"/api/v1/mining/pool-hashrate/(24h|14d|1m|6m|1y)", path)
+            if m:
+                return self.json(STATS.pool_hashrate(m.group(1)), 300)
             m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(24h|14d|1w|1m|3m|6m|1y)", path)
             if m:
                 kind, period = m.groups()

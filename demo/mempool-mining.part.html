@@ -148,7 +148,7 @@
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <header class="mhead m-hr-head">
     <dl class="kpis">
-      <div><dt><span id="ms-hash-title">Global hashrate</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
+      <div><dt><span id="ms-hash-title">Mining pool hashrate</span> <span class="mperiod" id="ms-hash-period"></span></dt><dd id="ms-hash">–</dd></div>
     </dl>
   </header>
   <header class="mhead m-globe-head" id="gl-head" hidden>
@@ -159,13 +159,13 @@
   </header>
   <article class="mcard m-hr" aria-labelledby="hr-title">
     <a class="calc-link" id="calc-link" href="#calc">Hashrate calculator<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
-    <h2 class="sr-only" id="hr-title">Hashrate and difficulty</h2>
+    <h2 class="sr-only" id="hr-title">Hashrate of the mining pools</h2>
     <p class="hrsub" id="ms-hash-sub"></p>
-    <div class="mrange" id="mrange" role="group" aria-label="Period shown in the hashrate chart">
+    <div class="mrange" id="mrange" role="group" aria-label="Period shown in the pool hashrate chart">
     <button type="button" data-range="14d">14 days</button><button type="button" data-range="1m">1 month</button><button type="button" data-range="6m">6 months</button><button type="button" data-range="1y">1 year</button>
     </div>
-    <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Network hashrate and difficulty over the last year"></svg>
-    <ul class="key"><li><i style="background:#f6c177"></i>Hashrate</li><li><i style="background:#e8862a"></i><span id="ms-key-avg">Hashrate (7-day average)</span></li><li><i style="background:#d6336c"></i>Difficulty</li></ul></div>
+    <div class="plot"><svg id="ms-chart" viewBox="0 0 600 310" role="img" aria-label="Hashrate of the mining pools and their share of the network"></svg>
+    <ul class="key"><li><i style="background:#f6c177"></i>Pool hashrate</li><li><i style="background:#e8862a"></i><span id="ms-key-avg">Pool hashrate (7-day average)</span></li><li><i style="background:#d6336c"></i>Share of the network</li></ul></div>
     <a class="more" id="ms-more-hr" href="#pools">View more »</a>
   </article>
   <article class="mcard m-pools" aria-labelledby="pools-title">
@@ -411,6 +411,37 @@
     range = rng; try { localStorage.setItem('mining-range', rng); } catch { /* fine without */ }
     renderMiningStats();
   };
+  // ---- the hashrate of the mining pools together (the chart under the headline): asked of the node itself, by the same periods ----
+  // Each explorer on your Umbrel works it out from its own node: the network's hashrate times the share of blocks that pools mined.
+  // Bitcoin and Bitcoin Knots read the pool of every block (and keep the daily share on disk, so a pruned node's history keeps growing);
+  // Dogecoin reads an evenly spread sample of the blocks; Monero names no pool, so there it is the P2Pool miners, whose blocks the chain shows.
+  var PH_HOST = { sha256: MINING_NODE.sha256, blake2b: MINING_NODE.blake2b, dogecoin: MINING_SITES.dogecoin, monero: MINING_SITES.monero };
+  var PH_TITLE = { monero: 'P2Pool hashrate' };
+  var phBy = {}, phBusy = {};
+  async function loadPoolHashFor(net, rng) {
+    const key = net + ':' + rng, cur = phBy[key];
+    if (phBusy[key] || !PH_HOST[net]) return;
+    if (cur && Date.now() < (cur.ok ? cur.at + 600000 : cur.retry)) return;
+    phBusy[key] = true;
+    try {
+      const r = await getJson(PH_HOST[net], '/pool-hashrate/' + rng);
+      if (!r || !Array.isArray(r.hashrates)) throw new Error('no data');
+      phBy[key] = { ok: true, at: Date.now(), hashrates: r.hashrates.map((x) => [x.timestamp, x.avgHashrate]), share: r.hashrates.map((x) => [x.timestamp, x.share]),
+        hash: r.currentHashrate, shareNow: r.currentShare, network: r.networkHashrate, since: r.since, complete: r.complete !== false, sampled: !!r.sampled, pool: r.pool || '' };
+    } catch { phBy[key] = { ok: false, at: Date.now(), retry: Date.now() + 20000 }; }
+    finally { phBusy[key] = false; }
+    if (net === netId && typeof renderMiningStats === 'function') renderMiningStats();
+  }
+  setInterval(() => { const g = phBy[netId + ':' + range]; if (g && !g.ok && Date.now() > g.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
+  // what the headline figure and the line under it say
+  function poolHashSub(ph, info, period, net) {
+    if (!ph || !ph.ok) return ph ? `Your ${net === 'monero' ? 'Monero' : 'node'} did not answer yet: the pool hashrate comes from the explorer on your Umbrel (update it if it is an older version).` : 'Asking your node for the hashrate of the mining pools…';
+    const who = ph.pool ? `${ph.pool} miners` : 'the mining pools';
+    let t = `Combined hashrate of ${who}, averaged over ${windowSpoken(period)}. Right now ${si(ph.hash, 1)}H/s — ${(ph.shareNow * 100).toFixed(1)}% of the network's ${si(ph.network, 1)}H/s.`;
+    if (!ph.complete && ph.since) t += ` Your node has told the pools apart since ${new Date(ph.since * 1000).toLocaleDateString([], { day: 'numeric', month: 'short', year: 'numeric' })}; the chart fills in as it keeps reading blocks.`;
+    if (ph.sampled) t += ' Over a long period the pool shares come from an evenly spread sample of the blocks.';
+    return t;
+  }
   // a period that only came in part (a source still computing it) is asked for again every so often
   setInterval(() => { const got = rangeBy[netId + ':' + range]; if (got && got.partial && Date.now() > got.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
   document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('#mrange button'); if (b) setRange(b.dataset.range); });
@@ -470,7 +501,10 @@
     $('pools-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
     $('pools-period').textContent = WINDOW_NAME[rp.window] ?? rp.window;
     $('ms-hash-period').textContent = info.label;
-    $('ms-key-avg').textContent = `Hashrate (${info.avg[0]} average)`;
+    $('ms-hash-title').textContent = PH_TITLE[netId] ?? 'Mining pool hashrate';
+    $('ms-key-avg').textContent = `Pool hashrate (${info.avg[0]} average)`;
+    loadPoolHashFor(netId, range);
+    const ph = phBy[netId + ':' + range], phv = ph && ph.ok ? { pool: true, ok: true, hashrates: ph.hashrates, difficulty: ph.share, hash: ph.hash } : { pool: true, ok: false, hashrates: [], difficulty: [], hash: 0, failed: !!ph };
     $('ms-pie').setAttribute('aria-label', `Hashrate per mining pool, ${windowSpoken(rp.window)}`);
     $('poolspage-title').textContent = POOLS_TITLE[netId] ?? 'Hashrate mining pools';
     const note = $('ms-pools-note'); note.hidden = false;
@@ -479,13 +513,13 @@
       + (rp.window !== pr ? ` ${windowSpoken(rp.window).replace(/^the /, 'The ')} is the nearest period this source offers for ${pinfo.label}.` : '')
       + (rp.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '')
       + (rp.summed ? ' The 14 days are summed from the daily hashrate of each pool.' : '');
-    $('ms-hash').textContent = si(rv.avg || m.hash, 1) + 'H/s';   // the average over the chosen period
-    $('ms-hash-sub').textContent = hashrateThen(rv, info, range);
+    $('ms-hash').textContent = ph && ph.ok ? si(meanOf(ph.hashrates) || ph.hash, 1) + 'H/s' : '–';   // the pools' average over the chosen period
+    $('ms-hash-sub').textContent = poolHashSub(ph, info, range, netId);
     $('ms-source').textContent = m.live
       ? `Live from ${fromName(netId, site)} · updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`
       : `Snapshot of ${SNAPSHOT_FROM[netId] ?? site}/mining from ${new Date(m.at * 1000).toLocaleDateString([], { day: 'numeric', month: 'long', year: 'numeric' })} (${site} is not reachable from this page)`;
     if (onPools || (!sec.hidden && netId !== 'sha256')) drawPie(rp);
-    if (!sec.hidden) drawChart(rv, range);
+    if (!sec.hidden) drawChart(phv, range);
     renderCalc(); fillPools(); renderPoolCalc();
   }
   // ---- hashrate calculator: the chance that your hashrate finds a block, from the network difficulty ----
@@ -769,19 +803,26 @@
     const svg = $('ms-chart'); svg.replaceChildren();
     const L = 72, Rt = 548, T = 12, B = 280, hs = m.hashrates, ds0 = m.difficulty, short = rng === '24h' || rng === '14d';
     if (hs.length < 2) {
-      svg.appendChild(svgEl('text', { x: 300, y: 150, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 14 }, `No data for ${RANGE_INFO[rng].label} from this source yet.`));
+      const msg = !m.pool ? `No data for ${RANGE_INFO[rng].label} from this source yet.`
+        : m.failed ? 'Your node has not sent the pool hashrate yet.' : m.ok ? 'The pool hashrate fills in as your node reads more blocks.' : 'Asking your node for the pool hashrate…';
+      svg.appendChild(svgEl('text', { x: 300, y: 150, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 14 }, msg));
       return;
     }
-    const t0 = hs[0][0], t1 = Math.max(hs[hs.length - 1][0], ds0.length ? ds0[ds0.length - 1][0] : 0);
+    const t1 = Math.max(hs[hs.length - 1][0], ds0.length ? ds0[ds0.length - 1][0] : 0);
+    // the pools' line starts where the node began telling them apart; the time axis still spans the whole period
+    const t0 = m.pool ? Math.min(hs[0][0], t1 - RANGE_INFO[rng].sec) : hs[0][0];
     const ds = ds0.map(([t, v]) => [Math.max(t, t0), v]);   // a value that held before the first point starts at the left edge
     const X = (t) => L + ((t - t0) / (t1 - t0 || 1)) * (Rt - L);
-    const hAx = axisScale(hs.map((x) => x[1]), T, B), dAx = axisScale(ds.map((x) => x[1]), T, B);
+    const hAx = axisScale(hs.map((x) => x[1]), T, B);
+    // the pools' share of the network: a plain 0 – top% scale
+    const shareAxis = () => { const mx = Math.max(...ds.map((x) => x[1]), 0.05), step = niceStep(mx * 1.05, 4), top = Math.ceil(mx / step) * step, ticks = []; for (let v = step; v <= top + step / 1e6; v += step) ticks.push(v); return { log: false, Y: (v) => B - Math.max(0, Math.min(1, v / top)) * (B - T), ticks }; };
+    const dAx = m.pool ? shareAxis() : axisScale(ds.map((x) => x[1]), T, B);
     const YH = hAx.Y, YD = dAx.Y;
     for (const v of hAx.ticks) {
       svg.appendChild(svgEl('line', { x1: L, x2: Rt, y1: YH(v), y2: YH(v), stroke: 'var(--line)', 'stroke-dasharray': '2 4' }));
       svg.appendChild(svgEl('text', { x: L - 8, y: YH(v) + 4, 'text-anchor': 'end', fill: 'var(--muted)', 'font-size': 12 }, siShort(v) + 'H/s'));
     }
-    for (const v of dAx.ticks) svg.appendChild(svgEl('text', { x: Rt + 8, y: YD(v) + 4, fill: 'var(--muted)', 'font-size': 12 }, siShort(v).replace(' ', '')));
+    for (const v of dAx.ticks) svg.appendChild(svgEl('text', { x: Rt + 8, y: YD(v) + 4, fill: 'var(--muted)', 'font-size': 12 }, m.pool ? `${+(v * 100).toFixed(1)}%` : siShort(v).replace(' ', '')));
     if (hAx.log) svg.appendChild(svgEl('text', { x: L + 6, y: T + 12, fill: 'var(--muted)', 'font-size': 11 }, 'log scale · every step is 10×'));
     svg.appendChild(svgEl('line', { x1: L, x2: Rt, y1: B, y2: B, stroke: 'var(--line-strong)' }));
     // along the bottom: hours for a day, days for two weeks or a month, months for longer
@@ -812,7 +853,8 @@
     const avg = hs.map(([t], i) => { const w = hs.slice(Math.max(0, i - k + 1), i + 1); return w.reduce((s, x) => s + x[1], 0) / w.length; });
     line(hs.map(([t], i) => [X(t), YH(avg[i])]), '#e8862a', 2.6);
     // difficulty only changes at an adjustment: a step line
-    if (ds.length) {
+    if (ds.length && m.pool) line(ds.map(([t, v]) => [X(t), YD(v)]), '#d6336c', 2.4);
+    else if (ds.length) {
       const steps = []; ds.forEach(([t, v], i) => { if (i) steps.push([X(t), YD(ds[i - 1][1])]); steps.push([X(t), YD(v)]); }); steps.push([X(t1), YD(ds[ds.length - 1][1])]);
       steps.unshift([L, YD(ds[0][1])]); line(steps, '#d6336c', 2.4);
     }
@@ -833,14 +875,14 @@
     const at = (e) => {
       const r = svg.getBoundingClientRect(), vb = 600 / r.width, t = t0 + ((e.clientX - r.left) * vb - L) / (Rt - L) * (t1 - t0);
       let i = 0; hs.forEach(([ht], j) => { if (Math.abs(ht - t) < Math.abs(hs[i][0] - t)) i = j; });
-      const d = ds.filter(([dt]) => dt <= hs[i][0]).pop() ?? ds[0];
+      const d = m.pool ? ds[i] : ds.filter(([dt]) => dt <= hs[i][0]).pop() ?? ds[0];
       cross.setAttribute('visibility', 'visible');
       vline.setAttribute('x1', X(hs[i][0])); vline.setAttribute('x2', X(hs[i][0]));
       dotH.setAttribute('cx', X(hs[i][0])); dotH.setAttribute('cy', YH(avg[i]));
       dotD.setAttribute('cx', X(hs[i][0])); dotD.setAttribute('cy', d ? YD(d[1]) : B);
       tip(e, `<b>${new Date(hs[i][0] * 1000).toLocaleString('en', short ? { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'UTC' } : { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}${short ? ' UTC' : ''}</b><br>`
-        + `Hashrate ${si(hs[i][1], 1)}H/s<br>${RANGE_INFO[rng].avg[0]} average ${si(avg[i], 1)}H/s`
-        + (d ? `<br>Difficulty ${si(d[1], 2).replace(' ', '')}` : ''));
+        + `${m.pool ? 'Pool hashrate' : 'Hashrate'} ${si(hs[i][1], 1)}H/s<br>${RANGE_INFO[rng].avg[0]} average ${si(avg[i], 1)}H/s`
+        + (d ? (m.pool ? `<br>Share of the network ${(d[1] * 100).toFixed(1)}%` : `<br>Difficulty ${si(d[1], 2).replace(' ', '')}`) : ''));
     };
     hit.addEventListener('mousemove', at);
     hit.addEventListener('mouseleave', (e) => { cross.setAttribute('visibility', 'hidden'); tip(e, null); });

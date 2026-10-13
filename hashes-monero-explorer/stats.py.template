@@ -8,6 +8,7 @@ on to it unchanged, and adds the two endpoints the hashes.space Find Mempool pag
 
   /api/v1/mining/hashrate/<period>   hashrate and difficulty over the period
   /api/v1/mining/pools/<period>      how the period's blocks were paid out
+  /api/v1/mining/pool-hashrate/<period>  the hashrate of the P2Pool miners (the only pool whose blocks the chain shows): network hashrate times the share of P2Pool blocks
   (period: 24h, 14d, 1m, 6m or 1y; 1w is still answered for older versions of the page)
 
 so the page gets those graphs from the same Monero Explorer that streams the blocks
@@ -152,7 +153,7 @@ SAMPLE = 2500   # a long period reads about this many blocks for its payout spli
 _lock = threading.Lock()
 _headers = {}    # height -> (timestamp, difficulty)
 _payouts = {}    # height -> how many outputs its coinbase pays
-_result = {"hashrate": {}, "pools": {}, "info": None}
+_result = {"hashrate": {}, "pools": {}, "pool-hashrate": {}, "info": None}
 
 
 def header_at(height):
@@ -206,6 +207,35 @@ def pools_range(tip, rng):
     return {"blockCount": tip - first + 1, "sampled": stride > 1, "pools": pools}
 
 
+def pool_hashrate_range(tip, rng, hr):
+    """Monero names no pool, but P2Pool pays all of its miners in the block itself, so its blocks can be told apart: the hashrate of
+    those miners is the network's hashrate times the share of P2Pool blocks around each point (all blocks read for a short period, a spread sample for a long one)"""
+    blocks, step = RANGES[rng]
+    first = max(1, tip - blocks + 1)
+    stride = max(1, blocks // SAMPLE)
+    reach = max(step, blocks // 52)
+    heights = [tip - d * step for d in range(blocks // step) if tip - d * step > 1][::-1]
+    stamp = {}
+    for h in heights:
+        if h in _headers:
+            stamp[_headers[h][0]] = h
+    points = []
+    for pt in hr["hashrates"]:
+        h = stamp.get(pt["timestamp"])
+        if h is None:
+            continue
+        seen = [_payouts[k] for k in range(h - reach + 1, h + 1) if k % stride == 0 and k >= first and k in _payouts]
+        if seen:
+            share = sum(1 for o in seen if o > 1) / len(seen)
+            points.append({"timestamp": pt["timestamp"], "avgHashrate": pt["avgHashrate"] * share, "share": share, "networkHashrate": pt["avgHashrate"]})
+    if not points:
+        raise RuntimeError("no data yet")
+    seen = [_payouts[k] for k in range(max(first, tip - max(step, 5040) + 1), tip + 1) if k % stride == 0 and k in _payouts]
+    now = sum(1 for o in seen if o > 1) / len(seen) if seen else points[-1]["share"]
+    return {"currentHashrate": hr["currentHashrate"] * now, "currentShare": now, "networkHashrate": hr["currentHashrate"], "complete": True,
+            "sampled": stride > 1, "pool": "P2Pool", "hashrates": points}
+
+
 def worker():
     first = True
     while True:
@@ -214,8 +244,15 @@ def worker():
             tip = int(info["height"]) - 1
             for rng in RANGES:                # the short periods first, so they are ready soonest
                 hr, pl = hashrate_range(tip, info, rng), pools_range(tip, rng)
+                try:
+                    ph = pool_hashrate_range(tip, rng, hr)
+                except Exception as exc:
+                    log("pool hashrate " + rng + ": " + str(exc))
+                    ph = None
                 with _lock:
                     _result["hashrate"][rng], _result["pools"][rng] = hr, pl
+                    if ph:
+                        _result["pool-hashrate"][rng] = ph
                     _result["info"] = info
                 if first and rng == "24h":
                     log("Monero mining statistics ready (longer periods follow)")
@@ -250,7 +287,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def mining(self, path):
-        m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(\w+)", path)
+        m = re.fullmatch(r"/api/v1/mining/(hashrate|pools|pool-hashrate)/(\w+)", path)
         if not m:
             return self.send_json(404, {"error": "unknown endpoint"}, 0)
         kind, rng = m.groups()
