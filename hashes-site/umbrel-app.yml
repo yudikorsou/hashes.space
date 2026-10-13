@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.0"
+version: "1.9.1"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The proof-of-work and coin picker is now its own RAM module, separate from the search bar next to it, which still finds a block height or mining pool on the chosen chain. The first block is tagged Fee Auction.
   The header block on the Find Mempool page now shows the merkle root, version, bits and time of the block being hashed, read from the explorer's block template, and a nonce that searches through its range.
   The line between the blocks still to be mined and the mined blocks is now a spinning 3D fan: the blocks pass through it to the mined side.
   mempool.space is no longer asked. While the explorer's node is still syncing, the chain shows simulated blocks and tries again every minute.

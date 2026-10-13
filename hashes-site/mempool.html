@@ -358,15 +358,21 @@
   .netbar .nlabel { font: 600 12px/1 var(--sans); letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
   /* search the proof-of-work networks: the coin you are watching sits in the field, typing filters the rest */
   /* the lining is always the Scrypt silver, whichever proof-of-work network is picked */
-  .netsearch { --algo: #bfc8dc; position: relative; display: flex; align-items: center; gap: 4px; padding: 5px 14px 5px 5px; border-radius: 999px; border: 1px solid var(--algo); background: var(--surface); transition: border-color .2s, box-shadow .2s; }
+  /* the picker and the search are two parts: the network sits on a RAM module, the search bar is next to it, as tall as the module */
+  .netgroup { position: relative; display: flex; align-items: stretch; gap: 12px; min-width: 0; }
+  .netsearch { --algo: #bfc8dc; flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; padding: 5px 16px 5px 18px; border-radius: 999px; border: 1px solid var(--algo); background: var(--surface); transition: border-color .2s, box-shadow .2s; }
   .netsearch:hover { border-color: var(--algo); }
   .netsearch:focus-within { border-color: var(--algo); box-shadow: 0 0 0 3px color-mix(in srgb, var(--algo) 24%, transparent); }
   /* left half: the proof-of-work network. right half: the block you are looking for */
-  .ns-pick { display: flex; align-items: center; gap: 8px; min-width: 0; padding: 5px 10px 5px 4px; color: var(--text); background: none; border: 0; border-radius: 999px; cursor: pointer; }
-  .ns-pick:hover { background: rgba(160, 170, 230, .10); }
+  .ns-pick { display: flex; align-items: center; gap: 8px; flex: none; min-width: 0; padding: 5px 12px 11px 10px; color: var(--text); cursor: pointer; }
+  /* RAM module: a green board with a row of gold contacts along the bottom edge, a notch in it, and the corner cut-outs of a DIMM */
+  .ns-pick.ram { position: relative; border: 1px solid #3f8f6b; border-radius: 6px 6px 3px 3px; background: linear-gradient(180deg, #1a4a37, #12362a); box-shadow: inset 0 1px 0 rgba(255,255,255,.10), 0 0 0 0 transparent; transition: border-color .2s, box-shadow .2s; }
+  .ns-pick.ram::before { content: ""; position: absolute; left: 6px; right: 6px; bottom: 0; height: 6px; background: repeating-linear-gradient(90deg, #e2b33c 0 3px, transparent 3px 5px); }
+  .ns-pick.ram::after { content: ""; position: absolute; left: calc(50% - 5px); bottom: -1px; width: 10px; height: 8px; border-radius: 5px 5px 0 0; background: var(--bg); border: 1px solid #3f8f6b; border-bottom: 0; }
+  .ns-pick.ram:hover, .ns-pick.ram[aria-expanded="true"] { border-color: #6fd6a4; box-shadow: 0 0 0 3px rgba(63,143,107,.28); }
+  .ns-pick.ram .ns-chip .algo { box-shadow: inset 0 0 0 1px rgba(0,0,0,.35), 0 1px 0 rgba(255,255,255,.12); }   /* the hash function is a chip on the module */
   .ns-pick:focus-visible { outline: 2px solid var(--link); outline-offset: 1px; }
   .ns-pick[aria-expanded="true"] .chev { transform: rotate(180deg); }
-  .ns-sep { align-self: stretch; width: 1px; margin: 4px 6px 4px 0; background: var(--line-strong); }
   .ns-chip { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .ns-chip .coin { width: 24px; height: 24px; }
   .ns-name { font: 600 13px/1 var(--display); letter-spacing: .02em; color: var(--text); white-space: nowrap; }
@@ -423,7 +429,7 @@
     .nb-side, .nb-side.right { justify-content: center; }
     .netbar > .nb-side:first-child { display: none; }   /* empty on a phone: only the hidden label is in it */
     .own-btn { width: 100%; }
-    .netsearch { width: 100%; min-width: 0; }
+    .netgroup { width: 100%; }
     .ns-name { display: none; }                      /* the logo and the hash function are enough on a phone */
     .ogrid { grid-template-columns: 1fr; }
   }
@@ -1211,14 +1217,15 @@
   <div class="nb-side">
     <span class="sr-only" id="net-label">Proof-of-work</span>   <!-- not shown: the bar speaks for itself; kept for screen readers -->
   </div>
-  <div class="netsearch" id="net-dd">
-    <button type="button" class="ns-pick" id="net-pick" aria-haspopup="listbox" aria-expanded="false" aria-controls="net-menu" aria-labelledby="net-label net-chip">
+  <div class="netgroup" id="net-dd">
+    <button type="button" class="ns-pick ram" id="net-pick" aria-haspopup="listbox" aria-expanded="false" aria-controls="net-menu" aria-labelledby="net-label net-chip">
       <span class="ns-chip" id="net-chip"></span>
       <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
-    <span class="ns-sep" aria-hidden="true"></span>
+    <div class="netsearch">
     <input type="text" class="ns-input" id="net-search" role="combobox" aria-expanded="false" aria-controls="net-menu" aria-autocomplete="list" aria-label="Search the mempool by block height or mining pool" placeholder="Search Mempool for blockheight or mining pool" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="go">
     <svg class="ns-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10.4 10.4 14 14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+    </div>
     <ul class="dd-menu" id="net-menu" role="listbox" aria-labelledby="net-label" hidden></ul>
   </div>
   <div class="nb-side right">
