@@ -817,7 +817,7 @@
   /* miners without a pool: lone lights drifting through space, and where the figure comes from */
   .mcard.m-solo { padding-bottom: 20px; }
   .solo-chart { position: relative; width: 100%; flex: 1 1 340px; min-height: 340px; margin: 18px 0 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; }
-  .solo-chart svg { width: min(100%, 340px); height: auto; display: block; }
+  .solo-chart svg { width: min(100%, 320px); height: auto; display: block; }
   .solo-chart .sky-cap { margin: 0; text-align: center; color: var(--muted); font: 400 12px/1.4 var(--sans); max-width: 44ch; }
   .solo-list .sw { display: inline-block; width: 11px; height: 11px; border-radius: 3px; margin-right: 8px; vertical-align: -1px; }
   .solo-list { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 6px; }
@@ -1287,7 +1287,7 @@
     <p class="pnote" id="ms-pools-note" hidden></p>
   </article>
   <article class="mcard m-solo" id="solo-wrap" aria-label="Hashrate of miners that use no pool" hidden>
-    <div class="solo-chart" id="solo-chart"><svg id="solo-svg" viewBox="0 0 316 316" role="img" aria-label="One hundred squares, each one per cent of the blocks: the share found by miners that use no pool"></svg><p class="sky-cap" id="solo-cap"></p></div>
+    <div class="solo-chart" id="solo-chart"><svg id="solo-svg" viewBox="0 0 300 300" role="img" aria-label="Ring chart: the share of blocks found by miners that use no pool"></svg><p class="sky-cap" id="solo-cap"></p></div>
     <p class="hrsub" id="solo-sub"></p>
     <ul class="solo-list" id="solo-list"></ul>
     <p class="solo-note" id="solo-note"></p>
@@ -4440,26 +4440,28 @@ window.__coins = COIN_LOGOS;
     loadSoloFor(netId);
     const d = soloBy[netId], ok = d && d.ok, per = ok ? (d.window || SOLO_PERIOD[netId]) : '';
     $('solo-hash').textContent = ok ? `Hashrate ${si(d.currentHashrate, 1)}H/s` : '–';
-    $('solo-sub').textContent = ok ? `${(d.share * 100).toFixed(1)}% of the blocks in ${windowSpoken(per)} were found by miners that use no pool: ${si(d.currentHashrate, 1)}H/s of the network's ${si(d.networkHashrate, 1)}H/s.`
+    $('solo-sub').textContent = ok ? `Miners that use no pool add ${si(d.currentHashrate, 1)}H/s to the network's ${si(d.networkHashrate, 1)}H/s, going by the blocks of ${windowSpoken(per)}.`
       : d ? 'Your node did not answer yet: the solo-miner hashrate comes from the explorer on your Umbrel (update it if it is an older version).' : 'Asking your node for the hashrate of miners without a pool…';
-    // the diagram: 100 squares, one per cent of the blocks (and so of the hashrate); the solo squares come first
+    // the chart: a ring of the blocks found in the period, split into solo services, blocks with no known pool, and the mining pools
     const svg = $('solo-svg'); svg.replaceChildren();
     const rows = ok ? [...d.sources.map((x) => ({ name: x.name, kind: x.kind, share: x.share, hashrate: x.hashrate })), { name: 'Mining pools', kind: 'pools', share: 1 - d.share, hashrate: Math.max(0, d.networkHashrate - d.currentHashrate) }] : [];
     if (ok) {
-      // whole squares by largest remainder; a source that exists always gets at least one
-      const raw = rows.map((r) => r.share * 100), cnt = raw.map((v) => Math.max(v > 0 ? 1 : 0, Math.floor(v)));
-      let left = 100 - cnt.reduce((a, v) => a + v, 0);
-      const order = raw.map((v, i) => [v - Math.floor(v), i]).sort((a, b) => b[0] - a[0]);
-      for (let k = 0; left > 0 && order.length; k = (k + 1) % order.length, left--) cnt[order[k][1]]++;
-      for (let k = rows.length - 1; left < 0; k = (k - 1 + rows.length) % rows.length) if (cnt[k] > 1) { cnt[k]--; left++; }
-      const cells = []; rows.forEach((r, i) => { for (let c = 0; c < cnt[i]; c++) cells.push(r); });
-      cells.slice(0, 100).forEach((r, i) => {
-        const x = (i % 10) * 32, y = Math.floor(i / 10) * 32;
-        const sq = svgEl('rect', { x, y, width: 28, height: 28, rx: 5, fill: SOLO_COLORS[r.kind] ?? '#f7931a', opacity: r.kind === 'pools' ? 0.55 : 1 });
-        const t = svgEl('title', {}, `${r.name}: ${si(r.hashrate, 1)}H/s · ${(r.share * 100).toFixed(1)}% of the blocks`); sq.appendChild(t); svg.appendChild(sq);
-      });
+      const C = 150, RO = 136, RI = 90, pt = (a, r) => [C + r * Math.sin(a), C - r * Math.cos(a)];
+      let a0 = 0;
+      for (const r of rows) {
+        if (r.share <= 0) continue;
+        const a1 = a0 + r.share * 2 * Math.PI, gap = r.share < 0.999 ? 0.012 : 0, s0 = a0 + gap, s1 = Math.max(s0 + 0.004, a1 - gap), big = s1 - s0 > Math.PI ? 1 : 0;
+        const [x0, y0] = pt(s0, RO), [x1, y1] = pt(s1, RO), [x2, y2] = pt(s1, RI), [x3, y3] = pt(s0, RI);
+        const d0 = r.share >= 0.999 ? `M${C},${C - RO} A${RO},${RO} 0 1 1 ${C - 0.01},${C - RO} L${C - 0.01},${C - RI} A${RI},${RI} 0 1 0 ${C},${C - RI} Z`
+          : `M${x0},${y0} A${RO},${RO} 0 ${big} 1 ${x1},${y1} L${x2},${y2} A${RI},${RI} 0 ${big} 0 ${x3},${y3} Z`;
+        const sl = svgEl('path', { d: d0, fill: SOLO_COLORS[r.kind] ?? '#f7931a', opacity: r.kind === 'pools' ? 0.55 : 1 });
+        sl.appendChild(svgEl('title', {}, `${r.name}: ${si(r.hashrate, 1)}H/s · ${(r.share * 100).toFixed(1)}% of the blocks`)); svg.appendChild(sl);
+        a0 = a1;
+      }
+      svg.appendChild(svgEl('text', { x: C, y: C + 6, 'text-anchor': 'middle', fill: 'var(--text)', 'font-size': 34, 'font-weight': 700 }, `${(d.share * 100).toFixed(1)}%`));
+      svg.appendChild(svgEl('text', { x: C, y: C + 28, 'text-anchor': 'middle', fill: 'var(--muted)', 'font-size': 12.5 }, 'found without a pool'));
     }
-    $('solo-cap').textContent = ok ? `Every square is 1% of the ${d.blockCount.toLocaleString('en')} blocks found in ${windowSpoken(per).replace(/^the /, 'the ')} (${d.soloBlocks.toLocaleString('en')} without a pool).` : '';
+    $('solo-cap').textContent = ok ? `${d.soloBlocks.toLocaleString('en')} of ${d.blockCount.toLocaleString('en')} blocks` : '';
     $('solo-list').replaceChildren(...rows.map((x) => { const li = document.createElement('li');
       li.innerHTML = `<span class="gn"><i class="sw" style="background:${SOLO_COLORS[x.kind] ?? '#f7931a'};opacity:${x.kind === 'pools' ? 0.55 : 1}"></i>${esc(x.name)}</span><span class="gv">${si(x.hashrate, 1)}H/s <small>· ${(x.share * 100).toFixed(1)}%</small></span>`; return li; }));
     $('solo-note').textContent = ok ? 'An estimate from the blocks found, so an upper bound: a small pool that is missing from the list of known pools counts as solo here, and a solo miner only shows up when a block is found.' + (d.sampled ? ' Over this period the blocks come from an evenly spread sample.' : '') : '';
