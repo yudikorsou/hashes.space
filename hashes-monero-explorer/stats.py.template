@@ -268,6 +268,88 @@ HOP = {"connection", "keep-alive", "transfer-encoding", "te", "trailer", "upgrad
        "proxy-authorization", "content-length", "server", "date"}
 
 
+# ---------- the block page: the explorer's own page, in the design of the other hashes.space explorers ----------
+
+PAGE_CSS = """
+:root{color-scheme:dark;--bg:#11131f;--surface:#1d1f31;--line:#2d3348;--text:#fff;--muted:#9ea4bc;--link:#1bd8f4;--gold:#f26822}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
+a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
+header .brand{font:700 18px/1 system-ui;color:var(--text)}header .brand span{color:var(--gold)}
+form{display:flex;gap:8px;flex:1;max-width:560px}input{flex:1;min-width:0;background:#0b0d17;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 12px;font:13px ui-monospace,Menlo,monospace}
+button{background:var(--gold);color:#1a1406;border:0;border-radius:8px;padding:0 14px;font-weight:600;cursor:pointer}
+main{max-width:1100px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:18px}
+h1{font:600 20px/1.3 system-ui;margin:0}h2{font:600 15px/1.3 system-ui;margin:0 0 8px;color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;overflow-x:auto}
+.mono{font-family:ui-monospace,Menlo,monospace;font-size:12.5px}.muted{color:var(--muted)}
+dl{display:grid;grid-template-columns:max-content 1fr;gap:6px 18px;margin:0}dt{color:var(--muted)}dd{margin:0;word-break:break-all}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:0 16px 24px}
+.bhero{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px}.bhero h1{font-size:24px}.bhero .navbtns{margin-left:auto;display:flex;gap:8px}.navbtns a{border:1px solid var(--line);background:var(--surface);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--text)}.navbtns a:hover{border-color:var(--gold);text-decoration:none}.navbtns span.off{border:1px solid var(--line);border-radius:8px;padding:6px 12px;font-size:13px;color:var(--muted);opacity:.5}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;background:#0b0d17;border:1px solid var(--line);font-size:12.5px;color:var(--muted)}.chip b{color:var(--gold);font-weight:600}
+.bhash{display:grid;gap:2px}.bhash small{color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}.bhash .mono{word-break:break-all;font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.tiles.wide{grid-template-columns:repeat(3,1fr)}@media(max-width:780px){.tiles.wide{grid-template-columns:repeat(2,1fr)}}@media(max-width:480px){.tiles.wide{grid-template-columns:1fr}}.tile{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:14px 16px;display:grid;gap:3px;align-content:start;min-width:0}.tile small{color:var(--muted);font-size:12px;letter-spacing:.06em;text-transform:uppercase}.tile b{font:600 20px/1.2 ui-monospace,Menlo,monospace;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}.tile em{font-style:normal;color:var(--muted);font-size:12.5px}.tile .meter{height:6px;border-radius:3px;background:#0b0d17;border:1px solid var(--line);overflow:hidden;margin-top:4px}.tile .meter i{display:block;height:100%;background:var(--gold)}
+.groups{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,480px),1fr));gap:14px}.groups .card h2{margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}.groups dl{grid-template-columns:minmax(96px,max-content) 1fr;gap:8px 16px}.groups dd{min-width:0}
+"""
+
+TAIL_EMISSION_HEIGHT = 2641623      # from here every block's base reward is the tail emission of 0.6 XMR: the rest of the reward is fees
+TAIL_REWARD = 600_000_000_000
+
+
+def xmr(atomic):
+    return "{:.12f}".format(atomic / 1e12).rstrip("0").rstrip(".") or "0"
+
+
+def esc(s):
+    return str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("'", "&#39;")
+
+
+def ago(ts):
+    d = max(0, int(time.time()) - int(ts))
+    return "{}s ago".format(d) if d < 60 else "{}m ago".format(d // 60) if d < 3600 else "{}h ago".format(d // 3600) if d < 86400 else "{}d ago".format(d // 86400)
+
+
+def page(title, body):
+    return ("<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'><title>" + esc(title) + " · Monero explorer</title>"
+            "<style>" + PAGE_CSS + "</style></head><body><header><a class=brand href='/'>Monero <span>explorer</span></a>"
+            "<form action='/search' method=get><input name=value placeholder='Block height, block hash or transaction hash' aria-label=Search><button>Search</button></form></header>"
+            "<main>" + body + "</main><footer>Read from your own Monero node · hashes.space</footer></body></html>")
+
+
+def block_page(ident):
+    res = rpc("get_block", {"height": int(ident)} if ident.isdigit() else {"hash": ident.lower()})
+    hd = res["block_header"]
+    height = int(hd["height"])
+    miner = json.loads(res["json"])["miner_tx"]
+    payouts = max(1, len(miner.get("vout") or []))
+    reward = int(hd["reward"])
+    fees = reward - TAIL_REWARD if height >= TAIL_EMISSION_HEIGHT and reward >= TAIL_REWARD else None
+    try:
+        gap = int(hd["timestamp"]) - header_at(height - 1)[0] if height > 0 else None
+    except Exception:
+        gap = None
+    depth = int(hd.get("depth", 0))
+    stamp = time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(int(hd["timestamp"])))
+
+    def btn(href, label):
+        return "<a href='" + href + "'>" + label + "</a>" if href else "<span class=off>" + label + "</span>"
+    who = ("P2Pool · " + str(payouts) + " miners paid") if payouts > 1 else "a single payout (pool or solo)"
+    head = ("<div class=bhero><h1>Block " + "{:,}".format(height) + "</h1><span class=chip>Paid to <b>" + who + "</b></span><span class=chip>" + stamp + " (" + ago(hd["timestamp"]) + ")</span>"
+            "<span class=chip><b>" + "{:,}".format(depth) + "</b> confirmation" + ("" if depth == 1 else "s") + "</span>"
+            "<div class=navbtns>" + btn("/block/" + hd["prev_hash"] if height > 0 else "", "← previous") + btn("/block/" + str(height + 1) if depth > 0 else "", "next →") + "</div></div>"
+            "<div class=bhash><small>Block hash</small><span class=mono>" + esc(hd["hash"]) + "</span></div>")
+    tiles = [("Transactions", "{:,}".format(int(hd["num_txes"])), ""), ("Reward", xmr(reward), "XMR" + (" · 0.6 base + fees" if fees is not None else "")),
+             ("Fees", xmr(fees) if fees is not None else "-", "XMR"), ("Size", "{:,} B".format(int(hd["block_size"])), "{:,} B weight".format(int(hd.get("block_weight", hd["block_size"])))),
+             ("Difficulty", "{:,}".format(int(hd["difficulty"])), "")]
+    tl = "".join("<div class=tile><small>" + k + "</small><b style='font-size:18px'>" + v + "</b>" + (("<em>" + sub + "</em>") if sub else "") + "</div>" for k, v, sub in tiles)
+    mining = [("Miner reward tx", "<a class=mono href='/tx/" + esc(hd["miner_tx_hash"]) + "'>" + esc(hd["miner_tx_hash"]) + "</a>"), ("Payouts", str(payouts) + (" (P2Pool pays its miners in the block)" if payouts > 1 else " (a pool or a solo miner)")),
+              ("Total reward", xmr(reward) + " XMR")] + ([("Block reward", "0.6 XMR"), ("Total fees", xmr(fees) + " XMR")] if fees is not None else [])
+    header = [("Timestamp", stamp + " <span class=muted>(" + str(hd["timestamp"]) + ")</span>")] + ([("Since previous block", "{}:{:02d}:{:02d}".format(abs(gap) // 3600, abs(gap) % 3600 // 60, abs(gap) % 60))] if gap is not None else []) + [
+              ("Version", "{}.{}".format(hd["major_version"], hd["minor_version"])), ("Nonce", "{:,}".format(int(hd["nonce"]))),
+              ("Previous block", "<a class=mono href='/block/" + esc(hd["prev_hash"]) + "'>" + esc(hd["prev_hash"]) + "</a>")] + ([("PoW hash", "<span class=mono>" + esc(hd["pow_hash"]) + "</span>")] if hd.get("pow_hash") else [])
+    gr = "".join("<section class=card><h2>" + t + "</h2><dl>" + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in rows) + "</dl></section>" for t, rows in (("Mining", mining), ("Header", header)))
+    return page("Block " + str(height), head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>")
+
+
 class Handler(http.server.BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
     server_version = "hashes.space"
@@ -326,6 +408,19 @@ class Handler(http.server.BaseHTTPRequestHandler):
         path = self.path.split("?")[0]
         if path.startswith("/api/v1/mining/") and self.command in ("GET", "HEAD"):
             return self.mining(path)
+        m = re.fullmatch(r"/block/([0-9]{1,9}|[0-9a-fA-F]{64})", path)
+        if m and self.command == "GET" and NODE:
+            try:
+                body = block_page(m.group(1)).encode()
+            except Exception as exc:        # the node did not answer or does not know the block: the explorer's own page is the fallback
+                log("block page:", exc)
+            else:
+                self.send_response(200)
+                self.send_header("Content-Type", "text/html; charset=utf-8")
+                self.send_header("Cache-Control", "no-store")
+                self.send_header("Content-Length", str(len(body)))
+                self.end_headers()
+                return self.wfile.write(body)
         return self.forward()
 
     do_GET = do_POST = do_HEAD = do_OPTIONS = handle_any
