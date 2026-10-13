@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.17.0"
+version: "1.17.1"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
@@ -36,6 +36,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The block page shows the difficulty of Bitcoin BLAKE2b blocks (the hashes a block takes, worked out from its bits) instead of 0.
   The block animation shows the first three transactions to visitors who are not verified, then the Get verified button; verified members see the whole block. The transaction list is removed from the block page.
   The block diagrams and block statistics match the rest of the block page: every chart is its own card with a divider under its title, the statistics are tiles with a short explanation under each value and a bar for the SegWit and Taproot shares, and the section titles are small capitals.
   Payout addresses are now hidden behind a Get verified button on the block, transaction and address pages and in the block animation, until the visitor signs in with Discord and holds the DATUM Verified role (set it up with a discord.json file in the app's data folder, see the README).

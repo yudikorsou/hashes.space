@@ -1516,6 +1516,18 @@ def block_diagrams(b):
     return "<h2 class=sec>Block diagrams</h2><div class='charts diagrams'>" + out + "</div>"
 
 
+def difficulty_text(b):
+    """the block's difficulty. The BLAKE2b chain's node reports 0 (its 'difficulty' is measured against the SHA-256 limit), so there it is the hashes a block takes, worked out from the header's bits"""
+    d = b.get("difficulty") or 0
+    if CHAIN != "blake2b" and d:
+        return "{:,.0f}".format(d)
+    try:
+        w = bits_work(b["bits"])
+    except (KeyError, ValueError):
+        return "{:,.0f}".format(d)
+    return "{:,}".format(w) + " <span class=muted>hashes per block</span>"
+
+
 def header_rows(b):
     """the block header as the node reports it (getblock / getblockheader): version and signalling, merkle root, bits, nonce, chainwork, median time"""
     ver = b.get("version")
@@ -1575,7 +1587,7 @@ def block_page(ident):
         b = NODE.call("getblock", h, 2, timeout=120)
     except RuntimeError as exc:
         hd = NODE.call("getblockheader", h)       # the header is never pruned
-        tiles = [("Transactions", "{:,}".format(hd.get("nTx", 0)), "", None), ("Difficulty", "{:,.0f}".format(hd.get("difficulty", 0)), "", None)]
+        tiles = [("Transactions", "{:,}".format(hd.get("nTx", 0)), "", None), ("Difficulty", difficulty_text(hd), "", None)]
         note = ("<section class=card><p class=muted>This node is pruned: it has deleted the transactions of this block (" + html.escape(str(exc))
                 + "), but a node never prunes a block's header, which is shown above.</p></section>")
         return page("Block " + str(hd["height"]), block_layout(hd["height"], hd.get("previousblockhash"), hd.get("nextblockhash"), "",
@@ -1595,7 +1607,7 @@ def block_page(ident):
              ("Size", "{:,} B".format(b["size"]), "{:,} weight units".format(b["weight"]) + (" · {:,} B stripped".format(b["strippedsize"]) if "strippedsize" in b else ""), None)]
     mining = [("Pool", html.escape(pool)), ("Coinbase text", "<span class=mono>" + html.escape("".join(c if 32 <= ord(c) < 127 else "·" for c in text)) + "</span>"),
               ("Paid to", ("<span class=mono>" + html.escape(", ".join(dict.fromkeys(addrs)) or "-") + "</span>") if is_verified() else verify_box())]
-    hdr = [("Difficulty", "{:,.0f}".format(b.get("difficulty", 0)))] + header_rows(b)
+    hdr = [("Difficulty", difficulty_text(b))] + header_rows(b)
     return page("Block " + str(b["height"]), block_layout(b["height"], b.get("previousblockhash"), b.get("nextblockhash"), pool,
                 time.strftime("%Y-%m-%d %H:%M:%S UTC", time.gmtime(b["time"])) + " (" + ago(b["time"]) + ")", h, tiles,
                 [("Mining", mining), ("Header", hdr)], conf=b.get("confirmations", 0))
