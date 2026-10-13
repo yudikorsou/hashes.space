@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.2"
+version: "1.9.3"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  Fee Auction is now only data on the page, without a block around it, and Block assembly animates the block being built up: the coinbase first, then the transactions flying in by fee rate while the totals count up.
   Two headlines on the Find Mempool strip: Inside the miners (the blocks before the fan) and The Blockchain (the mined blocks). The block being hashed is labelled with its proof of work, and the three blocks before the fan show the real data of the block being hashed.
   The proof-of-work and coin picker is now its own RAM module, separate from the search bar next to it, which still finds a block height or mining pool on the chosen chain. The first block is tagged Fee Auction.
   The header block on the Find Mempool page now shows the merkle root, version, bits and time of the block being hashed, read from the explorer's block template, and a nonce that searches through its range.
