@@ -26,6 +26,7 @@ import hashlib
 import http.client
 import http.server
 import json
+import math
 import os
 import re
 import secrets
@@ -703,6 +704,63 @@ document.getElementById('upd').innerHTML='<i class=dot></i> live · '+new Date()
 last={ntx:__NTX__,root:'__ROOT__'};setInterval(tick,5000);document.addEventListener('visibilitychange',tick)})();"""
 
 
+def hashrate_text(h):
+    for unit, f in (("GH/s", 1e9), ("MH/s", 1e6), ("kH/s", 1e3)):
+        if h >= f:
+            return "{:,.2f}".format(h / f), unit
+    return "{:,.0f}".format(h), "H/s"
+
+
+def candidate_parts():
+    """the block candidate of the block that is being mined, as the pieces of the page that change"""
+    d = block_template()
+    diff = int(d["difficulty"]) or 1
+    rate = diff / BLOCK_SECONDS
+    hv, hu = hashrate_text(rate)
+    since = max(0, int(time.time()) - int(d["lastTime"])) if d["lastTime"] else 0
+    chance = 1 - math.exp(-60.0 / BLOCK_SECONDS)
+    st = lambda n, title, cap, body, cls="": ("<div class='st " + cls + "'><span class=n>" + n + "</span><div class=stt><b>" + title + "</b><em>" + cap + "</em></div><div class=stb>" + body + "</div></div>")
+    s1 = st("1", "The header is ready", "the block your node built, <a href='/block-assembly'>step by step</a>",
+            "<div class=big2>Block " + "{:,}".format(d["height"]) + "</div><div class=sub>" + "{:,}".format(d["nTx"]) + " transactions · merkle root <span class=mono>" + esc(d["merkleroot"][:8]) + "…" + esc(d["merkleroot"][-6:]) + "</span></div>"
+            "<div class=sub>builds on <a class=mono href='/block/" + str(d["height"] - 1) + "'>" + esc(d["prevId"][:8]) + "…" + esc(d["prevId"][-6:]) + "</a></div>", "s1")
+    s2 = st("2", "Miners change the nonce and hash", "every miner hashes the same header with different nonces (RandomX)",
+            "<div class=big2>" + hv + " <small>" + hu + "</small></div><div class=sub>about what the whole network tries every second</div>", "s2")
+    s3 = st("3", "Look for a lucky hash", "the block is found when a hash falls under the target",
+            "<div class=big2>1 in " + "{:,}".format(diff) + "</div><div class=sub>tries win: that is the difficulty. The network adjusts it so a block takes about " + str(BLOCK_SECONDS // 60) + " minutes.</div>", "s3")
+    pct = min(100, since / BLOCK_SECONDS * 100)
+    s4 = st("4", "Found? Pass it on", "the winner sends the candidate plus its nonce to the network",
+            "<div class=big2><span id=since data-t='" + str(d["lastTime"]) + "'>" + "{}:{:02d}".format(since // 60, since % 60) + "</span> <small>since the last block</small></div><div class=fill id=sfill><i style='width:" + "{:.0f}".format(pct) + "%'></i></div>"
+            "<div class=sub>On average " + str(BLOCK_SECONDS // 60) + ":00. A new block is found in the next minute with a chance of " + "{:.0f}".format(chance * 100) + "%, whatever has passed already.</div>", "s4")
+    chips = "<span class=chip>Block being mined <b>" + "{:,}".format(d["height"]) + "</b></span><span class=chip>hashing now</span>"
+    return {"chips": chips, "steps": s1 + s2 + s3 + s4, "height": d["height"], "last": d["lastTime"], "diff": diff, "blob": d["blob"]}
+
+
+def candidate_page():
+    d = candidate_parts()
+    head = "<div class=bhero><h1>Block candidate</h1><span id=chips style='display:contents'>" + d["chips"] + "<span class=chip id=upd><i class=dot></i> live</span></span></div>"
+    body = (head + "<section class='card main'><h2>The block miners are hashing right now</h2>"
+            "<p class=muted style='margin:0 0 12px'>A candidate is a finished block header waiting for the right nonce. Miners try nonce after nonce until one hash is low enough.</p>"
+            "<div class=sts id=steps>" + d["steps"] + "</div></section>"
+            "<section class=card><h2>What every try looks like</h2><p class=muted style='margin:0 0 10px'>The header stays the same, only the nonce changes, and the hash comes out completely different each time. Almost every try is too high. "
+            "<b>An illustration: your browser does not hash, and only a miner's hardware does.</b></p>"
+            "<div class=tbl><table class=rank id=tries><tr><th>Nonce</th><th>Hash (first bytes)</th><th>Result</th></tr></table></div></section>"
+            "<script>" + CAND_JS.replace("__LAST__", str(d["last"])) + "</script>")
+    return page("Block candidate", body)
+
+
+CAND_JS = r"""(function(){var busy=false,last=__LAST__,n=Math.floor(Math.random()*4e9),tb=document.getElementById('tries'),STILL=matchMedia('(prefers-reduced-motion: reduce)').matches;
+function hx(v){return ('00000000'+(v>>>0).toString(16)).slice(-8)}
+function mix(x){x=Math.imul(x^(x>>>16),0x85ebca6b)>>>0;x=Math.imul(x^(x>>>13),0xc2b2ae35)>>>0;return (x^(x>>>16))>>>0}
+function row(){n=(n+1000003)>>>0;var a=mix(n^0x9e3779b9),b=mix(a+n),h=Math.max(a,0x20000000+b%0xd0000000);var tr=document.createElement('tr');tr.innerHTML='<td class=mono>'+hx(n)+'</td><td class=mono>'+hx(h)+hx(b).slice(0,4)+'…</td><td><span class=tag>too high</span></td>';tb.appendChild(tr);while(tb.rows.length>8)tb.deleteRow(1)}
+for(var i=0;i<7;i++)row();if(!STILL)setInterval(row,500);
+function clock(){var s=Math.max(0,Math.floor(Date.now()/1000)-last),e=document.getElementById('since');if(e)e.textContent=Math.floor(s/60)+':'+('0'+s%60).slice(-2);var f=document.querySelector('#sfill i');if(f)f.style.width=Math.min(100,s/120*100)+'%'}
+setInterval(clock,1000);
+function tick(){if(busy||document.hidden)return;busy=true;fetch('/block-candidate.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
+last=d.last;var c=document.getElementById('chips');c.innerHTML=d.chips+'<span class=chip id=upd></span>';document.getElementById('steps').innerHTML=d.steps;clock();
+document.getElementById('upd').innerHTML='<i class=dot></i> live · '+new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'})}).catch(function(){var u=document.getElementById('upd');if(u)u.textContent='reconnecting…'}).then(function(){busy=false})}
+setInterval(tick,5000);document.addEventListener('visibilitychange',tick)})();"""
+
+
 RANK_JS = r"""(function(){
 var D=__DATA__,q=document.getElementById('q'),hit=document.getElementById('hit'),upd=document.getElementById('upd'),busy=false;
 function nx(v){return Number(v).toLocaleString(undefined,{maximumFractionDigits:1})}
@@ -838,7 +896,7 @@ def block_template():
     data = {"height": height, "majorVersion": major, "minorVersion": minor, "timestamp": now,
             "prevId": prev, "nonce": None, "merkleroot": root.hex(), "nTx": len(ids) + 1, "txids": ids[:3],
             "reward": int(hdr.get("reward") or 0), "difficulty": int(info.get("difficulty") or 0),
-            "minerTx": coinbase.hex(), "txs": chosen, "weight": used, "median": median, "blob": blob.hex(), "fees": sum(c[2] for c in chosen)}
+            "lastTime": int(hdr.get("timestamp") or 0), "minerTx": coinbase.hex(), "txs": chosen, "weight": used, "median": median, "blob": blob.hex(), "fees": sum(c[2] for c in chosen)}
     _template["data"], _template["at"] = data, time.time()
     return data
 
@@ -906,6 +964,23 @@ class Handler(http.server.BaseHTTPRequestHandler):
                 return self.send_json(200, block_template(), 8)
             except Exception as exc:
                 return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+        if path == "/block-candidate.json" and self.command in ("GET", "HEAD") and NODE:
+            try:
+                return self.send_json(200, candidate_parts(), 0)
+            except Exception as exc:
+                return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+        if path == "/block-candidate" and self.command == "GET" and NODE:
+            try:
+                body = candidate_page().encode()
+            except Exception as exc:
+                log("block candidate:", exc)
+                return self.send_json(502, {"error": "the node did not answer: " + str(exc)}, 0)
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.send_header("Cache-Control", "no-store")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            return self.wfile.write(body)
         if path == "/block-assembly.json" and self.command in ("GET", "HEAD") and NODE:
             try:
                 return self.send_json(200, assembly_parts(), 0)
