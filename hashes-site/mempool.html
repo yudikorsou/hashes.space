@@ -4320,6 +4320,7 @@ window.__coins = COIN_LOGOS;
     const pages = Math.max(1, Math.ceil(ranked.length / SKY_PAGE)); sky.page = Math.min(sky.page || 0, pages - 1); sky.pages = pages; sky.total = ranked.length;
     if (sky.refS == null || sky.page === 0) sky.refS = ranked.slice(0, SKY_PAGE).reduce((a, x) => a + Math.sqrt(total ? x.blocks / total : 0), 0) || 1;
     const items = ranked.slice(sky.page * SKY_PAGE, sky.page * SKY_PAGE + SKY_PAGE);
+    const top0 = ranked[0] ? ranked[0].blocks : 1, topHere = items[0] ? items[0].blocks : 1;  // every page is drawn at the scale of the first: its biggest hole is as big as the biggest of page one
     const sig = sky.page + '#' + items.map((x) => x.name + ':' + x.blocks).join('|') + '|' + Math.round(hashNow || 0);
     if (sig === sky.names) return;
     sky.names = sig; sky.laid = '';
@@ -4327,7 +4328,7 @@ window.__coins = COIN_LOGOS;
     sky.ships = items.map((x, i) => {
       const share = total ? x.blocks / total : 0, prev = old[x.name];
       const bits = prev ? prev.bits : Array.from({ length: 70 }, (_, k) => ({ f: 1.35 + rnd(i * 70 + k, 1) * 1.5, th: rnd(i * 70 + k, 2) * 6.283, w: 0.5 + rnd(i * 70 + k, 3) * 0.9, s: 0.7 + rnd(i * 70 + k, 4) * 1.2, h: rnd(i * 70 + k, 5) }));
-      return { name: x.name, share, blocks: x.blocks, hash: share * (hashNow || 0), win, color: skyColor(x.name), bits, phase: i * 1.9, x: prev ? prev.x : null, y: prev ? prev.y : null, r: 10 };
+      return { name: x.name, share, vis: total ? (x.blocks / topHere) * (top0 / total) : 0, blocks: x.blocks, hash: share * (hashNow || 0), win, color: skyColor(x.name), bits, phase: i * 1.9, x: prev ? prev.x : null, y: prev ? prev.y : null, r: 10 };
     });
   }
   function skySize() {
@@ -4338,10 +4339,10 @@ window.__coins = COIN_LOGOS;
   // sizes follow the hashrate; the holes are pushed apart until they (and the label under each) stand clear of each other
   function skyLayout() {
     const key = sky.names + '|' + sky.w + 'x' + sky.h; if (sky.laid === key || !sky.ships.length || !sky.w) return; sky.laid = key;
-    const n = sky.ships.length, area = sky.w * (sky.h - 30) * 0.26, sumS = sky.refS || sky.ships.reduce((a, x) => a + Math.sqrt(x.share), 0) || 1;
+    const n = sky.ships.length, area = sky.w * (sky.h - 30) * 0.26, sumS = sky.refS || sky.ships.reduce((a, x) => a + Math.sqrt(x.vis), 0) || 1;
     const k = Math.min(Math.max(30, Math.min(58, (sky.h - 90) / 5)), Math.max(10, Math.sqrt(area / Math.PI) * Math.sqrt(n > 1 ? 1 : 1) / Math.max(1.6, Math.sqrt(sumS * 0.9))));
     sky.ships.forEach((sh, i) => {
-      sh.r = Math.max(9, k * Math.sqrt(Math.min(1, sh.share * 2.4)) + 4);
+      sh.r = Math.max(9, k * Math.sqrt(Math.min(1, sh.vis * 2.4)) + 4);
       if (sh.x == null || sh.x > sky.w || sh.y > sky.h) { sh.x = ((i * 0.618 + 0.13) % 1) * sky.w; sh.y = 40 + ((i * 0.382 + 0.2) % 1) * (sky.h - 110); }
       sh.hx = sh.x; sh.hy = sh.y;
     });
