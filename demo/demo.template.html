@@ -1316,7 +1316,7 @@
       <div class="below"><span class="datum-badge plain">Create new block</span></div></div>`}
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
       <div class="below"><span class="datum-badge plain">Block assembly</span></div></div>
-      <div class="block-wrap mining"><div class="above">Hashing now on ${esc(network()?.label ?? 'SHA-256')}</div>${candidateCube(b)}
+      <div class="block-wrap mining"><div class="above">Hashing now on ${fmt((chain().blocks[0]?.height ?? chain().tipHeight) + 1)}</div>${candidateCube(b)}
       <div class="below"><span class="datum-badge plain">Candidate block</span><span class="fleet-shares">your shares <b id="fleet-shares">${fmt(sharesThisBlock)}</b></span></div></div>`;
     pinProjected();
     scheduleClip();

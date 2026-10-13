@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.15"
+version: "1.9.16"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The label above the candidate block now reads Hashing now on followed by the height of the block being hashed.
   The BTCB2 pool is no longer shown among the mining pools black holes.
   The order before the fan is now Fee Auction, Create new block (the package sorting animation), Block assembly and Candidate block.
   A new first step before Fee Auction, tagged Create new block: an animation of ancestor/descendant package sorting. A parent that pays little is grouped with the child that pays well, each package gets the fee rate of the whole, and the best-paying packages go into the block first.
