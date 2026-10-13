@@ -1142,56 +1142,56 @@
   // The two blocks before the fan show how the block that is being hashed came to be:
   //   Fee Priority    the unconfirmed transactions, sorted by fee rate (satoshis per vbyte)
   //   Candidate block the header of the block that the miners are hashing now
-  const pseudoHash = (str) => { // a stable 64-digit hex digest of the template, for the merkle root of a block still being built
-    let out = '';
-    for (let k = 0; k < 8; k++) { let h = 0x811c9dc5 ^ (k * 0x9e3779b1); for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 0x01000193) >>> 0; out += (h >>> 0).toString(16).padStart(8, '0'); }
-    return out;
-  };
   const shortHash = (h) => (h && h.length > 12 ? h.slice(0, 5) + '…' + h.slice(-5) : h || '—');
   const FP_ORDER = [3, 0, 5, 2, 6, 1, 4];   // where each bar (tall to short) starts before it sorts itself into place
-  function feePriorityCube() {
-    const c = chain(), unit = c.feeUnit ?? 'sat/vB', scale = 1, list = c.projected.filter((b) => b.nTx > 0);
-    const n = list.reduce((a, b) => a + b.nTx, 0), vsize = list.reduce((a, b) => a + b.vsize, 0);
-    const hi = list.length ? Math.max(...list.map((b) => b.feeRange[b.feeRange.length - 1])) : 0, lo = list.length ? Math.min(...list.map((b) => b.feeRange[0])) : 0;
-    const med = n ? list.reduce((a, b) => a + b.medianFee * b.nTx, 0) / n : 0;
-    const bg = frontBg({ vsize: Math.max(vsize, 1e6 * 0.6), medianFee: med }, false);
+  // everything in the three blocks comes from the block that is being hashed: the first block of the node's mempool
+  // (nTx, size, totalFees, medianFee and feeRange of mempool-blocks[0]) and the tip it builds on (height, hash, version, bits, difficulty)
+  function feePriorityCube(b) {
+    const c = chain(), unit = c.feeUnit ?? 'sat/vB', r = b.feeRange?.length ? b.feeRange : [b.medianFee, b.medianFee];
+    const hi = r[r.length - 1], lo = r[0], bg = frontBg(b, false);
     const bars = FP_ORDER.map((p, k) => `<i style="--h:${20 - k * 2.6}px;--o:${p - k}"></i>`).join('');
     return `<div class="cube"><div class="face front" style="background:${bg}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt fp">
-        <span class="fee">~${fmt(med * scale)} ${unit}</span><span class="range">${fmt(hi)} → ${fmt(lo)} ${unit}</span>
+        <span class="fee">~${fmt(b.medianFee)} ${unit}</span><span class="range">${fmt(hi)} → ${fmt(lo)} ${unit}</span>
         <div class="sortbars" aria-hidden="true">${bars}</div>
-        <span class="txs">${fmt(n)} unconfirmed transactions</span></div>
+        <span class="txs">${fmt(b.nTx)} unconfirmed transactions</span></div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
+  // the block subsidy halves every 210,000 blocks (Bitcoin and Bitcoin BLAKE2b)
+  const subsidy = (h) => (h >= 6_930_000 ? 0 : 50 / 2 ** Math.floor(h / 210_000));
   function assemblyCube(b) {
-    const c = chain(), tk = network()?.ticker ?? 'BTC', unit = c.feeUnit ?? 'sat/vB';
-    const fees = typeof b.totalFees === 'number' && b.totalFees > 0 && !c.xmr && !c.doge ? fmt(b.totalFees / 1e8, 4) + ' ' + tk : '~' + fmt(b.medianFee) + ' ' + unit;
+    const c = chain(), tk = network()?.ticker ?? 'BTC', unit = c.feeUnit ?? 'sat/vB', btc = !c.xmr && !c.doge && netId !== 'scrypt';
+    const height = (c.blocks[0]?.height ?? c.tipHeight) + 1, hasFees = typeof b.totalFees === 'number' && b.totalFees > 0;
     const fill = Math.max(0, Math.min(100, Math.round(b.vsize / 1e4)));
-    const rows = [['Coinbase', '1 tx'], ['Transactions', fmt(b.nTx)], ['Size', c.xmr || c.doge ? sizeLabel(b.bytes ?? b.vsize) : fmt(b.vsize / 1e6, 2) + ' MvB'], [c.xmr || c.doge || !(b.totalFees > 0) ? 'Fee' : 'Fees', fees], ['Filled', fill + '%']];
+    const rows = [
+      btc && hasFees ? ['Coinbase', fmt(subsidy(height) + b.totalFees / 1e8, 4) + ' ' + tk] : ['Coinbase', '1 tx'],
+      ['Transactions', fmt(b.nTx)],
+      ['Size', c.xmr || c.doge ? sizeLabel(b.bytes ?? b.vsize) : fmt(b.vsize / 1e6, 2) + ' MvB'],
+      hasFees && btc ? ['Fees', fmt(b.totalFees / 1e8, 4) + ' ' + tk] : ['Fee', '~' + fmt(b.medianFee) + ' ' + unit],
+      ['Filled', fill + '%']];
     return `<div class="cube"><div class="face front" style="background:${frontBg(b, false)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr asm">
         ${rows.map(([k, v]) => `<div><i>${k}</i><b>${v}</b></div>`).join('')}
         <span class="asm-bar" aria-hidden="true"><u style="--w:${fill}%"></u></span></div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
+  const diffLabel = (d) => (d >= 1e12 ? fmt(d / 1e12, 2) + ' T' : d >= 1e9 ? fmt(d / 1e9, 2) + ' G' : d >= 1e6 ? fmt(d / 1e6, 2) + ' M' : fmt(d));
   function candidateCube(b) {
-    const c = chain(), tip = c.blocks[0] ?? {}, now = new Date();
-    const prev = tip.hash ?? '', tmpl = prev + ':' + b.nTx + ':' + Math.round(b.vsize);
-    const bitsHex = typeof tip.bits === 'number' ? tip.bits.toString(16).padStart(8, '0') : pseudoHash(prev).slice(0, 8);
-    const rows = c.xmr
-      ? [['Height', fmt((tip.height ?? c.tipHeight) + 1)], ['Prev', shortHash(prev)], ['Time', now.toISOString().slice(11, 19)], ['Nonce', '<span id="cand-nonce">00000000</span>']]
-      : [['Height', fmt((tip.height ?? c.tipHeight) + 1)], ['Version', '0x' + (typeof tip.version === 'number' ? tip.version : 0x20000000).toString(16).padStart(8, '0')], ['Prev', shortHash(prev)], ['Merkle', shortHash(pseudoHash(tmpl))], ['Time', now.toISOString().slice(11, 19)], ['Bits', bitsHex], ['Nonce', '<span id="cand-nonce">00000000</span>']];
-    const opt = new Set(['Version', 'Bits', 'Height', 'Time']);
+    const c = chain(), tip = c.blocks[0] ?? {}, now = new Date(), prev = tip.hash ?? '', time = now.toISOString().slice(11, 19);
+    const rows = [['Height', fmt((tip.height ?? c.tipHeight) + 1)], ['Prev', shortHash(prev)], ['Time', time]];
+    if (!c.xmr) {
+      if (typeof tip.version === 'number') rows.splice(1, 0, ['Version', '0x' + tip.version.toString(16).padStart(8, '0')]);
+      if (typeof tip.bits === 'number') rows.push(['Bits', tip.bits.toString(16).padStart(8, '0')]);
+      if (typeof tip.difficulty === 'number') rows.push(['Difficulty', diffLabel(tip.difficulty)]);
+    }
+    const opt = new Set(['Version', 'Bits', 'Height', 'Time', 'Difficulty']);
     return `<div class="cube" id="mining-block"><div class="face front" style="background:${frontBg(b, false)}">${COIN_LOGOS[netId] ? `<img class="cube-coin" src="${COIN_LOGOS[netId]}" alt="">` : ''}<div class="txt hdr">
         ${rows.map(([k, v]) => `<div class="${opt.has(k) ? 'opt' : ''}"><i>${k}</i><b${k === 'Time' ? ' id="cand-time"' : ''}>${v}</b></div>`).join('')}</div>
       </div><div class="face top"></div><div class="face side"></div></div>`;
   }
-  // the nonce the miners are trying; it moves on all the time, the other header fields only change with the template
-  setInterval(() => {
-    const n = $('cand-nonce'); if (n && !STILL.matches) n.textContent = (crypto.getRandomValues(new Uint32Array(1))[0]).toString(16).padStart(8, '0');
-    const t = $('cand-time'); if (t) t.textContent = new Date().toISOString().slice(11, 19);
-  }, 130);
+  // the header's time moves on with the clock; every other field changes only with the template or the tip
+  setInterval(() => { const t = $('cand-time'); if (t) t.textContent = new Date().toISOString().slice(11, 19); }, 1000);
   function renderProjected() {
     const el = $('projected'), b = chain().projected[0] ?? { index: 0, nTx: 0, vsize: 0, medianFee: 1, feeRange: [1, 1] };
-    el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube()}
+    el.innerHTML = `<div class="block-wrap fee-priority"><div class="above"></div>${feePriorityCube(b)}
       <div class="below"><span class="datum-badge plain">Fee Priority</span></div></div>
       <div class="block-wrap"><div class="above"></div>${assemblyCube(b)}
       <div class="below"><span class="datum-badge plain">Candidate block</span></div></div>
@@ -1272,7 +1272,7 @@
   // Dogecoin: the hashes Dogecoin Explorer app on your Umbrel, published at doge.hashes.space (change it where you publish yours)
   const EXPLORER = { dogecoin: 'https://doge.hashes.space/block/', sha256: 'https://btc.hashes.space/block/', scrypt: 'https://litecoinspace.org/block/', blake2b: 'https://mempool.guide/block/', monero: 'https://xmr.hashes.space/block/' };
   const mapBlock = (b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight,
-    medianFee: b.extras?.medianFee ?? 0, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0], totalFees: b.extras?.totalFees ?? 0, pool: b.extras?.pool?.name ?? '', version: b.version, bits: b.bits,
+    medianFee: b.extras?.medianFee ?? 0, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0], totalFees: b.extras?.totalFees ?? 0, pool: b.extras?.pool?.name ?? '', version: b.version, bits: b.bits, difficulty: b.difficulty,
     coinbase: typeof b.extras?.coinbaseRaw === 'string' ? (b.extras.coinbaseRaw.match(/../g) ?? []).map((h) => String.fromCharCode(parseInt(h, 16))).join('') : '' });
   // Monero: an Onion Monero Blockchain Explorer's JSON API (backend XmrchainSource), polled. Tried in order: your own explorer
   // (the hashes Monero Explorer app on your Umbrel, published on the internet) first, then xmrchain.net. Change the first address
