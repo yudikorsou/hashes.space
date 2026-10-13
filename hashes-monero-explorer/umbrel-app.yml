@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-monero-explorer
 category: crypto
 name: Monero Explorer
-version: "0.18.5.1-21"
+version: "0.18.5.1-22"
 tagline: A Monero block explorer on your own Monero node
 description: >-
   An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
@@ -31,6 +31,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  On the /block-assembly and /block-candidate pages the steps beside the animated block no longer fade in and out: all the text stays on screen and only the numbers change live as the node reports new data.
   On the /block-assembly page the first two steps (pick the transactions, fold them into a merkle root) stay on screen instead of fading in and out beside the animated block; the miner transaction and header steps still appear in turn.
   On the /block-candidate page the "Found? Pass it on" step (time since the last block) is now the first line under the intro text, always visible, with the other three steps animating in below it.
   On the /block-candidate page the last step ("Found? Pass it on", with the time since the last block) now stays on screen instead of fading in and out beside the animated block.

@@ -762,7 +762,7 @@ $('am').textContent=still||t>=SS[1]+1700?sh(D.root):scramble(sh(D.root).replace(
 var segs=document.querySelectorAll('#abar i'),bytes=0;for(var q=0;q<segs.length;q++){var on=still||t>=SS[3]+200+q*380;segs[q].style.opacity=on?1:.12;if(on)bytes+=D.segs[q][0]}
 $('cbstate').textContent=ph<3?TXT[ph]:(bytes>=D.total?'ready · '+D.total+' B':bytes+' / '+D.total+' B');
 stepOn(ph);
-var st=document.querySelectorAll('.cbstage .st');for(var q=0;q<st.length;q++){var u2=still?1:ease((t-SS[q]-100)/650);if(q<2){u2=1;out=1}st[q].style.opacity=u2*out;st[q].style.transform='translateY('+((1-u2)*16)+'px)'}
+var st=document.querySelectorAll('.cbstage .st');for(var q=0;q<st.length;q++){var u2=still?1:ease((t-SS[q]-100)/650);st[q].style.opacity=1;st[q].style.transform='none'}
 if(!still)requestAnimationFrame(frame)}
 function tick(){if(busy||document.hidden)return;busy=true;fetch('/block-assembly.json',{cache:'no-store'}).then(function(r){if(!r.ok)throw 0;return r.json()}).then(function(d){
 var c=$('chips');if(c)c.innerHTML=d.chips+'<span class=chip id=upd></span>';
@@ -845,7 +845,7 @@ if(!still&&found&&now<found){$('cbcube').classList.add('hit');$('cbstate').textC
 $('cbstate').textContent=TXT[ph]}
 var rows=document.querySelectorAll('.cbrows .r');for(var i=0;i<rows.length;i++){var u=ph===0&&!still?Math.max(0,Math.min(1,(t-i*260)/420)):1;rows[i].style.opacity=u;rows[i].style.transform='translateX('+((1-u)*-26)+'px)'}
 stepOn(ph);
-var st=document.querySelectorAll('.cbstage .st:not(.s4)'),SS=[0,2600,6400,10200];for(var q=0;q<st.length;q++){var u=still?1:Math.max(0,Math.min(1,(t-SS[q]-100)/650));u=1-Math.pow(1-u,3);var o=still?1:Math.max(0,Math.min(1,(TOT-t)/400));st[q].style.opacity=u*o;st[q].style.transform='translateY('+((1-u)*16)+'px)'}
+var st=document.querySelectorAll('.cbstage .st:not(.s4)'),SS=[0,2600,6400,10200];for(var q=0;q<st.length;q++){var u=still?1:Math.max(0,Math.min(1,(t-SS[q]-100)/650));u=1-Math.pow(1-u,3);var o=still?1:Math.max(0,Math.min(1,(TOT-t)/400));st[q].style.opacity=1;st[q].style.transform='none'}
 if(ph===0&&!still){$('cbn').textContent='00000000';$('cbhash').textContent='—';meter(0)}
 else if(!still){if(((now/110)|0)!==frame.k){frame.k=(now/110)|0;nonce=(nonce+1000003+((Math.random()*4e6)|0))>>>0;var k=0;while(k<Z-1&&Math.random()<1/16)k++;var s='';for(var i=0;i<k;i++)s+='0';while(s.length<12)s+='0123456789abcdef'[(Math.random()*16)|0];if(k<12){}
 $('cbn').textContent=hx(nonce);$('cbhash').innerHTML='<u>'+s.slice(0,k)+'</u>'+s.slice(k,12)+'…';meter(k)}}
