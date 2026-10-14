@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.54"
+version: "1.9.55"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,7 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  The "More insights" button in the mining pool hashrate section now opens a page of its own where you pick a mining pool as a black hole. Every pool found by your nodes and explorers on Bitcoin, Bitcoin BLAKE2b, Dogecoin and Monero stands as a hole in a tidy row, sized by its hashrate and standing perfectly still while only the matter around it circles. Under each hole: the pool name, its share of the chain, its blocks and its hashrate. Click a hole to see every block that pool mined; switch blockchain with the chips, search a pool by name, and use the arrows for more pools.
+  The "More insights" button in the mining pool hashrate section now opens a page of its own where you pick a mining pool as a black hole. Only the pools of the blockchain you are on stand there (Bitcoin pools from your Bitcoin node, BLAKE2b pools from your Bitcoin Knots node and explorer, Dogecoin from your Dogecoin node, Monero from your Monero node), each as a hole in a tidy row, sized by its hashrate and standing perfectly still while only the matter around it circles. Under each hole: the pool name, its share of the chain, its blocks and its hashrate. Click a hole to see every block that pool mined; switch blockchain at the top to see another chain's pools, search a pool by name, and use the arrows for more pools.
   The animated sun on the Bitcoin chain's mining pool hashrate section now looks like a real photograph of the sun: a deep orange surface covered in fine dark red and bright yellow mottling, white-hot active regions, a red glowing edge, slowly turning. It hangs far away in the background behind the black holes, lights the edge of each hole that faces it, and throws off sparks. Only on Bitcoin; it stands still when you prefer less motion.
   The four blocks of the Dogecoin chain (Fee Sorting, Coinbase & Merkle Root, Block assembly, Candidate block) are clickable and open their own page on the Dogecoin Explorer.
   The Monero chain no longer shows the "Mining pool calculator" button in the mining pools section.

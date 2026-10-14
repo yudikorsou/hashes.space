@@ -904,12 +904,7 @@
   .pb .datum-badge { margin-top: 4px; }
   .pool-empty { grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
   /* the page that lists every mining pool, to pick one */
-  .pools-chains { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
-  .pools-chains button { display: inline-flex; align-items: baseline; gap: 7px; padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; background: rgba(10, 12, 24, .45); color: var(--muted); font: 500 13px/1 var(--sans); cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
-  .pools-chains button span { font: 500 11.5px/1 var(--mono); color: var(--muted); }
-  .pools-chains button:hover { border-color: var(--line-strong); color: var(--text); }
-  .pools-chains button[aria-pressed="true"] { border-color: var(--link); color: var(--text); background: rgba(22, 26, 48, .8); }
-  .pools-chains button:focus-visible, .pools-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .pools-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   .pools-find { width: min(420px, 100%); }
   .pools-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
   .pools-sky-host { width: 100%; display: flex; }
@@ -1404,7 +1399,6 @@
     <h1 id="poolspage-title">Pick a mining pool</h1>
     <p id="pools-context"></p>
   </header>
-  <div class="pools-chains" id="pools-chains" role="group" aria-label="Blockchain"></div>
   <label class="pools-find"><span class="sr-only">Search the mining pools</span><input id="pools-filter" type="search" placeholder="Search a mining pool" autocomplete="off" spellcheck="false"></label>
   <div class="pools-sky-host" id="pools-sky-host"></div>
   <ul class="sr-only" id="pools-list"></ul>
@@ -5095,8 +5089,6 @@ window.__coins = COIN_LOGOS;
       picking = false;
     }
     if (!on) return;
-    const nets = NETWORKS.filter((n) => MINING_SITES[n.id]);
-    $('pools-chains').innerHTML = nets.map((n) => `<button type="button" data-net="${n.id}" aria-pressed="${n.id === netId}">${esc(n.chain)}<span>${miningBy[n.id] ? fmt(miningBy[n.id].pools.filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).length) : '–'}</span></button>`).join('');
     const m = miningBy[netId] ?? null, site = MINING_SITES[netId], chainName = network().chain;
     $('pools-eyebrow').textContent = `Mining pools on ${chainName}`;
     if (!m) {
@@ -5106,10 +5098,9 @@ window.__coins = COIN_LOGOS;
     const win = windowSpoken(m.window), all = m.pools.filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
     $('pools-context').textContent = `${fmt(all.length)} mining pool${all.length === 1 ? '' : 's'} found on ${chainName} in ${win}`
       + (m.blockCount ? `, from ${fmt(m.blockCount)} blocks.` : '.') + ' Every pool is a black hole: pick one to see every block it mined.';
-    $('pools-list').innerHTML = all.filter((x) => !sky.q || x.name.toLowerCase().includes(sky.q)).map((x) => `<li><button type="button" data-pool="${esc(x.name)}">${esc(x.name)}</button></li>`).join('');
+    $('pools-list').innerHTML = all.filter((x) => x.name !== 'Single payout (pool or solo miner)' && (!sky.q || x.name.toLowerCase().includes(sky.q))).map((x) => `<li><button type="button" data-pool="${esc(x.name)}">${esc(x.name)}</button></li>`).join('');
     $('pools-source').textContent = m.live ? `Pools seen by ${fromName(netId, site)}, updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : `Pools from a snapshot of ${site}/mining (${site} is not reachable from this page).`;
   }
-  $('pools-chains').addEventListener('click', (e) => { const b = e.target.closest('[data-net]'); if (!b) return; poolsFilter = ''; sky.q = ''; sky.page = 0; sky.refS = null; $('pools-filter').value = ''; setNetwork(b.dataset.net); if (typeof renderMiningStats === 'function') renderMiningStats(); renderPoolsPage(); });
   $('pools-filter').addEventListener('input', (e) => { poolsFilter = e.target.value; sky.q = poolsFilter.trim().toLowerCase(); sky.page = 0; sky.refS = null; if (typeof renderMiningStats === 'function') renderMiningStats(); });
   $('pools-list').addEventListener('click', (e) => { const b = e.target.closest('[data-pool]'); if (b) { poolFrom = 'pools'; showPool(b.dataset.pool); } });
   // ---------- a mining pool's own page: every block it mined ----------
