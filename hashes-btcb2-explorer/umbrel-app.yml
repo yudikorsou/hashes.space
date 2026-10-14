@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-btcb2-explorer
 category: crypto
 name: Bitcoin BLAKE2b Explorer
-version: "1.17.5"
+version: "1.17.6"
 tagline: A block explorer for the Bitcoin BLAKE2b chain, on your own Bitcoin Knots node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin-blake2b.png
 description: >-
@@ -36,6 +36,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The pool blocks endpoint /api/v1/mining/pool/<slug>/blocks/epoch now returns every block a pool mined since the last difficulty adjustment (the first block of the current 2016-block period) and starts over at each new adjustment. /blocks/14d is kept as an alias.
   A mining pool's block list now covers its last 14 days: /api/v1/mining/pool/<slug>/blocks/14d returns every block the pool mined in the last difficulty period, with its weight, median fee and fee range, so the Find Mempool pool profile page can show them all as miniature blocks.
   The block animation is no longer shown on the Bitcoin BLAKE2b explorer or on blocks mined by OCEAN on the Bitcoin explorer.
   Get verified now applies to every pool on the Bitcoin BLAKE2b explorer, and on the Bitcoin explorer only to blocks mined by OCEAN; other Bitcoin blocks show their payout addresses and the whole block to everyone.

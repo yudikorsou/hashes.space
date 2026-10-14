@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.61"
+version: "1.9.62"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  A mining pool's page now shows every block the pool mined since the last difficulty adjustment (not a fixed 14 days), on Bitcoin and Bitcoin BLAKE2b. Each time a new difficulty adjustment starts (every 2016 blocks) the page starts over with the new blocks of that period. Update the Bitcoin Explorer (1.18.6) and the Bitcoin BLAKE2b Explorer (1.17.6) apps too.
   A mining pool's page now shows every block the pool mined in the last 14 days (all of them, not just the latest 40) as miniature mined blocks, on Bitcoin and Bitcoin BLAKE2b. It fills in while your explorer reads the blocks, so update the Bitcoin Explorer (1.18.5) and the Bitcoin BLAKE2b Explorer (1.17.5) apps too. Without the update you still see the pool's latest blocks.
   A mining pool's page (opened with "View pool profile") now shows every block of the pool as a miniature of the animated mined block: the same 3D block with its height plate, median fee and fee range, size, transactions, age, the pool name and the DATUM label. A block opens its page on your explorer, as in the strip.
   The "More insights" button in the mining pool hashrate section now opens a page of its own where you pick a mining pool as a black hole. Only the pools of the blockchain you are on stand there (Bitcoin pools from your Bitcoin node, BLAKE2b pools from your Bitcoin Knots node and explorer, Dogecoin from your Dogecoin node, Monero from your Monero node), each as a hole in a tidy row, sized by its hashrate and standing perfectly still while only the matter around it circles. Under each hole: the pool name, its blocks and its hashrate, and a "View pool profile" button that opens the pool's page. The title, the intro text and the search bar sit right above the black holes, and on Bitcoin the animated sun hangs in the background on the right side of the page, shining down on the pools. Click a hole to see every block that pool mined; switch blockchain at the top to see another chain's pools, search a pool by name, and use the arrows for more pools.

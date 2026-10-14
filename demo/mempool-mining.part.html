@@ -1207,7 +1207,7 @@
   const poolBlocksOnPage = (name) => (chain().blocks ?? []).filter((b) => (b.pool ?? '').trim().toLowerCase() === name.toLowerCase());
   function renderPoolBlocks(name) {
     const key = netId + '|' + name.toLowerCase(), got = poolBlocks[key], stat = poolStat(name);
-    const list = got?.length ? got : poolBlocksOnPage(name), t = Date.now() / 1000;
+    const list = got?.length || poolWindow[key] ? (got ?? []) : poolBlocksOnPage(name), t = Date.now() / 1000;
     // a simulated block has a made-up hash, so it links nowhere, just as in the strip
     const link = (chain().live || got?.length) && EXPLORER[netId] ? EXPLORER[netId] : null, onPage = chain().blocks ?? [];
     $('pool-blocks').innerHTML = list.length
@@ -1219,15 +1219,17 @@
         return `<${tag} class="block-wrap${link && tag === 'a' ? ' linkable' : ''}${d ? ' ' + ({ verified: 'datum-verified', compatible: 'datum', centralised: 'datum-central' })[d] : ''}"${tag === 'a' ? ` href="${link}${b.hash ?? b.height}" target="_blank" rel="noopener"` : ''}${d ? ` title="${(netId === 'monero' && XMR_TITLE[d]) || (netId === 'dogecoin' && DOGE_TITLE[d]) || DATUM_TITLE[d]}"` : ''}>
           <div class="above height"><b>${fmt(b.height)}</b></div>${cb}<div class="below">${esc(name)}${d ? DATUM_BADGE[d] : ''}</div></${tag}>`;
       }).join('')
+      : (poolWindow[key] && !poolBlocksBusy[key]) ? `<p class="pool-empty">${esc(name)} has not mined a block since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}) yet. The page keeps watching: its next block appears here.</p>`
       : `<p class="pool-empty">No block of ${esc(name)} among the ones this page has seen yet. The page keeps watching: the next one it finds appears here.</p>`;
-    $('pool-source').textContent = got?.length
-      ? (poolWindow[key] ? `All ${fmt(list.length)} blocks of ${name} in the last 14 days, live from ${MINING_SITES[netId]}${poolBlocksBusy[key] ? ' (reading more…)' : ''}.` : `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`)
+    $('pool-source').textContent = poolWindow[key] && !got?.length ? ''
+      : got?.length
+      ? (poolWindow[key] ? `All ${fmt(list.length)} blocks of ${name} since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}), live from ${MINING_SITES[netId]}${poolBlocksBusy[key] ? ' (reading more…)' : ''}. When the next adjustment starts, this page starts over with the new blocks.` : `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`)
       : list.length ? `The blocks of ${name} among the ones on this page.` : '';
     // the mining page keeps the pool's own block list; ask for it once
     if ((got === undefined || Date.now() - (poolBlocksAt[key] || 0) > 120000) && mining?.live && stat?.slug) fetchPoolBlocks(name, stat.slug);
   }
-  var poolBlocksAt = {}, poolBlocksBusy = {}, poolWindow = {};
-  // Bitcoin and Bitcoin BLAKE2b: every block of the pool in the last 14 days, with its fees (the explorer reads them in the background and answers with what is ready, so this asks again until nothing new comes)
+  var poolBlocksAt = {}, poolBlocksBusy = {}, poolWindow = {}, poolEpoch = {};
+  // Bitcoin and Bitcoin BLAKE2b: every block of the pool since the last difficulty adjustment (every 2016 blocks; a new one starts the list over), with its fees (the explorer reads them in the background and answers with what is ready, so this asks again until nothing new comes)
   async function fetchPoolBlocks(name, slug) {
     const net = netId, key = net + '|' + name.toLowerCase(); if (poolBlocksBusy[key]) return;
     poolBlocksBusy[key] = true; poolBlocksAt[key] = Date.now(); if (poolBlocks[key] === undefined) poolBlocks[key] = [];
@@ -1237,9 +1239,13 @@
     try {
       for (let i = 0; i < 40; i++) {
         let r;
-        try { r = await getJson(MINING_SITES[net], `/pool/${encodeURIComponent(slug)}/blocks${full ? '/14d' : ''}`, 12000); }
+        try { r = await getJson(MINING_SITES[net], `/pool/${encodeURIComponent(slug)}/blocks${full ? '/epoch' : ''}`, 12000); }
         catch (e) { if (!full) throw e; full = false; r = await getJson(MINING_SITES[net], `/pool/${encodeURIComponent(slug)}/blocks`); }   // an older explorer: its latest blocks
-        const arr = map(r); if (arr.length >= poolBlocks[key].length) poolBlocks[key] = arr;
+        const arr = map(r);
+        // the difficulty adjustment sits on every multiple of 2016: when the chain has crossed one, the old list is dropped
+        const tip = Math.max(0, ...arr.map((b) => b.height), ...(chain().blocks ?? []).map((b) => b.height || 0)), start = tip - tip % 2016;
+        if (poolEpoch[key] !== start) { poolEpoch[key] = start; poolBlocks[key] = []; prev = -1; }
+        if (arr.length >= poolBlocks[key].length) poolBlocks[key] = arr;
         poolWindow[key] = full;
         if (again()) renderPoolBlocks(name);
         if (!full || arr.length === prev) break;
