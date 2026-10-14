@@ -903,6 +903,28 @@
   .pb .pb-meta { color: var(--muted); font: 400 12px/1.4 var(--sans); }
   .pb .datum-badge { margin-top: 4px; }
   .pool-empty { grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
+  /* the page that lists every mining pool, to pick one */
+  .pools-chains { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+  .pools-chains button { display: inline-flex; align-items: baseline; gap: 7px; padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px; background: rgba(10, 12, 24, .45); color: var(--muted); font: 500 13px/1 var(--sans); cursor: pointer; transition: border-color .15s, color .15s, background .15s; }
+  .pools-chains button span { font: 500 11.5px/1 var(--mono); color: var(--muted); }
+  .pools-chains button:hover { border-color: var(--line-strong); color: var(--text); }
+  .pools-chains button[aria-pressed="true"] { border-color: var(--link); color: var(--text); background: rgba(22, 26, 48, .8); }
+  .pools-chains button:focus-visible, .pp:focus-visible, .pools-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .pools-find { width: min(420px, 100%); }
+  .pools-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
+  .pools-grid { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+  .pp { display: grid; gap: 6px; justify-items: start; text-align: left; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(10, 12, 24, .45); color: inherit; font: inherit; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
+  .pp:hover { border-color: var(--line-strong); background: rgba(16, 19, 36, .7); transform: translateY(-2px); }
+  .pp .pp-top { display: flex; align-items: baseline; gap: 8px; width: 100%; }
+  .pp .pp-rank { font: 500 11.5px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .pp b { font: 600 16px/1.25 var(--display); color: var(--text); overflow-wrap: anywhere; }
+  .pp .pp-bar { width: 100%; height: 4px; border-radius: 2px; background: rgba(160, 170, 230, .14); overflow: hidden; }
+  .pp .pp-bar i { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, #ff6a4d, #ffb06a); }
+  .pp .pp-meta { color: var(--muted); font: 400 12.5px/1.4 var(--sans); font-variant-numeric: tabular-nums; }
+  .pp .pp-meta em { font-style: normal; color: var(--link); font-weight: 500; }
+  .pp .datum-badge { margin-top: 2px; }
+  .pools-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; }
+  @media (max-width: 520px) { .pools-grid { grid-template-columns: 1fr 1fr; } .pp { padding: 12px; } .pp b { font-size: 14.5px; } }
   @media (max-width: 520px) { .poolhead h1 { font-size: 23px; } .pool-blocks { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
   @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mstats .kpis dd { font-size: 17px; } .mstats .mtitle, .mstats .kpis dt { font-size: 15.5px; } }
   /* miners without a pool: lone lights drifting through space, and where the figure comes from */
@@ -1366,7 +1388,7 @@
     <h2 class="mtitle"><span id="pools-title">Hashrate mining pools</span> <span class="mperiod" id="pools-period"></span></h2>
   </header>
   <article class="mcard m-hr" aria-labelledby="hr-title">
-    <a class="calc-link" id="calc-link" href="#calc">More insights<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+    <a class="calc-link" id="calc-link" href="#pools">More insights<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
     <h2 class="sr-only" id="hr-title">Hashrate of the mining pools</h2>
     <div class="pool-sky" id="pool-sky" role="group" aria-label="A black hole for every mining pool, sized by the hashrate it adds to the chain; hover one for details"><canvas id="pool-sky-cv"></canvas><button type="button" class="sky-arrow prev" id="sky-prev" aria-label="Previous six pools" hidden>&#8249;</button><button type="button" class="sky-arrow next" id="sky-next" aria-label="Next six pools" hidden>&#8250;</button><p class="sky-cap" id="sky-cap"></p></div>
     <p class="hrsub" id="ms-hash-sub"></p>
@@ -1385,6 +1407,20 @@
   <p class="msource" id="ms-source"></p>
 </section>
 
+<!-- every mining pool found on your nodes and explorers, to pick one: reached from "More insights" -->
+<section class="poolpage poolspage" id="pools-page" aria-labelledby="poolspage-title" hidden>
+  <header class="poolhead">
+    <p class="pool-eyebrow" id="pools-eyebrow">Mining pools</p>
+    <h1 id="poolspage-title">Pick a mining pool</h1>
+    <p id="pools-context"></p>
+  </header>
+  <div class="pools-chains" id="pools-chains" role="group" aria-label="Blockchain"></div>
+  <label class="pools-find"><span class="sr-only">Search the mining pools</span><input id="pools-filter" type="search" placeholder="Search a mining pool" autocomplete="off" spellcheck="false"></label>
+  <div class="pools-grid" id="pools-grid"></div>
+  <p class="msource" id="pools-source"></p>
+  <div class="pools-links"><a class="more" href="#dashboard">« Back to the mempool</a><a class="more" href="#calc">Calculate hashrate »</a></div>
+</section>
+
 <!-- a mining pool's page, reached by searching its name in the bar above -->
 <section class="poolpage" id="pool-page" aria-labelledby="poolpage-title" hidden>
   <header class="poolhead">
@@ -1395,7 +1431,7 @@
   <div class="pool-miners" id="pool-miners" hidden></div>
   <div class="pool-blocks" id="pool-blocks"></div>
   <p class="msource" id="pool-source"></p>
-  <a class="more" href="#dashboard">« Back to the mempool</a>
+  <a class="more" id="pool-back" href="#dashboard">« Back to the mempool</a>
 </section>
 
 <!-- Calculate hashrate: its own page, reached from the tab next to Find Mempool -->
@@ -3922,7 +3958,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
 
   function showView(v) {
     if (v === 'learn-blocks') v = 'blocks';
-    view = ['calc', 'poolcalc', 'blocks', 'learn', 'pool'].includes(v) ? v : 'dashboard';
+    view = ['calc', 'poolcalc', 'blocks', 'learn', 'pool', 'pools'].includes(v) ? v : 'dashboard';
     ['asic', 'cpu', 'dashboard', 'settings', 'fleet'].forEach((k) => { $('view-' + k).hidden = view !== k; $('tab-' + k).classList.toggle('on', view === k); });
     $('chain-area').hidden = view === 'learn' || view === 'blocks';            // the proof-of-work bar stands on the mempool and calculator pages
     document.querySelector('.strip').hidden = view !== 'dashboard';
@@ -3930,9 +3966,10 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     document.getElementById('blocks-page').hidden = view !== 'blocks';
     if (view === 'learn' || view === 'blocks') { if (window.learnBuildMinis) window.learnBuildMinis(); window.scrollTo(0, 0); }
     for (const [t, v] of [['tab-dashboard', 'dashboard'], ['tab-calc', 'calc'], ['tab-learn', 'learn']]) $(t).classList.toggle('on', view === v);
-    $('tab-dashboard').classList.toggle('on', view === 'dashboard' || view === 'pool');
+    $('tab-dashboard').classList.toggle('on', view === 'dashboard' || view === 'pool' || view === 'pools');
     if (typeof renderMiningStats === 'function') renderMiningStats();
     if (typeof renderPoolPage === 'function') renderPoolPage();
+    if (typeof renderPoolsPage === 'function') renderPoolsPage();
     if (view === 'asic' || view === 'cpu') { if (!scan) runScan(); else renderAsic(); renderFleet(); }
     else if (view === 'fleet') { renderProjected(); renderMined(false); renderFleetDash(true); }
     else if (view === 'settings') { $('no-miner').hidden = !!current; $('settings-body').hidden = !current; if (current) loadForm(); }
@@ -4356,6 +4393,7 @@ window.__coins = COIN_LOGOS;
   function renderMiningStats() {
     const sec = $('mining-stats'); if (!sec) return;
     mining = miningBy[netId] ?? null; const site = MINING_SITES[netId];
+    if (typeof renderPoolsPage === 'function') renderPoolsPage();
     const calc = onCalcPage(), m = mining;
     sec.hidden = !onMempoolPage() || !site || !m;
     const page = $('calc-page');
@@ -5032,11 +5070,41 @@ window.__coins = COIN_LOGOS;
     const ticks = []; for (let e = Math.log10(lo); e <= Math.log10(hi) + 1e-9; e += 1) ticks.push(10 ** Math.round(e));
     return { log: true, Y: (v) => (v > 0 ? B - Math.max(0, Math.min(1, Math.log10(v / lo) / span)) * (B - T) : B), ticks: ticks.filter((_, i, a) => i === a.length - 1 || i % every === 0) };
   }
+  // ---------- the page that lists every mining pool: pick one to open its own page ----------
+  var poolFrom = 'dashboard';   // where the pool page was opened from, for its back link
+  var poolsFilter = '';
+  function renderPoolsPage() {
+    const page = $('pools-page'); if (!page) return;
+    const on = typeof view !== 'undefined' && view === 'pools';
+    page.hidden = !on; if (!on) return;
+    const nets = NETWORKS.filter((n) => MINING_SITES[n.id]);
+    $('pools-chains').innerHTML = nets.map((n) => `<button type="button" data-net="${n.id}" aria-pressed="${n.id === netId}">${esc(n.chain)}<span>${miningBy[n.id] ? fmt(miningBy[n.id].pools.length) : '–'}</span></button>`).join('');
+    const m = miningBy[netId] ?? null, site = MINING_SITES[netId], chainName = network().chain;
+    $('pools-eyebrow').textContent = `Mining pools on ${chainName}`;
+    const q = poolsFilter.trim().toLowerCase(), grid = $('pools-grid');
+    if (!m) {
+      $('pools-context').textContent = `No mining pools from ${chainName} yet: ${site ?? 'its explorer'} has not answered. Pick another blockchain above, or try again in a moment.`;
+      grid.innerHTML = ''; $('pools-source').textContent = ''; return;
+    }
+    const win = windowSpoken(m.window), all = m.pools.slice().sort((a, b) => b.blocks - a.blocks), list = q ? all.filter((x) => x.name.toLowerCase().includes(q)) : all;
+    $('pools-context').textContent = `${fmt(all.length)} mining pool${all.length === 1 ? '' : 's'} found on ${chainName} in ${win}`
+      + (m.blockCount ? `, from ${fmt(m.blockCount)} blocks.` : '.') + ' Pick one to see every block it mined.';
+    grid.innerHTML = list.length ? list.map((x) => {
+      const rank = all.indexOf(x) + 1, share = m.blockCount ? x.blocks / m.blockCount : 0, d = typeof datumLabel === 'function' ? datumLabel({ pool: x.name }) : null;
+      return `<button type="button" class="pp" data-pool="${esc(x.name)}"><span class="pp-top"><span class="pp-rank">#${rank}</span><b>${esc(x.name)}</b></span>
+        <span class="pp-bar"><i style="width:${Math.max(2, Math.min(100, share * 100)).toFixed(1)}%"></i></span>
+        <span class="pp-meta"><em>${(share * 100).toFixed(1)}%</em> · ${fmt(x.blocks)} block${x.blocks === 1 ? '' : 's'}${m.hash ? ` · ~${si(share * m.hash, 1)}H/s` : ''}</span>${d ? DATUM_BADGE[d] : ''}</button>`;
+    }).join('') : `<p class="pool-empty">No mining pool called “${esc(poolsFilter.trim())}” on ${esc(chainName)}.</p>`;
+    $('pools-source').textContent = m.live ? `Pools seen by ${fromName(netId, site)}, updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : `Pools from a snapshot of ${site}/mining (${site} is not reachable from this page).`;
+  }
+  $('pools-chains').addEventListener('click', (e) => { const b = e.target.closest('[data-net]'); if (!b) return; poolsFilter = ''; $('pools-filter').value = ''; setNetwork(b.dataset.net); if (typeof renderMiningStats === 'function') renderMiningStats(); renderPoolsPage(); });
+  $('pools-filter').addEventListener('input', (e) => { poolsFilter = e.target.value; renderPoolsPage(); });
+  $('pools-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-pool]'); if (b) { poolFrom = 'pools'; showPool(b.dataset.pool); } });
   // ---------- a mining pool's own page: every block it mined ----------
   var poolView = null;          // the pool the page is showing
   var poolBlocks = {};          // per network and pool: the block list its mining page gave us
   function showPool(name) {
-    poolView = name;
+    poolView = name; if (typeof view !== 'undefined' && view !== 'pools' && view !== 'pool') poolFrom = 'dashboard';
     if (typeof view !== 'undefined' && view !== 'pool') location.hash = '#pool'; else renderPoolPage();
   }
   const sinceText = (sec) => {
@@ -5052,6 +5120,7 @@ window.__coins = COIN_LOGOS;
     page.hidden = !on; if (!on) return;
     const name = poolView, m = mining, stat = poolStat(name);
     $('poolpage-title').textContent = name;
+    { const bk = $('pool-back'); bk.href = poolFrom === 'pools' ? '#pools' : '#dashboard'; bk.textContent = poolFrom === 'pools' ? '« Back to the mining pools' : '« Back to the mempool'; }
     $('pool-eyebrow').textContent = `Mining pool on ${network().chain}`;
     const win = windowSpoken(m && m.window);
     $('pool-context').textContent = stat && m.blockCount
