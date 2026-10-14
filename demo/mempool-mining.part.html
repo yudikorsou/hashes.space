@@ -500,6 +500,7 @@
   // Bitcoin and Bitcoin Knots read the pool of every block (and keep the daily share on disk, so a pruned node's history keeps growing);
   // Dogecoin reads an evenly spread sample of the blocks; Monero names no pool, so there it is the P2Pool miners, whose blocks the chain shows.
   var PH_HOST = { sha256: MINING_NODE.sha256, blake2b: MINING_NODE.blake2b, dogecoin: MINING_SITES.dogecoin, monero: MINING_SITES.monero };
+  window.__netId = () => netId;   // the How to read the blocks page opens on the chain the visitor came from
   var PH_TITLE = { monero: 'P2Pool hashrate' };   // Monero names no pool: its figure is the P2Pool miners'
   var phBy = {}, phBusy = {};
   async function loadPoolHashFor(net, rng) {
