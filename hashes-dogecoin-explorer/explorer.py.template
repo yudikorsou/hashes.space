@@ -634,7 +634,7 @@ CSS = """
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
-header .hlink{font-size:13px;color:#3ce26b;white-space:nowrap}header .brand{font:700 18px/1 system-ui;color:var(--text)}header .brand span{color:var(--gold)}
+header .hlink{font-size:13px;color:#3ce26b;white-space:nowrap}.subnav{display:flex;flex-wrap:wrap;gap:8px;max-width:1100px;margin:0 auto;padding:10px 16px 0}.subnav a{border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);border-radius:999px;padding:5px 14px;font-size:13px;color:var(--muted);white-space:nowrap}.subnav a:hover{text-decoration:none;color:var(--text)}.subnav a.here{color:var(--gold);border-color:var(--gold)}.subnav a.ver{color:#3ce26b;border-color:rgba(60,226,107,.45)}.subnav a.ver[aria-current]{background:rgba(60,226,107,.12)}header .brand{font:700 18px/1 system-ui;color:var(--text)}header .brand span{color:var(--gold)}
 form{display:flex;gap:8px;flex:1;max-width:560px}input{flex:1;min-width:0;background:#0b0d17;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 12px;font:13px ui-monospace,Menlo,monospace}
 button{background:var(--gold);color:#1a1406;border:0;border-radius:8px;padding:0 14px;font-weight:600;cursor:pointer}
 main{max-width:1100px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:18px}
@@ -747,8 +747,9 @@ def page(title, body, glass=False, extra_css=""):
     return ("<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
             "<title>" + html.escape(title) + " · Dogecoin explorer</title><style>" + CSS + (PAGES_CSS if glass else "") + (extra_css or FLOW_CSS) + "</style></head><body" + (" class=g" if glass else "") + ">"
             "<header><a class=brand href='/'>Dogecoin <span>explorer</span></a>"
-            "<form action='/search'><input name=q placeholder='Block height, block hash, transaction id or address' aria-label=Search>"
-            "<button>Search</button></form><a class=hlink href='/verified'>✔ Verified donation addresses</a></header><main>" + body + "</main>"
+            + ("" if title.startswith("Verified donation") else "<form action='/search'><input name=q placeholder='Block height, block hash, transaction id or address' aria-label=Search>"
+            "<button>Search</button></form>") + "</header><nav class=subnav aria-label='Explorer sections'><a href='/'" + (" class=here" if not title.startswith("Verified") else "") + ">Block explorer</a>"
+            "<a class=ver href='/verified'" + (" aria-current=page" if title.startswith("Verified") else "") + ">✔ Verified donation addresses</a></nav><main>" + body + "</main>"
             "<footer>Read from your own Dogecoin Core node · hashes.space</footer></body></html>")
 
 
