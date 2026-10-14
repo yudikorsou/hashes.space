@@ -12,8 +12,8 @@ Reads everything from the node's RPC, pruned or not, and serves:
   /api/v1/blocks         the last blocks, in mempool's format, with the fees and the pool worked out from your node
   /api/v1/fees/mempool-blocks   the blocks your mempool would build, best fee rate first
   /api/blocks/tip/height
-  /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from the block headers (24h, 14d, 1m, 6m, 1y)
-  /api/v1/mining/pools/<period>     blocks per mining pool, from the tags and payout addresses in each coinbase
+  /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from the block headers (24h, 14d, 1m, 6m, 1y; epoch: since the last difficulty adjustment)
+  /api/v1/mining/pools/<period>     blocks per mining pool, from the tags and payout addresses in each coinbase (period epoch: the blocks since the last difficulty adjustment)
   /api/v1/mining/pool-hashrate/<period>  the hashrate of the mining pools together: the network's hashrate times the share of blocks that pools mined, per day
   /api/v1/mining/solo/<period>      the hashrate of the miners that use no pool: blocks of solo services ("solo" in the pool's name) and blocks with no pool tag or known payout address, times the network's hashrate
   /api/v1/mining/pool/<slug>/blocks   the latest blocks of one pool (the page's pool view); .../blocks/epoch: every block of the pool since the last difficulty adjustment, with fees
@@ -411,9 +411,11 @@ class ChainStats:
             if not self.ready:
                 raise RuntimeError("no data yet")
             (fine_h, fine_d), (coarse_h, coarse_d), (rate, diff) = self.fine, self.coarse, self.now
-        span = {"24h": DAY, "14d": 14 * DAY, "1m": 30 * DAY, "6m": 183 * DAY, "1y": YEAR}[period]
+        span = {"24h": DAY, "14d": 14 * DAY, "epoch": 14 * DAY, "1m": 30 * DAY, "6m": 183 * DAY, "1y": YEAR}[period]
         hs, ds = (fine_h, fine_d) if span <= 30 * DAY else (coarse_h, coarse_d)
         cut = hs[-1][0] - span if hs else 0
+        if period == "epoch":              # since the last difficulty adjustment: the first block of the current 2016-block period
+            cut = self.header(max(1, self.tip - self.tip % EPOCH))[0]
         if period == "14d":                # the last difficulty period (2016 blocks), not a fixed 14 days
             cut = self.header(max(1, self.tip - EPOCH))[0]
         keep = [x for x in hs if x[0] >= cut]
@@ -523,7 +525,21 @@ class ChainStats:
             save_shares(self.share_day)
 
     def pool_hashrate(self, period):
-        """the hashrate of the mining pools together: the network's hashrate that day times the share of that day's blocks that pools mined"""
+        """the hashrate of the mining pools together: the network's hashrate that day times the share of that day's blocks that pools mined.
+        period "epoch": the blocks since the last difficulty adjustment (the current 2016-block period) give the share"""
+        if period == "epoch":
+            with self.lock:
+                if not self.ready or not self.pool_of:
+                    raise RuntimeError("no data yet")
+                rate = self.now[0]
+                top = max(self.pool_of)
+                start = top - top % EPOCH
+                ep = [p for h, p in self.pool_of.items() if h >= start]
+            if not ep:
+                raise RuntimeError("no data yet")
+            share = sum(1 for p in ep if p != "Unknown") / len(ep)
+            return {"currentHashrate": rate * share, "currentShare": share, "networkHashrate": rate, "since": self.header(start)[0], "complete": True,
+                    "epochStart": start, "nextAdjustment": start + EPOCH, "blockCount": len(ep), "hashrates": []}
         with self.lock:
             if not self.ready:
                 raise RuntimeError("no data yet")
@@ -577,8 +593,12 @@ class ChainStats:
                 continue
             sources.append({"name": name, "kind": kind, "blockCount": e["blockCount"], "share": e["blockCount"] / total, "hashrate": rate * e["blockCount"] / total})
         blocks = sum(x["blockCount"] for x in sources)
-        return {"window": p["window"], "blockCount": p["blockCount"], "soloBlocks": blocks, "share": blocks / total, "currentHashrate": rate * blocks / total,
-                "networkHashrate": rate, "sources": sources}
+        out = {"window": p["window"], "blockCount": p["blockCount"], "soloBlocks": blocks, "share": blocks / total, "currentHashrate": rate * blocks / total,
+               "networkHashrate": rate, "sources": sources}
+        for k in ("epochStart", "nextAdjustment", "epochBlocks"):
+            if k in p:
+                out[k] = p[k]
+        return out
 
     def pools(self, period):
         with self.lock:
@@ -586,6 +606,11 @@ class ChainStats:
         if not heights:
             raise RuntimeError("no data yet")
         times = {h: self.headers[h][0] for h, _, _ in heights if h in self.headers}
+        if period == "epoch":              # since the last difficulty adjustment: every block read of the current 2016-block period
+            top = max(h for h, _, _ in heights)
+            start = top - top % EPOCH
+            rows = [(p, m) for h, p, m in heights if h >= start]
+            return {"window": "epoch", "blockCount": len(rows), "pools": self.pool_split(rows), "epochStart": start, "nextAdjustment": start + EPOCH, "epochBlocks": top - start + 1}
         if period == "14d":                # the last difficulty period: the last 2016 blocks, as far as they have been read
             top = max(h for h, _, _ in heights)
             if min(h for h, _, _ in heights) <= top - EPOCH + 1:
@@ -1772,13 +1797,13 @@ class Handler(BaseHTTPRequestHandler):
                          "mempool": STATE["mempool_count"], "pruned": STATE["info"].get("pruned"), "node": STATE["info"].get("subversion"), "chain": CHAIN, "syncing": STATE["info"].get("initialblockdownload"),
                          "statistics": STATS.ready, "statisticsError": STATS.error, "pools": len(POOLS.tags) > 0}
                 return self.json(s)
-            m = re.fullmatch(r"/api/v1/mining/solo/(24h|14d|1w|1m)", path)
+            m = re.fullmatch(r"/api/v1/mining/solo/(24h|14d|1w|1m|epoch)", path)
             if m:
                 return self.json(STATS.solo(m.group(1)), 300)
-            m = re.fullmatch(r"/api/v1/mining/pool-hashrate/(24h|14d|1m|6m|1y)", path)
+            m = re.fullmatch(r"/api/v1/mining/pool-hashrate/(24h|14d|1m|6m|1y|epoch)", path)
             if m:
                 return self.json(STATS.pool_hashrate(m.group(1)), 300)
-            m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(24h|14d|1w|1m|3m|6m|1y)", path)
+            m = re.fullmatch(r"/api/v1/mining/(hashrate|pools)/(24h|14d|1w|1m|3m|6m|1y|epoch)", path)
             if m:
                 kind, period = m.groups()
                 if kind == "hashrate":
