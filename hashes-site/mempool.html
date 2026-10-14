@@ -863,6 +863,9 @@
   @media (max-width: 1239px) { .mcard .calc-link { position: static; order: 99; align-self: flex-start; } }   /* the corner is only free of "View more »" when the card is wide */
   /* the pools as black holes in space; hover one for its name and hashrate */
   .pool-sky { position: relative; width: 100%; flex: 1 1 340px; min-height: 340px; margin: -2px 0 6px; background: none; }
+  #pools-page:not([hidden]) { animation: poolsin .22s ease-out; }
+  @keyframes poolsin { from { opacity: 0; } to { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { #pools-page:not([hidden]) { animation: none; } }
   .pool-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .pool-sky .sky-cap { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; color: var(--muted); font: 400 11.5px/1.3 var(--sans); pointer-events: none; }
   .sky-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line, rgba(255,255,255,.18)); background: rgba(20,22,40,.55); color: var(--text); font: 400 24px/1 var(--sans); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 0 3px; z-index: 2; }
@@ -5312,6 +5315,10 @@ window.__coins = COIN_LOGOS;
       picking = true; sky.picker = on; SKY_PAGE = on ? 9 : 6; sky.page = 0; sky.refS = null; sky.names = ''; sky.laid = ''; sky.q = ''; poolsFilter = ''; { const f = $('pools-filter'); if (f) f.value = ''; }
       if (on) { skyHome = { parent: sk.parentNode, next: sk.nextSibling }; $('pools-sky-host').appendChild(sk); }
       else if (skyHome) { sk.style.minHeight = ''; sk.style.flexBasis = ''; skyHome.parent.insertBefore(sk, skyHome.next && skyHome.next.parentNode === skyHome.parent ? skyHome.next : null); skyHome = null; }
+      // the sky has just changed size: keep it hidden until it has been drawn at the new size, so the holes never show stretched for a moment
+      sk.style.transition = 'none'; sk.style.opacity = '0';
+      const settle = () => { skySize(); skyDraw(performance.now()); sk.style.transition = 'opacity .28s ease-out'; sk.style.opacity = '1'; };
+      requestAnimationFrame(() => requestAnimationFrame(settle));
       if (typeof renderMiningStats === 'function') renderMiningStats();
       picking = false;
     }
