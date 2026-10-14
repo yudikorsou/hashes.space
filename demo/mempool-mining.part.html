@@ -139,7 +139,7 @@
   .pool-empty { grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
   /* the page that lists every mining pool, to pick one */
   .pools-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
-  .pools-find { width: min(420px, 100%); }
+  .pools-find { flex: 1 1 240px; max-width: 420px; }
   .pools-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
   .pools-sky-host { position: relative; width: 100%; display: flex; }
   .pools-top { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: min(640px, calc(100% - 32px)); z-index: 3; display: grid; gap: 14px; justify-items: center; text-align: center; }
@@ -209,11 +209,11 @@
         <p id="pools-context">Get more insights about the mining pools that are hashing on your blockchain</p>
       </header>
       <p class="msource" id="pools-source"></p>
-      <label class="pools-find" id="pools-find"><span class="sr-only">Search the mining pools</span><input id="pools-filter" type="search" placeholder="Search a mining pool" autocomplete="off" spellcheck="false"></label>
+      <div class="pool-tools"><a class="pool-backbtn" href="#dashboard">« Back to the mempool</a><label class="pools-find" id="pools-find"><span class="sr-only">Search the mining pools</span><input id="pools-filter" type="search" placeholder="Search a mining pool" autocomplete="off" spellcheck="false"></label></div>
     </div>
   </div>
   <ul class="sr-only" id="pools-list"></ul>
-  <div class="pools-links"><a class="more" href="#dashboard">« Back to the mempool</a><a class="more" href="#calc">Calculate hashrate »</a></div>
+  <div class="pools-links"><a class="more" href="#calc">Calculate hashrate »</a></div>
 </section>
 
 <!-- a mining pool's page, reached by searching its name in the bar above -->
