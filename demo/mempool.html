@@ -4741,11 +4741,11 @@ window.__coins = COIN_LOGOS;
   function skyLayout() {
     const key = sky.names + '|' + sky.w + 'x' + sky.h; if (sky.laid === key || !sky.ships.length || !sky.w) return; sky.laid = key;
     if (sky.picker) {   // the picker: holes side by side in rows, biggest first, each with its summary under it
-      const n = sky.ships.length, W = sky.w, cols = Math.max(1, Math.min(n, Math.floor(W / (W < 520 ? 150 : 200)))), cellW = W / cols, maxR = Math.min(cellW * 0.32, 58), rows = Math.ceil(n / cols), rowH = maxR * 2.3 + 84, need = Math.round(rows * rowH + 44);
+      const n = sky.ships.length, W = sky.w, cols = Math.max(1, Math.min(n, Math.floor(W / (W < 520 ? 150 : 200)))), cellW = W / cols, maxR = Math.min(cellW * 0.32, 58), rows = Math.ceil(n / cols), rowH = maxR * 2.3 + 116, need = Math.round(rows * rowH + 44);
       const host = $('pool-sky'); if (host && Math.abs((parseFloat(host.style.minHeight) || 0) - need) > 1) { host.style.minHeight = need + 'px'; host.style.flexBasis = need + 'px'; }
       sky.ships.forEach((sh, i) => {
         const row = Math.floor(i / cols), inRow = Math.min(cols, n - row * cols), col = i - row * cols;
-        sh.r = Math.max(13, maxR * (0.3 + 0.7 * Math.sqrt(Math.min(1, sh.vis * 2.4)))); sh.labY = maxR * 1.1 + 16;
+        sh.r = Math.max(13, maxR * (0.3 + 0.7 * Math.sqrt(Math.min(1, sh.vis * 2.4)))); sh.labY = maxR * 1.1 + 16; sh.btn = { x: -66, y: sh.labY + 42, w: 132, h: 26 };
         sh.hx = (cols - inRow) * cellW / 2 + (col + 0.5) * cellW; sh.hy = 26 + maxR * 1.3 + row * rowH;
       });
       { const lastN = n - (rows - 1) * cols, ly0 = 26 + maxR * 1.3 + (rows - 1) * rowH;   // Bitcoin's sun hangs in the free place at the end of the last row, or in the top right corner when the rows are full
@@ -4823,6 +4823,12 @@ window.__coins = COIN_LOGOS;
       if (pk) {   // the summary of the pool under its hole
         g.fillStyle = 'rgba(255,190,165,.95)'; g.font = font(12, 600); g.fillText(`${(sh.share * 100).toFixed(1)}% of the chain`, x, ly + 17);
         g.fillStyle = muted; g.font = font(11, 500); g.fillText(`${fmt(sh.blocks)} block${sh.blocks === 1 ? '' : 's'} · ${si(sh.hash, 1)}H/s`, x, ly + 33);
+        if (sh.pick && sh.btn) {   // the button that opens the pool's own page
+          const b = sh.btn, bx = x + b.x, by = y + b.y, rr = b.h / 2, on = sky.hoverBtn === sh;
+          g.beginPath(); g.moveTo(bx + rr, by); g.lineTo(bx + b.w - rr, by); g.arc(bx + b.w - rr, by + rr, rr, -1.5708, 1.5708); g.lineTo(bx + rr, by + b.h); g.arc(bx + rr, by + rr, rr, 1.5708, 4.7124); g.closePath();
+          g.fillStyle = on ? 'rgba(255,255,255,.14)' : 'rgba(10,12,24,.55)'; g.fill(); g.strokeStyle = on ? 'rgba(255,255,255,.7)' : 'rgba(160,170,230,.4)'; g.lineWidth = 1; g.stroke();
+          g.fillStyle = on ? '#fff' : '#e8ebf5'; g.font = font(11.5, 600); g.fillText('View pool profile  →', x, by + b.h / 2 + 4);
+        }
       } else { g.fillStyle = muted; g.font = font(10.5, 500); g.fillText(si(sh.hash, 1) + 'H/s', x, ly + 13); }
     }
     if (netId === 'dogecoin') skyShip(g, t);
@@ -4984,16 +4990,18 @@ window.__coins = COIN_LOGOS;
     const find = (e) => {
       const r = el.getBoundingClientRect(), px = e.clientX - r.left, py = e.clientY - r.top, t = performance.now();
       let best = null, bd = 1e9;
+      sky.overBtn = false;
       for (const sh of sky.ships) { const p = skyPos(sh, t), d = Math.hypot(px - p.x, (py - p.y) * 1.25) / (sh.r * 1.9 + 6); if (d <= 1 && d < bd) { best = sh; bd = d; } }
+      if (sky.picker) for (const sh of sky.ships) { const b = sh.btn; if (sh.pick && b && px >= sh.hx + b.x && px <= sh.hx + b.x + b.w && py >= sh.hy + b.y && py <= sh.hy + b.y + b.h) { best = sh; sky.overBtn = true; } }
       return best;
     };
     el.addEventListener('pointermove', (e) => {
-      const sh = find(e); sky.hover = sh; el.style.cursor = sh ? 'pointer' : '';
+      const sh = find(e); sky.hover = sh; sky.hoverBtn = sky.overBtn ? sh : null; el.style.cursor = sh ? 'pointer' : '';
       if (sh) tip(e, `<b>${esc(sh.name)}</b><br>${si(sh.hash, 1)}H/s · ${(sh.share * 100).toFixed(1)}% of the chain<br>${sh.blocks.toLocaleString('en')} blocks in ${windowSpoken(sh.win)}${sky.picker && sh.pick ? '<br><i>click to open its page</i>' : ''}`); else tip(e, null);
       if (sky.still) skyDraw(performance.now());
     });
     el.addEventListener('click', (e) => { if (!sky.picker) return; const sh = find(e); if (sh && sh.pick) { tip(e, null); poolFrom = 'pools'; showPool(sh.name); } });
-    el.addEventListener('pointerleave', (e) => { sky.hover = null; tip(e, null); if (sky.still) skyDraw(performance.now()); });
+    el.addEventListener('pointerleave', (e) => { sky.hover = null; sky.hoverBtn = null; tip(e, null); if (sky.still) skyDraw(performance.now()); });
   }
   // ---------- miners without a pool ----------
   // From your own explorer (/api/v1/mining/solo/<period>): the blocks of solo services plus the blocks that name no known pool, times the
