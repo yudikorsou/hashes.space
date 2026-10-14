@@ -113,12 +113,9 @@
   .poolhead .pool-eyebrow { margin: 0; color: var(--muted); font: 500 12px/1.2 var(--sans); text-transform: uppercase; letter-spacing: .09em; }
   .poolhead h1 { margin: 0; font: 600 28px/1.2 var(--display); letter-spacing: .01em; color: var(--text); overflow-wrap: anywhere; }
   .poolhead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
-  .pool-miners { width: 100%; display: grid; gap: 10px; justify-items: center; }
-  .pool-miners h2 { margin: 0; font: 600 15px/1.2 var(--display); color: var(--text); }
-  .pool-miners ul { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin: 0; padding: 0; list-style: none; }
-  .pool-miners li { display: inline-flex; align-items: baseline; gap: 8px; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; background: rgba(10, 12, 24, .45); font: 400 12.5px/1 var(--sans); color: var(--muted); }
-  .pool-miners li b { color: var(--text); font-weight: 500; }
-  .pool-miners li span { font: 500 12px/1 var(--mono); color: var(--link); font-variant-numeric: tabular-nums; }
+  .pool-find { width: min(420px, 100%); justify-self: center; }
+  .pool-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
+  .pool-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   /* every block of the pool is a miniature of the animated mined block in the strip: the same cube, height plate, label and DATUM badge */
   .pool-blocks { --s: 108px; --k: .864; --d: 14px; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px 8px; }
   .pool-blocks .block-wrap { box-sizing: border-box; width: calc(var(--s) + var(--d) + 26px); padding: 16px 13px 6px; content-visibility: auto; contain-intrinsic-size: auto calc(var(--s) + var(--d) + 26px) 260px; }   /* hundreds of blocks: only the ones on screen are drawn */
@@ -213,7 +210,7 @@
     <h1 id="poolpage-title">Mining pool</h1>
     <p id="pool-context"></p>
   </header>
-  <div class="pool-miners" id="pool-miners" hidden></div>
+  <label class="pool-find" id="pool-find"><span class="sr-only">Search the blocks of this mining pool</span><input id="pool-filter" type="search" placeholder="Search a block by height or hash" autocomplete="off" spellcheck="false"></label>
   <div class="pool-blocks" id="pool-blocks"></div>
   <p class="msource" id="pool-source"></p>
   <a class="more" id="pool-back" href="#dashboard">« Back to the mempool</a>
@@ -1170,6 +1167,7 @@
     $('pools-list').innerHTML = all.filter((x) => x.name !== 'Single payout (pool or solo miner)' && (!sky.q || x.name.toLowerCase().includes(sky.q))).map((x) => `<li><button type="button" data-pool="${esc(x.name)}">${esc(x.name)}</button></li>`).join('');
     $('pools-source').textContent = m.live ? `Pools seen by ${fromName(netId, site)}, updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : `Pools from a snapshot of ${site}/mining (${site} is not reachable from this page).`;
   }
+  $('pool-filter').addEventListener('input', (e) => { poolQ = e.target.value; renderPoolBlocks(poolView); });
   $('pools-filter').addEventListener('input', (e) => { poolsFilter = e.target.value; sky.q = poolsFilter.trim().toLowerCase(); sky.page = 0; sky.refS = null; if (typeof renderMiningStats === 'function') renderMiningStats(); });
   $('pools-list').addEventListener('click', (e) => { const b = e.target.closest('[data-pool]'); if (b) { poolFrom = 'pools'; showPool(b.dataset.pool); } });
   // ---------- a mining pool's own page: every block it mined ----------
@@ -1185,6 +1183,7 @@
     const h = Math.round(sec / 3600); if (h < 48) return `${h} hour${h === 1 ? '' : 's'} ago`;
     return `${fmt(Math.round(sec / 86400))} days ago`;
   };
+  var poolQ = '', poolQFor = '';
   const poolStat = (name) => (mining ? mining.pools.find((p) => p.name.toLowerCase() === name.toLowerCase()) : null);
   function renderPoolPage() {
     const page = $('pool-page'); if (!page) return;
@@ -1199,15 +1198,14 @@
       ? `${fmt(stat.blocks)} of the ${fmt(m.blockCount)} blocks mined in ${win} (${(100 * stat.blocks / m.blockCount).toFixed(1)}%)`
         + (m.hash ? `, about ${si((stat.blocks / m.blockCount) * m.hash, 1)}H/s of the ${si(m.hash, 1)}H/s on the chain.` : '.')
       : `The blocks this page has seen ${name} mine on ${network().chain}.`;
-    const mins = stat?.miners ?? [], mel = $('pool-miners');
-    mel.hidden = !mins.length;
-    if (mins.length) mel.innerHTML = `<h2>Miners named in its blocks</h2><ul>${mins.slice(0, 24).map(([n, b]) => `<li><b>${esc(n)}</b><span>${fmt(b)}</span></li>`).join('')}</ul>`;
+    if (poolQFor !== netId + '|' + name.toLowerCase()) { poolQFor = netId + '|' + name.toLowerCase(); poolQ = ''; $('pool-filter').value = ''; }   // a pool opened anew starts without a search
     renderPoolBlocks(name);
   }
   const poolBlocksOnPage = (name) => (chain().blocks ?? []).filter((b) => (b.pool ?? '').trim().toLowerCase() === name.toLowerCase());
   function renderPoolBlocks(name) {
     const key = netId + '|' + name.toLowerCase(), got = poolBlocks[key], stat = poolStat(name);
-    const list = got?.length || poolWindow[key] ? (got ?? []) : poolBlocksOnPage(name), t = Date.now() / 1000;
+    const all = got?.length || poolWindow[key] ? (got ?? []) : poolBlocksOnPage(name), t = Date.now() / 1000;
+    const q = poolQ.trim().toLowerCase().replace(/[,\s]/g, ''), list = q ? all.filter((b) => String(b.height).includes(q) || (b.hash ?? b.id ?? '').toLowerCase().includes(q)) : all;
     // a simulated block has a made-up hash, so it links nowhere, just as in the strip
     const link = (chain().live || got?.length) && EXPLORER[netId] ? EXPLORER[netId] : null, onPage = chain().blocks ?? [];
     $('pool-blocks').innerHTML = list.length
@@ -1219,9 +1217,10 @@
         return `<${tag} class="block-wrap${link && tag === 'a' ? ' linkable' : ''}${d ? ' ' + ({ verified: 'datum-verified', compatible: 'datum', centralised: 'datum-central' })[d] : ''}"${tag === 'a' ? ` href="${link}${b.hash ?? b.height}" target="_blank" rel="noopener"` : ''}${d ? ` title="${(netId === 'monero' && XMR_TITLE[d]) || (netId === 'dogecoin' && DOGE_TITLE[d]) || DATUM_TITLE[d]}"` : ''}>
           <div class="above height"><b>${fmt(b.height)}</b></div>${cb}<div class="below">${esc(name)}${d ? DATUM_BADGE[d] : ''}</div></${tag}>`;
       }).join('')
+      : q && all.length ? `<p class="pool-empty">No block of ${esc(name)} matches "${esc(poolQ.trim())}". Search by block height or by block hash.</p>`
       : (poolWindow[key] && !poolBlocksBusy[key]) ? `<p class="pool-empty">${esc(name)} has not mined a block since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}) yet. The page keeps watching: its next block appears here.</p>`
       : `<p class="pool-empty">No block of ${esc(name)} among the ones this page has seen yet. The page keeps watching: the next one it finds appears here.</p>`;
-    $('pool-source').textContent = poolWindow[key] && !got?.length ? ''
+    $('pool-source').textContent = q && all.length ? `${fmt(list.length)} of the ${fmt(all.length)} blocks of ${name} match.` : poolWindow[key] && !got?.length ? ''
       : got?.length
       ? (poolWindow[key] ? `All ${fmt(list.length)} blocks of ${name} since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}), live from ${MINING_SITES[netId]}${poolBlocksBusy[key] ? ' (reading more…)' : ''}. When the next adjustment starts, this page starts over with the new blocks.` : `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`)
       : list.length ? `The blocks of ${name} among the ones on this page.` : '';
