@@ -898,7 +898,11 @@
   @keyframes poolLoad { 0% { transform: translateX(-100%); } 100% { transform: translateX(270%); } }
   @media (prefers-reduced-motion: reduce) { .pool-load.indet .bar i { animation: none; width: 100%; opacity: .5; } }
   #chain-area.pool-open .netbar, #chain-area.pools-open .netbar { display: none; }
-  .pool-find { width: min(420px, 100%); justify-self: center; }
+  .pool-tools { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; width: 100%; }
+  .pool-backbtn { flex: 0 0 auto; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); text-decoration: none; white-space: nowrap; font: 500 14px/1.2 var(--sans); transition: border-color .15s, color .15s; }
+  .pool-backbtn:hover { border-color: var(--link); color: var(--link); }
+  .pool-backbtn:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .pool-find { flex: 1 1 240px; max-width: 420px; }
   .pool-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
   .pool-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   /* every block of the pool is a miniature of the animated mined block in the strip: the same cube, height plate, label and DATUM badge */
@@ -1425,11 +1429,10 @@
     <h1 id="poolpage-title">Mining pool</h1>
     <p id="pool-context"></p>
   </header>
-  <label class="pool-find" id="pool-find"><span class="sr-only">Search the blocks of this mining pool</span><input id="pool-filter" type="search" placeholder="Search a block by height or hash" autocomplete="off" spellcheck="false"></label>
+  <div class="pool-tools"><a class="pool-backbtn" id="pool-back" href="#dashboard">« Back to the mempool</a><label class="pool-find" id="pool-find"><span class="sr-only">Search the blocks of this mining pool</span><input id="pool-filter" type="search" placeholder="Search a block by height or hash" autocomplete="off" spellcheck="false"></label></div>
   <div class="pool-load" id="pool-load" role="status" aria-live="polite" hidden><div class="bar"><i></i></div><span id="pool-load-t"></span></div>
   <div class="pool-blocks" id="pool-blocks"></div>
   <p class="msource" id="pool-source"></p>
-  <a class="more" id="pool-back" href="#dashboard">« Back to the mempool</a>
 </section>
 
 <!-- Calculate hashrate: its own page, reached from the tab next to Find Mempool -->
