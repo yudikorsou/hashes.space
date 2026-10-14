@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.79"
+version: "1.9.80"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The two lines above the Candidate block use the same lettering as the old "Hashing now on" label (bold capitals with spacing); the unit stays H/s.
   The line above the Candidate block now reads "<hashrate> hashing <block height>" with "miners all over the world" under it, in place of "Hashing now on <block height>"; the line under the block is gone.
   Fix: the tags under the other blocks (Fee auction, Create new block, Block assembly) are back to their normal size; the hashrate line of the Candidate block no longer changes the height of the row.
   The Candidate block now shows that miners all over the world are hashing it: a ring of miners glows round the block, hashes fly into it, a ring of light closes in, and a line under it gives the hashrate that is on the block right now.
