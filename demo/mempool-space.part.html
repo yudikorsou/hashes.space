@@ -50,7 +50,7 @@
   const wanted = () => saved || DEFAULT;
 
   function size() {
-    const dpr = Math.min(2, devicePixelRatio || 1); w = innerWidth; h = innerHeight;
+    const dpr = Math.min(2, devicePixelRatio || 1); w = Math.max(1, innerWidth); h = Math.max(1, innerHeight);
     cv.width = w * dpr; cv.height = h * dpr; ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
   function loop(t) {

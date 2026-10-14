@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  Fixed a console error ("drawImage ... a width or height of 0") from the Space theme background when the browser window was shrunk to nothing, for example with the developer tools docked over the page.
   The moon of the solominers: the three lines of the list (Solo CK Pool, No pool tag or known payout address, Mining pools) are now craters on the moon, each in the colour of its line; hover or tap a crater for the hashrate and share of that source. On Bitcoin, when a block is found by Solo CK Pool or with no pool tag or known payout address (read live from your own node), a new crater forms and lights up on the moon, with a ring that spreads out and a line under the moon saying which block it was.
   The Solominers ring is now a moon: a detailed, slowly turning moon whose craters are open-pit mining sites (stepped pits with a haul road and amber rig lights, glowing most on the night side), lit by the sun of the Mining pools section so it has a bright side and a night side. The moon stands on its own, without a ring: the share of blocks found without a pool is the percentage under it, and the split is in the list below.
   The sun from the Bitcoin mining pools now also shines on the Bitcoin BLAKE2b chain: the same animated sun hangs behind the mining pools in the Mining pools section and on the "Pick a mining pool" page of More insights, and lights the edge of each pool's black hole.
