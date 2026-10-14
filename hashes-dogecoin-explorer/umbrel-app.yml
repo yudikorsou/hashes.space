@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-dogecoin-explorer
 category: crypto
 name: Dogecoin Explorer
-version: "1.6.0"
+version: "1.7.0"
 tagline: A Dogecoin block explorer on your own Dogecoin node
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/dogecoin.png
 description: >-
@@ -33,6 +33,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  Mining statistics now follow Dogecoin's DigiShield: difficulty is retargeted at every block, so there is no difficulty period to count. The new period "blocks" (/api/v1/mining/{hashrate,pools,pool-hashrate,solo}/blocks) reads the last 1,440 blocks, takes each block's hashrate from its own difficulty (difficulty x 2^32 over the 60 s target), and gives every mining pool and the solo miners their share of those blocks times the median per-block hashrate.
   Livestreams for verified organisations: an entry in VERIFIED_ADDRESSES can carry "streams" (a title and a https link each), for example a vegan animal food maker showing its food being packed. The organisation then gets a LIVE badge and a Watch live button on /verified, and a Live section with a player on its address page. YouTube (video or channel), Vimeo, Twitch and direct .m3u8 / .mp4 / .webm links play inside the page; any other https link opens on its own site. A stream only loads when the visitor presses play, so nothing is contacted before that.
   The animated Doge spaceship (the Shiba Inu pilot from the Find Mempool page) now also flies in the background of the Verified donation addresses page, behind the cards. It stands still when your device asks for less motion.
   Every address is now clickable (in the transaction flows and the transaction page) and opens a wallet page of its own at /address/<address>: the balance in DOGE read from your own node (the unspent coins it holds for that address, with the transaction, block and amount of each) behind a loading bar, a Copy button, and the organisation details when the address is verified. The first lookup of an address scans your node's unspent coins and can take up to a minute; it needs a Dogecoin Core that has scantxoutset.

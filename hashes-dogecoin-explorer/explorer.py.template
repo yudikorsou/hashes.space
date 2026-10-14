@@ -12,7 +12,7 @@ transactions and the mempool. Serves:
   /api/v1/fees/mempool-blocks   the mempool cut into blocks of 1 MB, best fee first
   /api/blocks/tip/height
   /fee-sorting, /coinbase-merkle, /block-assembly, /block-candidate   the four blocks of the Find Mempool page, one page each (and as .json): the block your node would build
-  /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from your node (period: 24h, 14d, 1m, 6m, 1y)
+  /api/v1/mining/hashrate/<period>  global hashrate and difficulty, from your node (period: blocks, 24h, 14d, 1m, 6m, 1y; "blocks" = the last 1,440 blocks, read with DigiShield's per-block difficulty)
   /api/v1/mining/pools/<period>     blocks per mining pool over the period (a sample of the blocks for the long ones)
   /api/v1/mining/pool-hashrate/<period>  the hashrate of the mining pools together: the network's hashrate times the share of blocks that pools mined
   /api/v1/mining/solo/<period>      the hashrate of the miners that use no pool: blocks whose coinbase names no known pool, times the network's hashrate (an upper bound)
@@ -605,6 +605,77 @@ def hashrate_year(tip):
     return {"hashrates": points, "difficulty": diffs, "currentHashrate": rpc("getnetworkhashps", WEEK), "currentDifficulty": rpc("getdifficulty")}
 
 
+# ---------- DigiShield: the hashrate of every block ----------
+# Dogecoin retargets its difficulty at EVERY block (DigiShield, aiming at a minute per block), so there is no difficulty period to count blocks in.
+# A block's difficulty says how many hashes it took: difficulty * 2^32, over the 60 s the retarget aims at: that is the hashrate of the block.
+# The window is the last DIGI_BLOCKS blocks. The median of their hashrates is the network's per-block hashrate; a source's hashrate is its share
+# of the window's blocks times that median (one lucky hour does not move it). The chart is the same, in slices of DIGI_SLICE blocks.
+DIGI_BLOCKS, DIGI_SLICE, DIGI_TARGET = 1440, 30, 60
+_diff_by_height = {}
+
+
+def _median(xs):
+    xs = sorted(xs)
+    n = len(xs)
+    return 0 if not n else xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def digishield(tip):
+    first = max(1, tip - DIGI_BLOCKS + 1)
+    pools_range(tip, "24h")                       # makes sure every block of the window has its pool tag
+    todo = [h for h in range(first, tip + 1) if h not in _diff_by_height]
+    for i in range(0, len(todo), 250):
+        chunk = todo[i:i + 250]
+        pairs = [(h, bh) for h, bh in zip(chunk, rpc_batch([("getblockhash", [h]) for h in chunk])) if bh]
+        for (h, _), hd in zip(pairs, rpc_batch([("getblockheader", [bh]) for _, bh in pairs])):
+            if hd:
+                _diff_by_height[h] = (hd["difficulty"], hd["time"])
+    for h in [h for h in _diff_by_height if h < first]:
+        del _diff_by_height[h]
+    heights = [h for h in range(first, tip + 1) if h in _diff_by_height and h in _pool_by_height]
+    if len(heights) < DIGI_SLICE:
+        raise RuntimeError("no data yet")
+    known = {n for n, _ in POOLS}
+
+    def kind(name):                               # a known pool, a solo service, or a tag no known pool owns
+        return "pool" if name in known else "service" if re.search("solo", name, re.I) else "unattributed"
+    rate = {h: _diff_by_height[h][0] * 2 ** 32 / DIGI_TARGET for h in heights}      # the hashrate of every block
+    med = _median(rate.values())
+    blocks = len(heights)
+    names = {}
+    for h in heights:
+        names[_pool_by_height[h]] = names.get(_pool_by_height[h], 0) + 1
+    pool_list, sources, other, pool_blocks = [], [], 0, 0
+    for i, (n, c) in enumerate(sorted(names.items(), key=lambda kv: -kv[1])):
+        k = kind(n)
+        pool_list.append({"poolId": i + 1, "name": n, "slug": re.sub(r"[^a-z0-9]", "", n.lower()), "rank": i + 1, "blockCount": c, "emptyBlocks": 0, "hashrate": med * c / blocks})
+        if k == "service":
+            sources.append({"name": n, "kind": "service", "blockCount": c, "share": c / blocks, "hashrate": med * c / blocks})
+        elif k == "unattributed":
+            other += c
+        else:
+            pool_blocks += c
+    if other:
+        sources.append({"name": "No known pool in the coinbase", "kind": "unattributed", "blockCount": other, "share": other / blocks, "hashrate": med * other / blocks})
+    solo_blocks = sum(x["blockCount"] for x in sources)
+    # the chart: slices of blocks, each with the mean hashrate of its blocks and the share the pools mined
+    slices = [heights[i:i + DIGI_SLICE] for i in range(0, len(heights), DIGI_SLICE)]
+    slices = [sl for sl in slices if len(sl) >= DIGI_SLICE // 2]
+    stamps = [_diff_by_height[sl[-1]][1] for sl in slices]
+    net = [sum(rate[h] for h in sl) / len(sl) for sl in slices]
+    shares = [sum(1 for h in sl if kind(_pool_by_height[h]) == "pool") / len(sl) for sl in slices]
+    base = {"window": "blocks", "perBlock": True, "retarget": "DigiShield", "blockCount": blocks, "sliceBlocks": DIGI_SLICE, "slices": len(slices), "sinceBlock": heights[0], "tipBlock": heights[-1]}
+    hashrate = {"hashrates": [{"timestamp": t, "avgHashrate": r} for t, r in zip(stamps, net)],
+                "difficulty": [{"time": t, "height": sl[-1], "difficulty": _diff_by_height[sl[-1]][0],
+                                "adjustment": (_diff_by_height[sl[-1]][0] / _diff_by_height[slices[j - 1][-1]][0]) if j else 1} for j, (t, sl) in enumerate(zip(stamps, slices))],
+                "currentHashrate": med, "currentDifficulty": rpc("getdifficulty"), **base}
+    pools = {"pools": pool_list, "sampled": False, "lastEstimatedHashrate": med, **base}
+    pool_hr = {"currentHashrate": med * pool_blocks / blocks, "currentShare": pool_blocks / blocks, "networkHashrate": med, "complete": True, "sampled": False,
+               "hashrates": [{"timestamp": t, "avgHashrate": r * s, "share": s, "networkHashrate": r} for t, r, s in zip(stamps, net, shares)], **base}
+    solo = {"soloBlocks": solo_blocks, "share": solo_blocks / blocks, "currentHashrate": med * solo_blocks / blocks, "networkHashrate": med, "sampled": False, "sources": sources, **base}
+    return hashrate, pools, pool_hr, solo
+
+
 def mining_stats():
     """recomputed every 10 minutes in the background (the first run reads a week of block headers)"""
     while True:
@@ -613,6 +684,7 @@ def mining_stats():
             _mining["pools"]["1w"] = pools_last_week(tip)
             _mining["hashrate"]["1y"] = hashrate_year(tip)
             _mining["at"] = time.time()
+            (_mining["hashrate"]["blocks"], _mining["pools"]["blocks"], _mining["pool-hashrate"]["blocks"], _mining["solo"]["blocks"]) = digishield(tip)
             for rng in RANGES:          # the other periods follow, one by one (the long ones read more blocks)
                 _mining["hashrate"][rng] = hashrate_range(tip, rng)
                 _mining["pools"][rng] = pools_range(tip, rng)

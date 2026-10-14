@@ -325,10 +325,10 @@
   // a week on the explorers running on your own Umbrel, which compute the split themselves
   var POOLS_WINDOW = { sha256: '1m', blake2b: '1m', dogecoin: '1w', monero: '1w' };
   const windowLabel = (w) => w;
-  const WINDOW_NAME = { epoch: 'this difficulty period', '24h': '24 hours', '1w': '1 week', '14d': '14 days', '1m': '1 month', '3m': '3 months', '6m': '6 months', '1y': '1 year' };
-  const WINDOW_WORDS = { epoch: "the current difficulty period's blocks", '24h': "the last day's blocks", '1w': "last week's blocks", '14d': "the last 14 days' blocks", '1m': "the last month's blocks", '3m': "the last 3 months' blocks", '6m': "the last 6 months' blocks", '1y': "the last year's blocks" };
+  const WINDOW_NAME = { blocks: 'the last 1,440 blocks', epoch: 'this difficulty period', '24h': '24 hours', '1w': '1 week', '14d': '14 days', '1m': '1 month', '3m': '3 months', '6m': '6 months', '1y': '1 year' };
+  const WINDOW_WORDS = { blocks: "the last 1,440 blocks", epoch: "the current difficulty period's blocks", '24h': "the last day's blocks", '1w': "last week's blocks", '14d': "the last 14 days' blocks", '1m': "the last month's blocks", '3m': "the last 3 months' blocks", '6m': "the last 6 months' blocks", '1y': "the last year's blocks" };
   const windowBlocks = (w) => WINDOW_WORDS[w] ?? "last week's blocks";
-  const windowSpoken = (w) => ({ epoch: 'the current difficulty period', '24h': 'the last 24 hours', '1w': 'the last week', '14d': 'the last 14 days', '1m': 'the last month', '3m': 'the last 3 months', '6m': 'the last 6 months', '1y': 'the last year' }[w] ?? 'the last week');
+  const windowSpoken = (w) => ({ blocks: 'the last 1,440 blocks', epoch: 'the current difficulty period', '24h': 'the last 24 hours', '1w': 'the last week', '14d': 'the last 14 days', '1m': 'the last month', '3m': 'the last 3 months', '6m': 'the last 6 months', '1y': 'the last year' }[w] ?? 'the last week');
   var POOLS_NOTE = { monero: 'A Monero block never names its pool: the reward goes to a one-time address. P2Pool pays every one of its miners in the block itself, so its blocks carry many payouts; a custodial pool or a solo miner leaves one.' };
   // no built-in snapshots: the sections show what your own nodes report, and stay hidden until they answer
   var MINING_SNAPSHOTS = {};
@@ -350,7 +350,7 @@
       const viaNodeAnswer = MINING_NODE[net] ? await from(MINING_NODE[net]).catch(() => null) : null, viaNode = !!viaNodeAnswer;
       const [p, h] = viaNodeAnswer ?? await (site === MINING_NODE[net] ? Promise.reject(new Error('node does not answer')) : from(site)).catch((e) => { if (!MINING_FALLBACK[net]) throw e; return from(MINING_FALLBACK[net]); });
       miningBy[net] = { node: viaNode, live: true, at: Date.now() / 1000, blockCount: p.blockCount, window: viaNode ? (p.window ?? win) : win,
-        pools: p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
+        pools: p.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, hashrate: x.hashrate, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })),
         hashrates: h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), difficulty: (h.difficulty ?? []).map((x) => [x.time, x.difficulty]),
         hash: h.currentHashrate, diff: h.currentDifficulty };
     } catch {
@@ -366,16 +366,17 @@
   // mempool sites serve 24h, 1m, 6m and 1y (14 days is cut from the month's hashrate; its pool shares are the month's),
   // the explorers on your Umbrel serve every period themselves (older versions only the week and the year: the page then cuts what it has)
   // Bitcoin and Bitcoin BLAKE2b read the pools, the solo miners and the pools' hashrate over the current difficulty period: the blocks since the last adjustment, until the next one
-  var POOLS_RANGE = { sha256: 'epoch', blake2b: 'epoch', dogecoin: '14d', monero: '14d' };
+  var POOLS_RANGE = { sha256: 'epoch', blake2b: 'epoch', dogecoin: 'blocks', monero: '14d' };
   var RANGE_INFO = {
+    blocks: { sec: 86400, label: 'the last 1,440 blocks', ago: '1,440 blocks ago', avg: ['3-hour', 3 * 3600] },
     '24h': { sec: 86400, label: '24 hours', ago: '24 hours ago', avg: ['3-hour', 3 * 3600] },
     epoch: { sec: 14 * 86400, label: 'the difficulty period', ago: 'the last difficulty adjustment', avg: ['2-day', 2 * 86400] },
     '14d': { sec: 14 * 86400, label: '14 days', ago: '14 days ago', avg: ['2-day', 2 * 86400] },
     '1m': { sec: 30 * 86400, label: '1 month', ago: 'a month ago', avg: ['4-day', 4 * 86400] },
     '6m': { sec: 183 * 86400, label: '6 months', ago: '6 months ago', avg: ['7-day', 7 * 86400] },
     '1y': { sec: 365 * 86400, label: '1 year', ago: 'a year ago', avg: ['7-day', 7 * 86400] } };
-  var MEMPOOL_HASH = { epoch: '1m', '24h': '24h', '14d': '1m', '1m': '1m', '6m': '6m', '1y': '1y' };
-  var MEMPOOL_POOLS = { epoch: '1m', '24h': '24h', '14d': '1m', '1m': '1m', '6m': '6m', '1y': '1y' };
+  var MEMPOOL_HASH = { blocks: '24h', epoch: '1m', '24h': '24h', '14d': '1m', '1m': '1m', '6m': '6m', '1y': '1y' };
+  var MEMPOOL_POOLS = { blocks: '24h', epoch: '1m', '24h': '24h', '14d': '1m', '1m': '1m', '6m': '6m', '1y': '1y' };
   var range = '1m';
   var rangeBy = {}, rangeBusy = {};
   // cut a series to the last stretch of time it covers; a step series (difficulty) keeps the value that held at the start
@@ -423,7 +424,7 @@
     const hs = h && Array.isArray(h.hashrates) && h.hashrates.length ? trimSeries(h.hashrates.map((x) => [x.timestamp, x.avgHashrate]), sec) : trimSeries(base.hashrates, sec);
     const ds = h && Array.isArray(h.hashrates) && h.hashrates.length ? trimSeries((h.difficulty ?? []).map((x) => [x.time, x.difficulty]), sec, true) : trimSeries(base.difficulty, sec, true);
     const pp = fort ?? p, summed = !!fort;
-    const pools = pp && Array.isArray(pp.pools) && pp.pools.length ? pp.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })) : null;
+    const pools = pp && Array.isArray(pp.pools) && pp.pools.length ? pp.pools.map((x) => ({ name: x.name, slug: x.slug, blocks: x.blockCount, hashrate: x.hashrate, miners: (x.miners || []).map((m) => [m.name, m.blockCount]) })) : null;
     rangeBy[key] = { live: true, at: Date.now() / 1000, partial: !pools || !h, retry: Date.now() + 20000, derived: !h,
       window: pools ? (nodeP ? (pp.window ?? rng) : rng === 'epoch' ? '1m' : own || summed ? rng : MEMPOOL_POOLS[rng]) : base.window,
       epochStart: nodeP ? pp.epochStart : undefined, nextAdjustment: nodeP ? pp.nextAdjustment : undefined, epochBlocks: nodeP ? pp.epochBlocks : undefined, sampled: !!(pools && pp.sampled), summed,
@@ -452,7 +453,7 @@
     try {
       let r;
       try { r = await getJson(PH_HOST[net], '/pool-hashrate/' + rng); }
-      catch (e) { if (rng !== 'epoch') throw e; r = await getJson(PH_HOST[net], '/pool-hashrate/1m'); }   // an explorer that does not know the difficulty period yet: its month
+      catch (e) { if (rng !== 'epoch' && rng !== 'blocks') throw e; r = await getJson(PH_HOST[net], '/pool-hashrate/' + (rng === 'blocks' ? '14d' : '1m')); }   // an explorer that does not know the difficulty period yet: its month
       if (!r || !Array.isArray(r.hashrates)) throw new Error('no data');
       phBy[key] = { ok: true, at: Date.now(), hashrates: r.hashrates.map((x) => [x.timestamp, x.avgHashrate]), share: r.hashrates.map((x) => [x.timestamp, x.share]),
         hash: r.currentHashrate, shareNow: r.currentShare, network: r.networkHashrate, since: r.since, complete: r.complete !== false, sampled: !!r.sampled, pool: r.pool || '' };
@@ -460,7 +461,7 @@
     finally { phBusy[key] = false; }
     if (net === netId && typeof renderMiningStats === 'function') renderMiningStats();
   }
-  const phRange = (n) => (POOLS_RANGE[n] === 'epoch' ? 'epoch' : range);   // the pools' hashrate follows the difficulty period on Bitcoin and BLAKE2b
+  const phRange = (n) => (POOLS_RANGE[n] === 'epoch' || POOLS_RANGE[n] === 'blocks' ? POOLS_RANGE[n] : range);   // the pools' hashrate follows the difficulty period on Bitcoin and BLAKE2b
   setInterval(() => { const g = phBy[netId + ':' + phRange(netId)]; if (g && !g.ok && Date.now() > g.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
   // what the headline figure and the line under it say
   function poolHashSub(ph, info, period, net) {
@@ -527,7 +528,8 @@
     $('ms-pie').setAttribute('aria-label', `Hashrate per mining pool, ${windowSpoken(rp.window)}`);
     const note = $('ms-pools-note'); note.hidden = false;
     note.textContent = (POOLS_NOTE[netId] ? POOLS_NOTE[netId] + ' ' : '')
-      + `Each pool's hashrate is an estimate: its share of the blocks found in ${windowSpoken(rp.window)} times the chain's average hashrate.`
+      + (rp.window === 'blocks' ? `Dogecoin retargets its difficulty at every block (DigiShield), so each block carries its own hashrate. The hashrate of each of the last ${fmt(rp.blockCount)} blocks comes from its own difficulty (difficulty × 2³² hashes over the 60 s it aims at). A pool's hashrate is its share of those blocks times their median hashrate.`
+        : `Each pool's hashrate is an estimate: its share of the blocks found in ${windowSpoken(rp.window)} times the chain's average hashrate.`)
       + (rp.window !== pr ? ` ${windowSpoken(rp.window).replace(/^the /, 'The ')} is the nearest period this source offers for ${pinfo.label}.` : '')
       + (rp.window === 'epoch' && rp.epochStart != null ? ` The period runs from the last difficulty adjustment (block ${fmt(rp.epochStart)}) to the next one (block ${fmt(rp.nextAdjustment)}): ${fmt(rp.blockCount)} blocks so far.` : '')
       + (rp.sampled ? ' Over a long period the shares come from an evenly spread sample of the blocks.' : '')
@@ -541,7 +543,7 @@
     { // the fleet flies only on what your own node reported
       const own = m.live && (m.node || netId === 'dogecoin' || netId === 'monero');
       skyStart(); if (sky.net !== netId) { sky.net = netId; sky.page = 0; sky.refS = null; }
-      skySet(own ? rp.pools.map((x) => ({ name: x.name === 'Single payout (pool or solo miner)' ? 'Other pools & solo' : x.name, blocks: x.blocks })) : null, own ? (rp.blockCount || rp.pools.reduce((a, x) => a + x.blocks, 0)) : 0, own ? m.hash : 0, rp.window,
+      skySet(own ? rp.pools.map((x) => ({ name: x.name === 'Single payout (pool or solo miner)' ? 'Other pools & solo' : x.name, blocks: x.blocks, hash: x.hashrate })) : null, own ? (rp.blockCount || rp.pools.reduce((a, x) => a + x.blocks, 0)) : 0, own ? m.hash : 0, rp.window,
         m.live ? 'Waiting for your node: the ships are built from its pool statistics.' : 'Your node does not answer: the ships are built from its pool statistics.');
       sky.cap = () => { const netId2 = sky.net, own = !!sky.args[0], a = sky.page * SKY_PAGE + 1, b = a + sky.ships.length - 1, kind = netId2 === 'monero' ? 'payout kinds' : 'mining pools';
         $('sky-cap').textContent = own && sky.ships.length ? `${sky.total > SKY_PAGE ? `${a}–${b} of ${sky.total}` : sky.total} ${kind} · biggest first · size follows hashrate · ${windowSpoken(sky.args[3])}${sky.picker ? ' · click a hole to open the pool' : ''}` : '';
@@ -829,7 +831,7 @@
     sky.ships = items.map((x, i) => {
       const share = total ? x.blocks / total : 0, prev = old[x.name];
       const bits = prev ? prev.bits : Array.from({ length: 70 }, (_, k) => ({ f: 1.35 + rnd(i * 70 + k, 1) * 1.5, th: rnd(i * 70 + k, 2) * 6.283, w: 0.5 + rnd(i * 70 + k, 3) * 0.9, s: 0.7 + rnd(i * 70 + k, 4) * 1.2, h: rnd(i * 70 + k, 5) }));
-      return { name: x.name, share, vis: total ? (x.blocks / topHere) * (top0 / total) : 0, blocks: x.blocks, hash: share * (hashNow || 0), win, pick: x.name !== 'Other pools & solo', color: skyColor(x.name), bits, phase: i * 1.9, x: prev ? prev.x : null, y: prev ? prev.y : null, r: 10 };
+      return { name: x.name, share, vis: total ? (x.blocks / topHere) * (top0 / total) : 0, blocks: x.blocks, hash: x.hash > 0 ? x.hash : share * (hashNow || 0), win, pick: x.name !== 'Other pools & solo', color: skyColor(x.name), bits, phase: i * 1.9, x: prev ? prev.x : null, y: prev ? prev.y : null, r: 10 };
     });
   }
   function skySize() {
@@ -1104,7 +1106,7 @@
   // ---------- miners without a pool ----------
   // From your own explorer (/api/v1/mining/solo/<period>): the blocks of solo services plus the blocks that name no known pool, times the
   // chain's hashrate. Bitcoin and BLAKE2b read the pool of every block, Dogecoin a sample; Monero names no pool, so it keeps the pools pie.
-  var SOLO_PERIOD = { sha256: 'epoch', blake2b: 'epoch', dogecoin: '14d' };
+  var SOLO_PERIOD = { sha256: 'epoch', blake2b: 'epoch', dogecoin: 'blocks' };   // Dogecoin: the last 1,440 blocks, each read at its own DigiShield difficulty
   var soloBy = {}, soloBusy = {};
   async function loadSoloFor(net) {
     const cur = soloBy[net];
@@ -1114,7 +1116,7 @@
     try {
       let r;
       try { r = await getJson(PH_HOST[net], '/solo/' + SOLO_PERIOD[net]); }
-      catch (e) { if (SOLO_PERIOD[net] !== 'epoch') throw e; r = await getJson(PH_HOST[net], '/solo/1m'); }   // an explorer that does not know the difficulty period yet: its month
+      catch (e) { if (SOLO_PERIOD[net] !== 'epoch' && SOLO_PERIOD[net] !== 'blocks') throw e; r = await getJson(PH_HOST[net], '/solo/' + (SOLO_PERIOD[net] === 'blocks' ? '14d' : '1m')); }   // an explorer that does not know the difficulty period yet: its month
       if (!r || !Array.isArray(r.sources)) throw new Error('no data');
       soloBy[net] = { ok: true, at: Date.now(), ...r };
     } catch { soloBy[net] = { ok: false, at: Date.now(), retry: Date.now() + 20000 }; }
@@ -1127,7 +1129,7 @@
     loadSoloFor(netId);
     const d = soloBy[netId], ok = d && d.ok, per = ok ? (d.window || SOLO_PERIOD[netId]) : '';
     $('solo-hash').textContent = ok ? `Hashrate ${si(d.currentHashrate, 1)}H/s` : '–';
-    $('solo-sub').textContent = ok ? `Miners that use no pool add ${si(d.currentHashrate, 1)}H/s to the network's ${si(d.networkHashrate, 1)}H/s, going by the blocks of ${windowSpoken(per)}.`
+    $('solo-sub').textContent = ok ? `Miners that use no pool add ${si(d.currentHashrate, 1)}H/s to the network's ${si(d.networkHashrate, 1)}H/s, going by ${per === 'blocks' ? 'the median hashrate of the last 1,440 blocks, each read at its own DigiShield difficulty' : 'the blocks of ' + windowSpoken(per)}.`
       : d ? 'Your node did not answer yet: the solo-miner hashrate comes from the explorer on your Umbrel (update it if it is an older version).' : 'Asking your node for the hashrate of miners without a pool…';
     // the chart: a ring of the blocks found in the period, split into solo services, blocks with no known pool, and the mining pools
     const svg = $('solo-svg'); svg.replaceChildren();
@@ -1152,7 +1154,7 @@
     $('solo-cap').textContent = ok ? `${d.soloBlocks.toLocaleString('en')} of ${d.blockCount.toLocaleString('en')} blocks` + (d.window === 'epoch' && d.epochStart != null ? ` since the last difficulty adjustment (block ${fmt(d.epochStart)}) · the next one is at block ${fmt(d.nextAdjustment)}` : '') : '';
     $('solo-list').replaceChildren(...rows.map((x) => { const li = document.createElement('li');
       li.innerHTML = `<span class="gn"><i class="sw" style="background:${SOLO_COLORS[x.kind] ?? '#f7931a'};opacity:${x.kind === 'pools' ? 0.55 : 1}"></i>${esc(x.name)}</span><span class="gv">${si(x.hashrate, 1)}H/s <small>· ${(x.share * 100).toFixed(1)}%</small></span>`; return li; }));
-    $('solo-note').textContent = ok ? 'An estimate from the blocks found, so an upper bound: a small pool that is missing from the list of known pools counts as solo here, and a solo miner only shows up when a block is found.' + (d.sampled ? ' Over this period the blocks come from an evenly spread sample.' : '') : '';
+    $('solo-note').textContent = ok ? (d.perBlock ? `Dogecoin retargets its difficulty at every block (DigiShield), so each block carries its own hashrate. The hashrate of each of the last ${fmt(d.blockCount)} blocks comes from its own difficulty (difficulty × 2³² hashes over the 60 s it aims at); the figure is the no-pool share of those blocks times their median hashrate. ` : '') + 'An estimate from the blocks found, so an upper bound: a small pool that is missing from the list of known pools counts as solo here, and a solo miner only shows up when a block is found.' + (d.sampled ? ' Over this period the blocks come from an evenly spread sample.' : '') : '';
   }
   // ---------- the moon of the miners without a pool ----------
   // The solo share is now a moon (the shares are in the list under it). Its craters are open-pit mining sites (stepped pits with a haul road winding down and amber lights at the bottom),
