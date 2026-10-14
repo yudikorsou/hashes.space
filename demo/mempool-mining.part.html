@@ -182,17 +182,7 @@
   @media (max-width: 520px) { .solo-chart { min-height: 0; } }
   /* the candidate block is being hashed by miners all over the world: a ring of miners round it, hashes flying in */
   .block-wrap.mining { position: relative; }
-  #projected { padding-top: 16px; margin-top: -16px; }   /* room above the Candidate block for its two lines, without moving anything else */
-  .block-wrap.mining .above { visibility: hidden; }   /* its text is now the line of the miners, drawn by .hw-line */
   .hw-cv { position: absolute; pointer-events: none; z-index: 4; }
-  .hw-line { position: absolute; left: 50%; top: -13px; width: 0; overflow: visible; display: flex; flex-direction: column; align-items: center;   /* out of the flow, so the other blocks keep their height */
-    margin: 0; white-space: nowrap; text-align: center; color: var(--text); font-weight: 600; font-size: calc(12px * var(--k, 1)); letter-spacing: .06em; text-transform: uppercase; line-height: 1.25; font-variant-numeric: tabular-nums; }   /* the type "Hashing now on" had */
-  .hw-line small { display: block; font-weight: 600; font-size: calc(10px * var(--k, 1)); color: var(--muted, #9aa3bd); letter-spacing: .06em; }
-  .hw-line { z-index: 5; text-shadow: 0 0 6px #11131e, 0 0 3px #11131e; }
-  @media (max-width: 640px) { .hw-line { font-size: 10px; letter-spacing: .03em; } .hw-line small { font-size: 8.5px; letter-spacing: .03em; } }
-  .hw-line i { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #ffd36e; vertical-align: 1px; animation: hwpulse 1.6s ease-in-out infinite; }
-  @keyframes hwpulse { 50% { opacity: .25; transform: scale(.7); } }
-  @media (prefers-reduced-motion: reduce) { .hw-line i { animation: none; } }
 <!--HTML-->
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <header class="mhead m-hr-head">
@@ -1512,7 +1502,7 @@
   setInterval(loadMining, 5 * 60_000);
   // ---------- the candidate block, hashed by miners all over the world ----------
   // A ring of miners (dots) round the Candidate block; every one keeps sending hashes into it, and a ring of light closes in from the edge now and then.
-  // Under the block a line says how much hashrate is on it right now (the network's, from the node). Only decoration: the browser hashes nothing.
+  // Only decoration: the browser hashes nothing.
   (function () {
     const HW_N = 30, rnd = (i, k) => { const x = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return x - Math.floor(x); };
     const miners = Array.from({ length: HW_N }, (_, i) => ({ a: (i / HW_N) * 6.2832 + rnd(i, 1) * 0.35, r: 0.92 + rnd(i, 2) * 0.28, tw: rnd(i, 3) * 6.28, next: rnd(i, 4) * 2200, sent: -1e9 }));
@@ -1524,12 +1514,6 @@
       const wrap = document.querySelector('.block-wrap.mining'), cube = wrap && wrap.querySelector('.cube'); if (!cube) return;
       let cv = wrap.querySelector('.hw-cv');
       if (!cv) { cv = document.createElement('canvas'); cv.className = 'hw-cv'; cv.setAttribute('aria-hidden', 'true'); wrap.appendChild(cv); }
-      let ln = wrap.querySelector('.hw-line');
-      if (!ln) { ln = document.createElement('div'); ln.className = 'hw-line'; wrap.appendChild(ln); }
-      const hr = miningBy[netId] && miningBy[netId].hash;
-      const hh = fmt((chain().blocks[0]?.height ?? chain().tipHeight) + 1);
-      const txt = hr ? `<i></i>${si(hr, 1)}<span style="text-transform:none">H/s</span> hashing ${hh}<small>miners all over the world</small>` : `<i></i>Hashing ${hh}<small>miners all over the world</small>`;
-      if (ln.dataset.t !== txt) { ln.dataset.t = txt; ln.innerHTML = txt; ln.title = 'Every miner on Earth works on a block like this one at the same time: each tries nonce after nonce until a hash falls under the target. The first to find one wins the block.'; }
       const w = wrap.getBoundingClientRect(), c = cube.getBoundingClientRect();
       const cw = Math.max(60, c.width), ch = Math.max(60, c.height), padX = cw * 0.85, padY = ch * 0.62, dpr = Math.min(2, window.devicePixelRatio || 1);
       // the canvas stays inside the strip the block scrolls in, so it never makes that strip scroll
