@@ -5,6 +5,7 @@ transactions and the mempool. Serves:
 
   /                      latest blocks and the mempool
   /block/<hash|height>   a block with its transactions, each drawn from sender address to receiver address
+  /verified              the verified donation addresses of organisations that help animals (also /address/<address>, /api/v1/verified-addresses)
   /tx/<txid>             a transaction (mempool, a block from this explorer, or any tx with -txindex)
   /search?q=             height, block hash or txid
   /api/v1/blocks         the last blocks, in mempool's format (for hashes.space)
@@ -190,6 +191,47 @@ def address(script):
     if script[:1] == b"\x6a":
         return "OP_RETURN"
     return None
+
+
+# ---------- verified addresses: organisations that help animals and accept donations in DOGE ----------
+# The explorer marks these addresses wherever they appear in a transaction, and lists them on /verified (and as JSON on /api/v1/verified-addresses).
+# Add an organisation only after checking the address on the organisation's own website (or its official channel) and writing that page down in "source":
+# anyone will send DOGE to what is listed here. An entry whose address is not a valid Dogecoin address is left out (the log says so).
+#
+#   {"address": "D...", "name": "Name of the organisation", "category": "Animal shelter",
+#    "about": "what it does for animals", "url": "https://its-own-website.example",
+#    "source": "https://its-own-website.example/donate (the page that publishes this address)", "verified": "2026-10-14"},
+VERIFIED_ADDRESSES = [
+]
+
+
+def valid_address(a):
+    n = 0
+    for ch in a:
+        i = B58.find(ch)
+        if i < 0:
+            return False
+        n = n * 58 + i
+    try:
+        raw = n.to_bytes(25, "big")
+    except OverflowError:
+        return False
+    return raw[0] in (0x1E, 0x16) and sha256d(raw[:21])[:4] == raw[21:]
+
+
+def load_verified(entries):
+    out = {}
+    for e in entries:
+        a = str(e.get("address", "")).strip()
+        if not valid_address(a) or not e.get("name"):
+            log("verified address skipped (not a valid Dogecoin address or no name): " + a[:40])
+            continue
+        out[a] = {"address": a, "name": str(e["name"]), "category": str(e.get("category") or "Animal welfare"), "about": str(e.get("about") or ""),
+                  "url": str(e.get("url") or ""), "source": str(e.get("source") or ""), "verified": str(e.get("verified") or "")}
+    return out
+
+
+VERIFIED = load_verified(VERIFIED_ADDRESSES)
 
 
 # ---------- who sends: the address behind an input, from the unlocking script itself (no txindex needed) ----------
@@ -592,7 +634,7 @@ CSS = """
 *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:400 14px/1.5 system-ui,-apple-system,'Segoe UI',sans-serif}
 a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
 header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;padding:14px 20px;border-bottom:1px solid var(--line)}
-header .brand{font:700 18px/1 system-ui;color:var(--text)}header .brand span{color:var(--gold)}
+header .hlink{font-size:13px;color:#3ce26b;white-space:nowrap}header .brand{font:700 18px/1 system-ui;color:var(--text)}header .brand span{color:var(--gold)}
 form{display:flex;gap:8px;flex:1;max-width:560px}input{flex:1;min-width:0;background:#0b0d17;border:1px solid var(--line);border-radius:8px;color:var(--text);padding:9px 12px;font:13px ui-monospace,Menlo,monospace}
 button{background:var(--gold);color:#1a1406;border:0;border-radius:8px;padding:0 14px;font-weight:600;cursor:pointer}
 main{max-width:1100px;margin:0 auto;padding:20px 16px 48px;display:grid;gap:18px}
@@ -705,8 +747,8 @@ def page(title, body, glass=False, extra_css=""):
     return ("<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
             "<title>" + html.escape(title) + " · Dogecoin explorer</title><style>" + CSS + (PAGES_CSS if glass else "") + (extra_css or FLOW_CSS) + "</style></head><body" + (" class=g" if glass else "") + ">"
             "<header><a class=brand href='/'>Dogecoin <span>explorer</span></a>"
-            "<form action='/search'><input name=q placeholder='Block height, block hash or transaction id' aria-label=Search>"
-            "<button>Search</button></form></header><main>" + body + "</main>"
+            "<form action='/search'><input name=q placeholder='Block height, block hash, transaction id or address' aria-label=Search>"
+            "<button>Search</button></form><a class=hlink href='/verified'>✔ Verified donation addresses</a></header><main>" + body + "</main>"
             "<footer>Read from your own Dogecoin Core node · hashes.space</footer></body></html>")
 
 
@@ -768,7 +810,7 @@ def block_page(ident, p=1):
     shown = user_txs[(p - 1) * TX_PAGE:p * TX_PAGE]
     prev = prev_outputs([i["prev"] for t in shown for i in t["vin"]])
     cards = "".join("<div class=txcard><div class=txhead><b>#" + str((p - 1) * TX_PAGE + n + 1) + "</b><a class=mono href='/tx/" + t["txid"] + "?b=" + h + "'>" + t["txid"][:16] + "…" + t["txid"][-6:] + "</a>"
-                    "<small>{:,} bytes</small></div>".format(t["size"]) + flow_html(flow_of(t, prev)) + "</div>"
+                    "<small>{:,} bytes</small>".format(t["size"]) + donation_chips(t) + "</div>" + flow_html(flow_of(t, prev)) + "</div>"
                     for n, t in enumerate(shown)) or "<p class=muted style='margin:14px 0 0'>No transfers in this block: it holds only the block reward paid to the miner.</p>"
     base = "/block/" + h + "?p="
     nav = ("<div class=txnav>" + ("<a href='" + base + str(p - 1) + "'>← newer transactions</a>" if p > 1 else "<span>← newer transactions</span>")
@@ -778,6 +820,39 @@ def block_page(ident, p=1):
            "<p class=muted style='margin:0 0 4px;font-size:12.5px'>Where the DOGE of every transaction in this block went: the address the coins come from on the left, the addresses that receive them on the right. "
            "Coins that go back to the sender's own address are change.</p>" + cards + nav + "</section>")
     return page("Block " + str(b["height"]), head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>" + txs, extra_css=FLOW_CSS)
+
+
+def verified_page():
+    rows = "".join("<tr><td><b>" + html.escape(v["name"]) + "</b><br><span class=muted>" + html.escape(v["category"]) + "</span></td><td class=mono><a href='/address/" + a + "'>" + a + "</a></td>"
+                   "<td>" + html.escape(v["about"]) + "</td><td>" + (("<a href='" + html.escape(v["url"]) + "' target=_blank rel=noopener>" + html.escape(re.sub(r"^https?://", "", v["url"]).rstrip("/")) + "</a>") if v["url"].startswith("http") else "") + "</td>"
+                   "<td class=muted>" + html.escape(v["verified"]) + "</td></tr>" for a, v in sorted(VERIFIED.items(), key=lambda kv: kv[1]["name"].lower()))
+    body = ("<h1>Verified donation addresses</h1><section class=card><p style='margin:0'>Dogecoin addresses of organisations that help animals and take donations in DOGE. "
+            "Wherever one of these addresses appears in a transaction, this explorer marks it <span class=vchip>✔ Verified</span>.</p>"
+            "<p class=muted style='margin:8px 0 0;font-size:12.5px'>An address is only listed once it has been checked against the organisation's own website. Even so, check the address on the organisation's own page "
+            "before you send DOGE.</p></section>"
+            + ("<section class=card><table class=vtbl><tr><th>Organisation</th><th>Address</th><th>What it does for animals</th><th>Website</th><th>Verified</th></tr>" + rows + "</table></section>" if VERIFIED
+               else "<section class=card><p class=muted style='margin:0'>No address is verified on this explorer yet.</p></section>"))
+    return page("Verified donation addresses", body)
+
+
+def address_page(a):
+    v = VERIFIED.get(a)
+    if v:
+        info = [("Organisation", html.escape(v["name"])), ("What it does", html.escape(v["category"]) + (" · " + html.escape(v["about"]) if v["about"] else "")),
+                ("Address", "<span class=mono>" + a + "</span>")]
+        if v["url"].startswith("http"):
+            info.append(("Website", "<a href='" + html.escape(v["url"]) + "' target=_blank rel=noopener>" + html.escape(v["url"]) + "</a>"))
+        if v["source"]:
+            info.append(("Published at", html.escape(v["source"])))
+        if v["verified"]:
+            info.append(("Verified on", html.escape(v["verified"])))
+        return page("Verified address", "<h1><span class=vbig>✔ Verified</span> · " + html.escape(v["name"]) + "</h1><section class=card><dl>"
+                    + "".join("<dt>" + k + "</dt><dd>" + x + "</dd>" for k, x in info) + "</dl></section>"
+                    "<section class=card><p style='margin:0'>This address accepts donations in DOGE. Check it against the organisation's own website before you send.</p>"
+                    "<p style='margin:8px 0 0'><a href='/verified'>All verified donation addresses →</a></p></section>")
+    return page("Address", "<h1>Address</h1><section class=card><dl><dt>Address</dt><dd class=mono>" + html.escape(a) + "</dd></dl>"
+                "<p class=muted style='margin:10px 0 0'>This address is not on the list of verified donation addresses. This explorer reads your own Dogecoin Core node, which keeps no history per address; "
+                "open a transaction to see where its coins went.</p><p style='margin:8px 0 0'><a href='/verified'>Verified donation addresses →</a></p></section>")
 
 
 def find_tx(txid, block_hash):
@@ -849,7 +924,9 @@ def flow_of(tx, prev=None):
 
 def flow_html(f):
     def box(addr, value, tag="", cls=""):
-        return ("<div class='fbox" + (" " + cls if cls else "") + "'><span class='mono addr'>" + html.escape(addr) + "</span>"
+        v = VERIFIED.get(addr)
+        mark = ("<a class=vmark href='/address/" + html.escape(addr) + "'>✔ Verified · " + html.escape(v["name"]) + "</a><em class=tag>" + html.escape(v["category"]) + " · accepts DOGE donations</em>") if v else ""
+        return ("<div class='fbox" + (" " + cls if cls else "") + (" ver" if v else "") + "'>" + mark + "<span class='mono addr'>" + html.escape(addr) + "</span>"
                 + ("<span class=amt>" + value + "</span>" if value else "") + ("<em class=tag>" + tag + "</em>" if tag else "") + "</div>")
     if f["coinbase"]:
         left = box("New coins", doge(f["total_out"]), "the block reward and the fees, created by this block", "new")
@@ -864,6 +941,18 @@ def flow_html(f):
     return "<div class=flow><div class=fcol><small>From</small>" + left + "</div>" + mid + "<div class=fcol><small>To</small>" + right + "</div></div>"
 
 
+def donation_chips(tx):
+    """a chip for every verified organisation this transaction pays (change going back to a verified sender does not count)"""
+    senders = {sender_address(i["script"]) for i in tx["vin"]}
+    seen, out = set(), ""
+    for o in tx["vout"]:
+        a = address(o["script"])
+        if a in VERIFIED and a not in senders and a not in seen:
+            seen.add(a)
+            out += "<a class=vchip href='/address/" + a + "'>✔ " + doge(sum(x["value"] for x in tx["vout"] if address(x["script"]) == a)) + " to " + html.escape(VERIFIED[a]["name"]) + "</a>"
+    return out
+
+
 FLOW_CSS = """
 .flow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:14px;align-items:center}
 .fcol{display:grid;gap:8px;align-content:center}.fcol>small{color:var(--muted);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase}
@@ -872,6 +961,9 @@ FLOW_CSS = """
 .fbox.chg{border-style:dashed;border-color:rgba(27,216,244,.45)}.fbox.new{border-color:rgba(60,226,107,.5)}.fbox .tag{font-style:normal;font-size:11.5px;color:var(--muted)}
 .farrow{display:grid;justify-items:center;gap:2px;color:var(--muted);font-size:12px;text-align:center}.farrow svg{width:64px;height:24px;color:var(--link)}.farrow b{color:var(--text);font-size:13px}
 @media(max-width:760px){.flow{grid-template-columns:minmax(0,1fr)}.farrow svg{transform:rotate(90deg);margin:20px 0}}
+.fbox.ver{border-color:rgba(60,226,107,.6);background:rgba(60,226,107,.06)}.vmark{font:600 12.5px system-ui;color:#3ce26b}.vmark:hover{text-decoration:underline}
+.vchip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:rgba(60,226,107,.1);border:1px solid rgba(60,226,107,.5);color:#3ce26b;font-size:12px;font-weight:600}
+.vtbl td{white-space:normal;vertical-align:top}.vtbl .mono{word-break:break-all}.vbig{font:700 20px system-ui;color:#3ce26b}
 .txcard{display:grid;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}.txcard:last-child{border-bottom:0}
 .txhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}.txhead .mono{word-break:break-all}.txhead small{color:var(--muted)}
 .txnav{display:flex;gap:10px;justify-content:space-between;margin-top:6px}.txnav a,.txnav span{border:1px solid var(--line);border-radius:8px;padding:6px 12px}.txnav span{color:var(--muted);opacity:.5}
@@ -1373,10 +1465,18 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, home())
             if path.startswith("/block/"):
                 return self.send(200, block_page(path[7:], int(params["p"]) if params.get("p", "").isdigit() else 1))
+            if path == "/verified":
+                return self.send(200, verified_page())
+            if path == "/api/v1/verified-addresses":
+                return self.json(list(VERIFIED.values()), 300)
+            if path.startswith("/address/") and valid_address(path[9:]):
+                return self.send(200, address_page(path[9:]))
             if path.startswith("/tx/") and HEX64.fullmatch(path[4:]):
                 return self.send(200, tx_page(path[4:].lower(), params.get("b")))
             if path == "/search":
                 q = urllib.request.unquote(params.get("q", "").replace("+", " ")).strip()
+                if valid_address(q):
+                    return self.redirect("/address/" + q)
                 if q.isdigit():
                     return self.redirect("/block/" + q)
                 if HEX64.fullmatch(q):
@@ -1385,7 +1485,7 @@ class Handler(BaseHTTPRequestHandler):
                         return self.redirect("/block/" + q)
                     except RpcError:
                         return self.redirect("/tx/" + q.lower())
-                return self.send(404, page("Not found", "<h1>Nothing found</h1><p>Search for a block height, a block hash or a transaction id.</p>"))
+                return self.send(404, page("Not found", "<h1>Nothing found</h1><p>Search for a block height, a block hash, a transaction id or a Dogecoin address.</p>"))
             return self.send(404, page("Not found", "<h1>Not found</h1>"))
         except (RpcError, ValueError) as exc:
             if path.startswith("/api/") or path.endswith(".json"):
