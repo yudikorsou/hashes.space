@@ -979,7 +979,8 @@
   .eq-bar { display: flex; height: 12px; width: 100%; border-radius: 6px; overflow: hidden; gap: 2px; } .eq-bar i { display: block; min-width: 2px; }
   .eq-steps { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; width: 100%; opacity: .85; line-height: 1.5; } .eq-steps li { padding-left: 12px; border-left: 2px solid var(--line); }
   .p2page .solo-how { padding: 18px 16px; }
-  #solo-link { position: static; width: fit-content; justify-self: center; margin: 6px auto 0; }
+  .solo-list .gn { flex-wrap: wrap; } .mcard .solo-list .row-link { position: static; display: inline-flex; margin-left: 6px; padding: 1px 7px; gap: 4px; font-size: 10.5px; order: 0; white-space: nowrap; align-self: auto; vertical-align: middle; }
+  #solo-link { display: none !important; position: static; width: fit-content; justify-self: center; margin: 6px auto 0; }
   #chain-area.p2pool-open .netbar { display: none; }
   .p2page .p2body { width: 100%; display: grid; gap: 18px; }
   .p2page .p2body[hidden] { display: none !important; }
@@ -5155,7 +5156,7 @@ window.__coins = COIN_LOGOS;
   function renderSolo() {
     loadSoloFor(netId);
     const d = soloBy[netId], ok = d && d.ok, per = ok ? (d.window || SOLO_PERIOD[netId]) : '';
-    $('solo-link').hidden = netId !== 'monero';
+    $('solo-link').hidden = true;
     { const hw = $('solo-how'); hw.hidden = !(netId === 'monero' && d && d.ok && d.fullSplit); if (!hw.hidden) hw.innerHTML = xmrHow(d, false); }
     $('solo-title').textContent = netId === 'monero' ? 'P2Pool solominers' : 'Solominers';
     $('solo-hash').textContent = ok ? `Hashrate ${si(d.currentHashrate, 1)}H/s` : '–';
@@ -5183,7 +5184,7 @@ window.__coins = COIN_LOGOS;
     moonStart();
     $('solo-cap').textContent = ok ? `${d.soloBlocks.toLocaleString('en')} of ${d.blockCount.toLocaleString('en')} blocks` + (d.window === 'epoch' && d.epochStart != null ? ` since the last difficulty adjustment (block ${fmt(d.epochStart)}) · the next one is at block ${fmt(d.nextAdjustment)}` : '') : '';
     $('solo-list').replaceChildren(...rows.map((x) => { const li = document.createElement('li');
-      li.innerHTML = `<span class="gn"><i class="sw" style="background:${SOLO_COLORS[x.kind] ?? '#f7931a'};opacity:${x.kind === 'pools' ? 0.55 : 1}"></i>${esc(x.name)}</span><span class="gv">${si(x.hashrate, 1)}H/s <small>· ${(x.share * 100).toFixed(1)}%</small></span>`; return li; }));
+      li.innerHTML = `<span class="gn"><i class="sw" style="background:${SOLO_COLORS[x.kind] ?? '#f7931a'};opacity:${x.kind === 'pools' ? 0.55 : 1}"></i>${esc(x.name)}${netId === 'monero' && x.kind === 'unattributed' ? '<a class="calc-link row-link" href="#p2pool">P2Pool page<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>' : ''}</span><span class="gv">${si(x.hashrate, 1)}H/s <small>· ${(x.share * 100).toFixed(1)}%</small></span>`; return li; }));
     $('solo-note').textContent = ok ? (d.perBlock && netId !== 'monero' ? `${retarget().name} retargets its difficulty at every block (${retarget().alg}), so each block carries its own hashrate. The hashrate of each of the last ${fmt(d.blockCount)} blocks comes from its own difficulty (${hashFormula()} over the ${retarget().sec} s it aims at); the figure is the ${netId === 'monero' ? 'P2Pool' : 'no-pool'} share of those blocks times their median hashrate. ` : '') + (netId === 'monero' ? 'P2Pool is read from the chain; the single payouts are split by subtraction, since the chain cannot tell a pool from a solo miner. See the working below.' : 'An estimate from the blocks found, so an upper bound: a small pool that is missing from the list of known pools counts as solo here, and a solo miner only shows up when a block is found.') + (d.sampled ? ' Over this period the blocks come from an evenly spread sample.' : '') : '';
   }
   // ---------- the moon of the miners without a pool ----------
