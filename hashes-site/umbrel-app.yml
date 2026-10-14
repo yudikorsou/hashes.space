@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.50"
+version: "1.9.51"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,7 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  The animated sun on the Bitcoin chain's mining pool hashrate section now looks like a real photograph of the sun: a deep orange surface covered in fine dark red and bright yellow mottling, white-hot active regions, a red glowing edge and small prominences, slowly turning. It hangs far away in the background behind the black holes, lights the edge of each hole that faces it, and throws off sparks. Only on Bitcoin; it stands still when you prefer less motion.
+  The animated sun on the Bitcoin chain's mining pool hashrate section now looks like a real photograph of the sun: a deep orange surface covered in fine dark red and bright yellow mottling, white-hot active regions, a red glowing edge, slowly turning. It hangs far away in the background behind the black holes, lights the edge of each hole that faces it, and throws off sparks. Only on Bitcoin; it stands still when you prefer less motion.
   The four blocks of the Dogecoin chain (Fee Sorting, Coinbase & Merkle Root, Block assembly, Candidate block) are clickable and open their own page on the Dogecoin Explorer.
   The Monero chain no longer shows the "Mining pool calculator" button in the mining pools section.
   On the Dogecoin chain the mining pools section now has a little spaceship with a Shiba Inu pilot that flies between the black holes (only on Dogecoin; it is decoration, not data).
