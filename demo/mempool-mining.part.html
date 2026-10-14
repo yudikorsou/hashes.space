@@ -192,6 +192,7 @@
   .block-wrap.mining { position: relative; }
   .hw-cv { position: absolute; pointer-events: none; z-index: 4; }
 
+  .solo-how { font-size: 12.5px; line-height: 1.5; text-align: left; opacity: .9; } .solo-how[hidden] { display: none !important; } .solo-how h3 { margin: 0 0 6px; font-size: 13px; } .solo-how ol { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
   #solo-link { position: static; width: fit-content; justify-self: center; margin: 6px auto 0; }
   #chain-area.p2pool-open .netbar { display: none; }
   .p2page .p2body { width: 100%; display: grid; gap: 18px; }
@@ -238,6 +239,7 @@
     <p class="hrsub" id="solo-sub"></p>
     <ul class="solo-list" id="solo-list"></ul>
     <p class="solo-note" id="solo-note"></p>
+    <div class="solo-how" id="solo-how" hidden></div>
     <a class="calc-link" id="solo-link" href="#p2pool" hidden>P2Pool solominers<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 6h7M6.5 3l3 3-3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
   </article>
   <p class="msource" id="ms-source"></p>
@@ -271,6 +273,7 @@
   <div class="p2body" id="p2-body" hidden>
     <dl class="p2kpis" id="p2-kpis"></dl>
     <article class="mcard p2card"><h2 class="p2h">Hashrate at every block</h2><p class="p2s" id="p2-chart-sub"></p><div class="plot"><svg id="p2-chart" viewBox="0 0 640 240" role="img" aria-label="P2Pool hashrate and the network's hashrate over the last day of blocks"></svg></div><p class="p2leg"><span><i style="background:#f7931a"></i>P2Pool</span><span><i style="background:#5b6496"></i>Whole network</span></p></article>
+    <article class="mcard p2card solo-how" id="p2-how" hidden></article>
     <article class="mcard p2card"><h2 class="p2h">Latest P2Pool blocks</h2><p class="p2s">P2Pool pays every miner in the block itself. Each bar is one block's payout, split among the miners it paid.</p><ul class="p2blocks" id="p2-blocks"></ul></article>
     <article class="mcard p2card"><h2 class="p2h">Hashrate of the miners</h2><p class="p2s" id="p2-hist-sub"></p><div class="plot"><svg id="p2-hist" viewBox="0 0 640 220" role="img" aria-label="How many P2Pool miners mine at each hashrate"></svg></div></article>
     <p class="pnote" id="p2-note"></p>
@@ -1177,17 +1180,29 @@
   }
   setInterval(() => { const g = soloBy[netId]; if (g && !g.ok && Date.now() > g.retry && typeof renderMiningStats === 'function') renderMiningStats(); }, 20000);
   const SOLO_COLORS = { service: '#f7931a', unattributed: '#ffd08a', pools: '#5b6496' };
+
+  // how the Monero split is worked out, with the numbers each step uses (shown under the list, and on the P2Pool page)
+  function xmrHow(d) {
+    const rp = d.reportedPools || [], f = (v) => si(v, 1) + 'H/s', pc = (v) => (v * 100).toFixed(1) + '%', byKind = (k) => d.sources.find((x) => x.kind === k);
+    const p2 = byKind('service'), solo = byKind('unattributed'), big = byKind('pools');
+    return `<h3>How the three parts are worked out</h3><ol>
+      <li><b>Network ${f(d.networkHashrate)}</b>: the median over the last ${fmt(d.blockCount)} blocks of each block's difficulty ÷ 120 s.</li>
+      <li><b>P2Pool ${f(p2.hashrate)} (${pc(p2.share)})</b>: the ${fmt(d.soloBlocks)} blocks that pay several addresses at once, read from the chain, as a share of the network.</li>
+      <li><b>Large pools ${f(big.hashrate)} (${pc(big.share)})</b>: the hashrate these pools publish on their own stats pages${rp.length ? ' (' + rp.map((x) => `${esc(x.name)} ${f(x.counted)}`).join(', ') + ')' : ''}. It is self-reported and reads a little high, so it never counts for more than the single-payout blocks hold.</li>
+      <li><b>Solo miners &amp; unlisted pools ${f(solo.hashrate)} (${pc(solo.share)})</b>: what is left of the single-payout blocks. A pool missing from the list lands here, so it is an upper bound for solo mining.</li></ol>`;
+  }
   function renderSolo() {
     loadSoloFor(netId);
     const d = soloBy[netId], ok = d && d.ok, per = ok ? (d.window || SOLO_PERIOD[netId]) : '';
     $('solo-link').hidden = netId !== 'monero';
+    { const hw = $('solo-how'); hw.hidden = !(netId === 'monero' && d && d.ok && d.fullSplit); if (!hw.hidden) hw.innerHTML = xmrHow(d); }
     $('solo-title').textContent = netId === 'monero' ? 'P2Pool solominers' : 'Solominers';
     $('solo-hash').textContent = ok ? `Hashrate ${si(d.currentHashrate, 1)}H/s` : '–';
     $('solo-sub').textContent = ok ? `${netId === 'monero' ? 'P2Pool miners add' : 'Miners that use no pool add'} ${si(d.currentHashrate, 1)}H/s to the network's ${si(d.networkHashrate, 1)}H/s, going by ${per === 'blocks' ? `the median hashrate of the last ${retarget().blocks} blocks, each read at its own ${retarget().alg} difficulty` : 'the blocks of ' + windowSpoken(per)}.`
       : d ? 'Your node did not answer yet: the solo-miner hashrate comes from the explorer on your Umbrel (update it if it is an older version).' : 'Asking your node for the hashrate of miners without a pool…';
     // the chart: a ring of the blocks found in the period, split into solo services, blocks with no known pool, and the mining pools
     const svg = $('solo-svg'); svg.replaceChildren();
-    const rows = ok ? [...d.sources.map((x) => ({ name: x.name, kind: x.kind, share: x.share, hashrate: x.hashrate })), { name: d.restName || 'Mining pools', kind: 'pools', share: 1 - d.share, hashrate: Math.max(0, d.networkHashrate - d.currentHashrate) }] : [];
+    const rows = ok ? [...d.sources.map((x) => ({ name: x.name, kind: x.kind, share: x.share, hashrate: x.hashrate })), ...(d.fullSplit ? [] : [{ name: d.restName || 'Mining pools', kind: 'pools', share: 1 - d.share, hashrate: Math.max(0, d.networkHashrate - d.currentHashrate) }])] : [];
     if (false) {   // the ring is gone: the moon stands alone; the shares are in the list below and the percentage under it
       const C = 150, RO = 148, RI = 137, pt = (a, r) => [C + r * Math.sin(a), C - r * Math.cos(a)];
       let a0 = 0;
@@ -1208,7 +1223,7 @@
     $('solo-cap').textContent = ok ? `${d.soloBlocks.toLocaleString('en')} of ${d.blockCount.toLocaleString('en')} blocks` + (d.window === 'epoch' && d.epochStart != null ? ` since the last difficulty adjustment (block ${fmt(d.epochStart)}) · the next one is at block ${fmt(d.nextAdjustment)}` : '') : '';
     $('solo-list').replaceChildren(...rows.map((x) => { const li = document.createElement('li');
       li.innerHTML = `<span class="gn"><i class="sw" style="background:${SOLO_COLORS[x.kind] ?? '#f7931a'};opacity:${x.kind === 'pools' ? 0.55 : 1}"></i>${esc(x.name)}</span><span class="gv">${si(x.hashrate, 1)}H/s <small>· ${(x.share * 100).toFixed(1)}%</small></span>`; return li; }));
-    $('solo-note').textContent = ok ? (d.perBlock ? `${retarget().name} retargets its difficulty at every block (${retarget().alg}), so each block carries its own hashrate. The hashrate of each of the last ${fmt(d.blockCount)} blocks comes from its own difficulty (${hashFormula()} over the ${retarget().sec} s it aims at); the figure is the ${netId === 'monero' ? 'P2Pool' : 'no-pool'} share of those blocks times their median hashrate. ` : '') + (netId === 'monero' ? 'A block that pays several addresses at once is counted as P2Pool; a block with one payout is a pool or a solo miner, which the chain cannot tell apart.' : 'An estimate from the blocks found, so an upper bound: a small pool that is missing from the list of known pools counts as solo here, and a solo miner only shows up when a block is found.') + (d.sampled ? ' Over this period the blocks come from an evenly spread sample.' : '') : '';
+    $('solo-note').textContent = ok ? (d.perBlock ? `${retarget().name} retargets its difficulty at every block (${retarget().alg}), so each block carries its own hashrate. The hashrate of each of the last ${fmt(d.blockCount)} blocks comes from its own difficulty (${hashFormula()} over the ${retarget().sec} s it aims at); the figure is the ${netId === 'monero' ? 'P2Pool' : 'no-pool'} share of those blocks times their median hashrate. ` : '') + (netId === 'monero' ? 'P2Pool is read from the chain; the single payouts are split by subtraction, because the chain cannot tell a pool from a solo miner.' : 'An estimate from the blocks found, so an upper bound: a small pool that is missing from the list of known pools counts as solo here, and a solo miner only shows up when a block is found.') + (d.sampled ? ' Over this period the blocks come from an evenly spread sample.' : '') : '';
   }
   // ---------- the moon of the miners without a pool ----------
   // The solo share is now a moon (the shares are in the list under it). Its craters are open-pit mining sites (stepped pits with a haul road winding down and amber lights at the bottom),
@@ -1473,7 +1488,7 @@
     const page = $('p2pool-page'); if (!page) return;
     const on = typeof view !== 'undefined' && view === 'p2pool';
     page.hidden = !on; $('chain-area')?.classList.toggle('p2pool-open', on); if (!on) return;
-    loadP2Pool();
+    loadP2Pool(); loadSoloFor('monero');
     const ok = p2Data && p2Data.ok, r = ok ? p2Data.r : null;
     $('p2-load').hidden = !!ok; $('p2-body').hidden = !ok;
     $('p2-load-t').textContent = p2Data && !ok ? 'The Monero explorer did not answer yet: update it on your Umbrel if it is an older version.' : 'Asking the Monero explorer for the P2Pool blocks…';
@@ -1488,6 +1503,7 @@
       const t0 = new Date(ser[0].timestamp * 1000), t1 = new Date(ser[ser.length - 1].timestamp * 1000), tf = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
       svg.appendChild(svgEl('text', { x: L, y: H - 8, 'font-size': 10, fill: 'currentColor', 'fill-opacity': 0.6 }, tf(t0))); svg.appendChild(svgEl('text', { x: W - R, y: H - 8, 'text-anchor': 'end', 'font-size': 10, fill: 'currentColor', 'fill-opacity': 0.6 }, tf(t1)));
       $('p2-chart-sub').textContent = `Each block's hashrate is its difficulty ÷ 120 s (LWMA retargets at every block). P2Pool is its share of the last ${fmt(r.blockCount)} blocks times the network's hashrate there, one point for every ${r.sliceBlocks} blocks, averaged over the last five points.`; }
+    { const sd = soloBy.monero, hw = $('p2-how'); hw.hidden = !(sd && sd.ok && sd.fullSplit); if (!hw.hidden) hw.innerHTML = xmrHow(sd); }
     $('p2-blocks').innerHTML = r.latest.slice(0, 12).map((b) => {
       const sh = b.shares || [], rest = Math.max(0, 1 - sh.reduce((a, c) => a + c, 0));
       return `<li><div class="r"><span><b>Block ${fmt(b.height)}</b> · ${new Date(b.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span><span>${fmt(b.miners)} miners paid · ${(b.reward / 1e12).toFixed(3)} XMR · ${si(b.blockHashrate, 1)}H/s</span></div><div class="p2split" role="img" aria-label="Payout split among ${b.miners} miners">${sh.map((x) => `<i style="flex:${x}"></i>`).join('')}${rest > 0.0005 ? `<i class="o" style="flex:${rest}"></i>` : ''}</div></li>`; }).join('');

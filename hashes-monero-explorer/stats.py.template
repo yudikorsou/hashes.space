@@ -35,6 +35,7 @@ import secrets
 import socketserver
 import threading
 import time
+import urllib.request
 
 PORT = int(os.environ.get("PORT", "3000"))
 EXPLORER_HOST = os.environ.get("EXPLORER_HOST", "explorer")
@@ -260,6 +261,55 @@ def _median(xs):
     return 0 if not n else xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
 
 
+
+# ---------- what the big pools say they hold (a self-reported number, used to carve the solo miners out of the single payouts) ----------
+# Monero blocks name no pool, so the only way to see solo miners is by subtraction: the network's hashrate, minus P2Pool (read from the
+# chain), minus the hashrate the large pools publish themselves. What is left is solo miners and pools that are not listed here.
+# Each pool answers on its own public stats page; one that does not answer is simply left out (and the page says which ones did).
+POOL_APIS = [
+    ("SupportXMR", "https://www.supportxmr.com/api/pool/stats"),
+    ("MoneroOcean", "https://api.moneroocean.stream/pool/stats"),
+    ("Nanopool", "https://api.nanopool.org/v1/xmr/pool/hashrate"),
+    ("HeroMiners", "https://monero.herominers.com/api/stats"),
+    ("HashVault", "https://api.hashvault.pro/v3/monero/stats"),
+]
+_pool_rep = {"at": 0, "pools": []}
+
+
+def _find_hashrate(obj):
+    """The pool's hashrate (H/s) from whatever shape its stats come in: a plain number, or a field called hashrate / hashRate."""
+    if isinstance(obj, (int, float)) and not isinstance(obj, bool):
+        return float(obj)
+    if isinstance(obj, dict):
+        for key, val in obj.items():
+            if key.lower() in ("hashrate", "pool_hashrate", "poolhashrate", "hash_rate") and isinstance(val, (int, float)) and val > 0:
+                return float(val)
+        for key in ("data", "pool_statistics", "pool", "stats"):
+            if key in obj:
+                got = _find_hashrate(obj[key])
+                if got:
+                    return got
+    return 0.0
+
+
+def refresh_pool_reports():
+    if time.time() - _pool_rep["at"] < 600 and _pool_rep["pools"]:
+        return
+    got = []
+    for name, url in POOL_APIS:
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "hashes.space Monero Explorer"})
+            with urllib.request.urlopen(req, timeout=8) as r:
+                hr = _find_hashrate(json.loads(r.read().decode()))
+            if hr > 0:
+                got.append({"name": name, "hashrate": hr})
+        except Exception as exc:
+            log("pool report " + name + ": " + str(exc))
+    _pool_rep["at"] = time.time()
+    if got:
+        _pool_rep["pools"] = got
+
+
 def p2pool_window(tip):
     first = max(2, tip - P2P_BLOCKS + 1)
     for h in range(first, tip + 1):
@@ -302,14 +352,26 @@ def p2pool_window(tip):
     hashrate = {"hashrates": [{"timestamp": x["timestamp"], "avgHashrate": x["networkHashrate"]} for x in series],
                 "difficulty": [{"time": _headers[sl[-1]][0], "height": sl[-1], "difficulty": _headers[sl[-1]][1]} for sl in slices],
                 "currentHashrate": med, "currentDifficulty": _headers[heights[-1]][1], **base}
+    reports = list(_pool_rep["pools"])
+    single = 1 - share
+    listed = min(single, sum(x["hashrate"] for x in reports) / med) if med else 0
+    solo_share = max(0.0, single - listed)
+    listed_share, solo_share_ = listed, solo_share
     pools = {"pools": ([{"name": "P2Pool", "blockCount": len(shared), "hashrate": p2p,
                          "miners": [{"name": str(round(sum(len(_coin[h]) for h in shared) / len(shared))) + " miners paid per block", "blockCount": len(shared)}]}] if shared else [])
-             + ([{"name": "Single payout (pool or solo miner)", "blockCount": len(heights) - len(shared), "hashrate": med * (1 - share)}] if len(heights) > len(shared) else []),
+             + ([{"name": "Large pools (as they report)", "blockCount": round((len(heights) - len(shared)) * listed_share / (1 - share)) if share < 1 else 0, "hashrate": med * listed_share},
+                 {"name": "Solo miners & unlisted pools (estimate)", "blockCount": round((len(heights) - len(shared)) * solo_share_ / (1 - share)) if share < 1 else 0, "hashrate": med * solo_share_}] if len(heights) > len(shared) else []),
              "sampled": False, "lastEstimatedHashrate": med, **base}
     pool_hr = {"currentHashrate": p2p, "currentShare": share, "networkHashrate": med, "complete": True, "sampled": False, "pool": "P2Pool",
                "hashrates": [{k: x[k] for k in ("timestamp", "avgHashrate", "share", "networkHashrate")} for x in series], **base}
-    solo = {"soloBlocks": len(shared), "share": share, "currentHashrate": p2p, "networkHashrate": med, "sampled": False, "restName": "Single payout (pool or solo miner)",
-            "sources": [{"name": "P2Pool miners", "kind": "service", "blockCount": len(shared), "share": share, "hashrate": p2p}], **base}
+    # a pool that says more than the single payouts hold (they all report a little high) is scaled down so the three parts add up to the network
+    scale = (listed * med) / sum(x["hashrate"] for x in reports) if reports and listed else 0
+    solo = {"soloBlocks": len(shared), "share": share, "currentHashrate": p2p, "networkHashrate": med, "sampled": False, "fullSplit": True,
+            "sources": [{"name": "P2Pool miners", "kind": "service", "blockCount": len(shared), "share": share, "hashrate": p2p},
+                        {"name": "Solo miners & unlisted pools (estimate)", "kind": "unattributed", "blockCount": 0, "share": solo_share, "hashrate": med * solo_share},
+                        {"name": "Large pools (as they report)", "kind": "pools", "blockCount": 0, "share": listed, "hashrate": med * listed}],
+            "reportedPools": [{"name": x["name"], "hashrate": x["hashrate"], "counted": x["hashrate"] * scale} for x in reports],
+            "reportedTotal": sum(x["hashrate"] for x in reports), "reportedAt": _pool_rep["at"], **base}
     page = {"p2poolHashrate": p2p, "networkHashrate": med, "share": share, "p2poolBlocks": len(shared), "series": series, "latest": latest, "miners": miners, "sizes": sizes,
             "minersPerBlock": round(sum(len(_coin[h]) for h in shared) / len(shared)) if shared else 0, "currentDifficulty": _headers[heights[-1]][1], **base}
     return hashrate, pools, pool_hr, solo, page
@@ -322,6 +384,7 @@ def worker():
             info = rpc("get_info")
             tip = int(info["height"]) - 1
             try:
+                refresh_pool_reports()
                 hr0, pl0, ph0, so0, pg0 = p2pool_window(tip)
                 with _lock:
                     _result["hashrate"]["blocks"], _result["pools"]["blocks"], _result["pool-hashrate"]["blocks"], _result["solo"]["blocks"], _result["p2pool"]["blocks"] = hr0, pl0, ph0, so0, pg0

@@ -31,6 +31,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The Monero statistics now split the single-payout blocks by subtraction: the hashrate that SupportXMR, MoneroOcean, Nanopool, HeroMiners and HashVault publish on their own stats pages (fetched by the explorer every 10 minutes; one that does not answer is left out) is the large pools, and what is left of the network is solo miners and unlisted pools (an upper bound for solo). The explorer needs internet access for this.
   New /api/v1/mining/(hashrate|pools|pool-hashrate|solo)/blocks and /api/v1/mining/p2pool/blocks: Monero retargets its difficulty (LWMA) at every block, so the explorer now reads the hashrate of each of the last 720 blocks (difficulty / 120 s) and splits it into the P2Pool miners (blocks whose coinbase pays several addresses) and everyone else, with the latest P2Pool blocks and their payout splits.
   The four pages (/fee-ranking, /block-size, /block-assembly, /block-candidate) now work like the Dogecoin Explorer pages: a row of four choices at the top to jump between them, and the Fee-per-byte ranking and Dynamic block size pages open with an animated stage (the rates sorting themselves; the median, limit and penalty being drawn) beside four live steps, in the same glass design.
   On the /block-assembly and /block-candidate pages the steps beside the animated block no longer fade in and out: all the text stays on screen and only the numbers change live as the node reports new data.
