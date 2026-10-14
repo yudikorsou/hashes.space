@@ -907,7 +907,10 @@
   .pools-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   .pools-find { width: min(420px, 100%); }
   .pools-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
-  .pools-sky-host { width: 100%; display: flex; }
+  .pools-sky-host { position: relative; width: 100%; display: flex; }
+  .pools-top { position: absolute; top: 0; left: 50%; transform: translateX(-50%); width: min(640px, calc(100% - 32px)); z-index: 3; display: grid; gap: 14px; justify-items: center; text-align: center; }
+  .pools-top .poolhead { max-width: none; }
+  .pools-top .msource { margin: 0; }
   .pools-sky-host .pool-sky { min-height: 420px; margin: 0; }
   .pools-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; }
   @media (max-width: 520px) { .poolhead h1 { font-size: 23px; } .pool-blocks { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
@@ -1394,15 +1397,18 @@
 
 <!-- every mining pool found on your nodes and explorers, to pick one: reached from "More insights" -->
 <section class="poolpage poolspage" id="pools-page" aria-labelledby="poolspage-title" hidden>
-  <header class="poolhead">
-    <p class="pool-eyebrow" id="pools-eyebrow">Mining pools</p>
-    <h1 id="poolspage-title">Pick a mining pool</h1>
-    <p id="pools-context">Get more insights about the mining pools that are hashing on your blockchain</p>
-  </header>
-  <label class="pools-find"><span class="sr-only">Search the mining pools</span><input id="pools-filter" type="search" placeholder="Search a mining pool" autocomplete="off" spellcheck="false"></label>
-  <div class="pools-sky-host" id="pools-sky-host"></div>
+  <div class="pools-sky-host" id="pools-sky-host">
+    <div class="pools-top" id="pools-top">
+      <header class="poolhead">
+        <p class="pool-eyebrow" id="pools-eyebrow">Mining pools</p>
+        <h1 id="poolspage-title">Pick a mining pool</h1>
+        <p id="pools-context">Get more insights about the mining pools that are hashing on your blockchain</p>
+      </header>
+      <p class="msource" id="pools-source"></p>
+      <label class="pools-find" id="pools-find"><span class="sr-only">Search the mining pools</span><input id="pools-filter" type="search" placeholder="Search a mining pool" autocomplete="off" spellcheck="false"></label>
+    </div>
+  </div>
   <ul class="sr-only" id="pools-list"></ul>
-  <p class="msource" id="pools-source"></p>
   <div class="pools-links"><a class="more" href="#dashboard">« Back to the mempool</a><a class="more" href="#calc">Calculate hashrate »</a></div>
 </section>
 
@@ -4739,16 +4745,16 @@ window.__coins = COIN_LOGOS;
   }
   // sizes follow the hashrate; the holes are pushed apart until they (and the label under each) stand clear of each other
   function skyLayout() {
-    const key = sky.names + '|' + sky.w + 'x' + sky.h; if (sky.laid === key || !sky.ships.length || !sky.w) return; sky.laid = key;
+    const key = sky.names + '|' + sky.w + 'x' + sky.h + '|' + (sky.picker ? ($('pools-top') ? $('pools-top').offsetHeight : 0) : 0); if (sky.laid === key || !sky.ships.length || !sky.w) return; sky.laid = key;
     if (sky.picker) {   // the picker: holes side by side in rows, biggest first, each with its summary under it
-      const n = sky.ships.length, W = sky.w, cols = Math.max(1, Math.min(n, Math.floor(W / (W < 520 ? 150 : 200)))), cellW = W / cols, maxR = Math.min(cellW * 0.32, 58), rows = Math.ceil(n / cols), rowH = maxR * 2.3 + 100, sunR = netId === 'sha256' ? Math.max(18, Math.min(40, W / 21)) : 0, band = sunR ? sunR * 3.4 : 0, need = Math.round(rows * rowH + 44 + band);
+      const n = sky.ships.length, W = sky.w, cols = Math.max(1, Math.min(n, Math.floor(W / (W < 520 ? 150 : 200)))), cellW = W / cols, maxR = Math.min(cellW * 0.32, 58), rows = Math.ceil(n / cols), rowH = maxR * 2.3 + 100, sunR = netId === 'sha256' ? Math.max(18, Math.min(40, W / 21)) : 0, topH = $('pools-top') ? $('pools-top').offsetHeight : 0, band = Math.max(topH + 18, sunR * 3.2), need = Math.round(rows * rowH + 44 + band);
       const host = $('pool-sky'); if (host && Math.abs((parseFloat(host.style.minHeight) || 0) - need) > 1) { host.style.minHeight = need + 'px'; host.style.flexBasis = need + 'px'; }
       sky.ships.forEach((sh, i) => {
         const row = Math.floor(i / cols), inRow = Math.min(cols, n - row * cols), col = i - row * cols;
         sh.r = Math.max(13, maxR * (0.3 + 0.7 * Math.sqrt(Math.min(1, sh.vis * 2.4)))); sh.labY = maxR * 1.1 + 16; sh.btn = { x: -66, y: sh.labY + 28, w: 132, h: 26 };
         sh.hx = (cols - inRow) * cellW / 2 + (col + 0.5) * cellW; sh.hy = 26 + band + maxR * 1.3 + row * rowH;
       });
-      sky.sunPos = sunR ? { x: W - sunR * 3.6, y: sunR * 2.5 } : null;   // Bitcoin's sun hangs above all the pools on the right, shining down on them
+      sky.sunPos = sunR ? { x: W - sunR * 3.6, y: sunR * 2.2 } : null;   // Bitcoin's sun hangs above all the pools on the right, shining down on them
       return;
     }
     const n = sky.ships.length, area = sky.w * (sky.h - 30) * 0.26, sumS = sky.refS || sky.ships.reduce((a, x) => a + Math.sqrt(x.vis), 0) || 1;
