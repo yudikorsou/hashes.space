@@ -200,7 +200,9 @@ def address(script):
 #
 #   {"address": "D...", "name": "Name of the organisation", "category": "Animal shelter",
 #    "about": "what it does for animals", "url": "https://its-own-website.example",
-#    "source": "https://its-own-website.example/donate (the page that publishes this address)", "verified": "2026-10-14"},
+#    "source": "https://its-own-website.example/donate (the page that publishes this address)", "verified": "2026-10-14",
+#    "streams": [{"title": "Packing line: vegan dog food", "url": "https://www.youtube.com/watch?v=VIDEO_ID"}]},      # "streams" is optional: a livestream of the organisation's own logistics
+# A stream link may be a YouTube video or channel, a Vimeo video, a Twitch channel or a direct https .m3u8 / .mp4 / .webm file; it only starts when the visitor presses play.
 VERIFIED_ADDRESSES = [
 ]
 
@@ -219,6 +221,52 @@ def valid_address(a):
     return raw[0] in (0x1E, 0x16) and sha256d(raw[:21])[:4] == raw[21:]
 
 
+def stream_embed(url):
+    """(kind, src) to play a livestream link inside the page, or (None, url) when it can only be opened on its own site. Only https links."""
+    m = re.fullmatch(r"https://([a-z0-9.-]+)(/[^\s\"'<>]*)?", url, re.I)
+    if not m:
+        return None, ""
+    host, path = m.group(1).lower(), m.group(2) or "/"
+    host = host[4:] if host.startswith("www.") else host
+    q = dict(x.split("=", 1) for x in url.partition("?")[2].split("&") if "=" in x)
+    if host in ("youtube.com", "m.youtube.com", "youtu.be", "youtube-nocookie.com"):
+        vid = q.get("v") if path.startswith("/watch") else (path.split("/")[1] if host == "youtu.be" else (path.split("/")[2] if re.match(r"/(live|embed|shorts)/", path) else None))
+        if vid and re.fullmatch(r"[\w-]{6,20}", vid):
+            return "iframe", "https://www.youtube-nocookie.com/embed/" + vid + "?autoplay=1&rel=0"
+        c = re.match(r"/channel/(UC[\w-]{20,24})", path)
+        if c:
+            return "iframe", "https://www.youtube-nocookie.com/embed/live_stream?channel=" + c.group(1) + "&autoplay=1&rel=0"
+        return None, url
+    if host in ("vimeo.com", "player.vimeo.com"):
+        e = re.match(r"/event/(\d+)", path)
+        if e:
+            return "iframe", "https://vimeo.com/event/" + e.group(1) + "/embed?autoplay=1"
+        v = re.search(r"/(\d{5,12})(?:/|$)", path)
+        if v:
+            return "iframe", "https://player.vimeo.com/video/" + v.group(1) + "?autoplay=1"
+        return None, url
+    if host == "twitch.tv":
+        c = re.match(r"/([A-Za-z0-9_]{3,25})/?$", path)
+        if c:
+            return "iframe", "https://player.twitch.tv/?channel=" + c.group(1) + "&parent={host}&autoplay=true"
+        return None, url
+    if re.search(r"\.(m3u8|mp4|webm)$", path.partition("?")[0], re.I):
+        return "video", url
+    return None, url
+
+
+def load_streams(raw):
+    out = []
+    for x in (raw if isinstance(raw, list) else []):
+        u = str((x or {}).get("url", "")).strip()
+        kind, src = stream_embed(u)
+        if not u.lower().startswith("https://") or not src and not kind:
+            log("livestream skipped (needs a https link): " + u[:60])
+            continue
+        out.append({"title": str((x or {}).get("title") or "Livestream"), "url": u, "kind": kind or "link", "src": src if kind else u})
+    return out
+
+
 def load_verified(entries):
     out = {}
     for e in entries:
@@ -227,7 +275,8 @@ def load_verified(entries):
             log("verified address skipped (not a valid Dogecoin address or no name): " + a[:40])
             continue
         out[a] = {"address": a, "name": str(e["name"]), "category": str(e.get("category") or "Animal welfare"), "about": str(e.get("about") or ""),
-                  "url": str(e.get("url") or ""), "source": str(e.get("source") or ""), "verified": str(e.get("verified") or "")}
+                  "url": str(e.get("url") or ""), "source": str(e.get("source") or ""), "verified": str(e.get("verified") or ""),
+                  "streams": load_streams(e.get("streams"))}
     return out
 
 
@@ -829,10 +878,10 @@ def verified_page():
         site = ("<a class=vbtn href='" + html.escape(v["url"]) + "' target=_blank rel=noopener>Website ↗</a>") if v["url"].startswith("http") else ""
         src = ("<div class=vsrc>Address published at <b>" + html.escape(re.sub(r"^https?://", "", v["source"]).rstrip("/")) + "</b></div>") if v["source"] else ""
         return ("<article class=vcard data-s='" + html.escape((v["name"] + " " + v["category"] + " " + v["about"] + " " + a).lower(), quote=True) + "'>"
-                "<div class=vtop><span class=vchip>✔ Verified</span><span class=vcat>" + html.escape(v["category"]) + "</span></div>"
+                "<div class=vtop><span class=vchip>✔ Verified</span>" + ("<span class=vlive>● LIVE</span>" if v["streams"] else "") + "<span class=vcat>" + html.escape(v["category"]) + "</span></div>"
                 "<h3>" + html.escape(v["name"]) + "</h3><p class=vabout>" + html.escape(v["about"]) + "</p>"
                 "<div class=vaddr><span class=mono>" + a + "</span><button type=button class=vcopy data-a='" + a + "'>Copy</button></div>"
-                "<div class=vfoot>" + site + "<a class=vbtn href='/address/" + a + "'>Address page</a>"
+                "<div class=vfoot>" + site + (("<a class=vbtn href='/address/" + a + "#live'>▶ Watch live</a>") if v["streams"] else "") + "<a class=vbtn href='/address/" + a + "'>Address page</a>"
                 + (("<span class=vdate>Verified " + html.escape(v["verified"]) + "</span>") if v["verified"] else "") + "</div>" + src + "</article>")
     cards = "".join(card(a, v) for a, v in sorted(VERIFIED.items(), key=lambda kv: kv[1]["name"].lower()))
     n = len(VERIFIED)
@@ -847,7 +896,7 @@ def verified_page():
                else "<section class=card><h2>No address yet</h2><p class=muted style='margin:0'>No organisation is verified on this explorer yet. Verified addresses appear here, "
                     "and on every transaction that uses them, as soon as they are added.</p></section>")
             + "<script>" + VERIFIED_JS + "</script>")
-    return page("Verified donation addresses", body, True, FLOW_CSS + SHIP_CSS).replace("<main>", "<canvas id=dship aria-hidden=true></canvas><main>", 1).replace("</body>", "<script>" + SHIP_JS + "</script></body>", 1)
+    return page("Verified donation addresses", body, True, FLOW_CSS + WALLET_CSS + SHIP_CSS).replace("<main>", "<canvas id=dship aria-hidden=true></canvas><main>", 1).replace("</body>", "<script>" + SHIP_JS + "</script></body>", 1)
 
 
 SHIP_JS = r"""(function(){
@@ -980,6 +1029,27 @@ if(j.utxos.length){document.getElementById('wutxo').hidden=false;document.getEle
 var c=document.querySelector('.vcopy');if(c)c.onclick=function(){try{navigator.clipboard.writeText(a);c.textContent='Copied';setTimeout(function(){c.textContent='Copy'},1500)}catch(e){}}})();"""
 
 
+def live_html(a):
+    v = VERIFIED.get(a)
+    if not v or not v["streams"]:
+        return ""
+    out = ""
+    for i, st in enumerate(v["streams"]):
+        play = ("<button type=button class=lplay data-k='" + st["kind"] + "' data-s='" + html.escape(st["src"], quote=True) + "' aria-label='Play: " + html.escape(st["title"], quote=True)
+                + "'><span class=ltri>▶</span><b>Watch live</b><small>Starts when you press play: nothing is loaded from the stream until then</small></button>") if st["kind"] != "link" else ("<a class=lplay href='" + html.escape(st["url"], quote=True) + "' target=_blank rel='noopener noreferrer'><span class=ltri>▶</span><b>Watch live</b><small>This stream opens on its own site</small></a>")
+        out += ("<div class=lbox><div class=lscreen>" + play + "</div><div class=lcap><span class=lbadge>● LIVE</span><b>" + html.escape(st["title"]) + "</b>"
+                "<a class=vbtn href='" + html.escape(st["url"], quote=True) + "' target=_blank rel='noopener noreferrer'>Open on its own site ↗</a></div></div>")
+    return ("<section class='card live' id=live><h2 style='margin:0 0 6px'>Live from " + html.escape(v["name"]) + "</h2><p class=muted style='margin:0 0 12px;font-size:12.5px'>"
+            "The organisation's own livestream of its logistics. The explorer only links to it: the video comes from the organisation's streaming page and is not checked here.</p>"
+            "<div class=lgrid>" + out + "</div></section><script>" + LIVE_JS + "</script>")
+
+
+LIVE_JS = r"""(function(){document.querySelectorAll('.lplay').forEach(function(b){b.addEventListener('click',function(){var box=b.parentNode,k=b.dataset.k,s=b.dataset.s.replace('{host}',encodeURIComponent(location.hostname)),el;
+if(k==='video'){el=document.createElement('video');el.controls=true;el.autoplay=true;el.playsInline=true;el.src=s}
+else{el=document.createElement('iframe');el.src=s;el.allow='autoplay; fullscreen; picture-in-picture';el.allowFullscreen=true;el.referrerPolicy='strict-origin-when-cross-origin';el.title='Livestream'}
+box.innerHTML='';box.appendChild(el)})})})();"""
+
+
 def wallet_html(a):
     v = VERIFIED.get(a)
     head = ("<p class=wver><span class=vbig>✔ Verified</span> · " + html.escape(v["name"]) + " <em class=ftag>" + html.escape(v["category"]) + " · accepts DOGE donations</em></p>") if v else ""
@@ -990,7 +1060,7 @@ def wallet_html(a):
                  + ("<p class=muted style='margin:8px 0 0'>Published at " + html.escape(v["source"]) + "</p>" if v["source"] else "")
                  + ("<p class=muted style='margin:4px 0 0'>Verified on " + html.escape(v["verified"]) + "</p>" if v["verified"] else "")
                  + "<p class=muted style='margin:8px 0 0'>Check this address against the organisation's own website before you send.</p></section>")
-    return (head + "<h1>Wallet</h1><section class='card wallet'><div class=wtop><small>Address</small><div class=vaddr><span class=mono>" + html.escape(a)
+    return (head + live_html(a) + "<h1>Wallet</h1><section class='card wallet'><div class=wtop><small>Address</small><div class=vaddr><span class=mono>" + html.escape(a)
             + "</span><button type=button class=vcopy>Copy</button></div></div>"
             "<div class=wbal><small>Balance</small><div class=wamt id=wamt><span class=wload>Reading the balance from your node…</span></div>"
             "<div class=wbar id=wbar><i></i></div><div class=sub id=wsub>Scanning the node's unspent coins. The first lookup can take up to a minute.</div></div></section>"
@@ -1001,6 +1071,15 @@ def wallet_html(a):
 
 
 WALLET_CSS = """
+.lgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}.lbox{display:grid;gap:8px;min-width:0}
+.lscreen{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;background:radial-gradient(120% 100% at 30% 20%,rgba(194,166,51,.22),rgba(11,13,23,.9)),#0b0d17;border:1px solid rgba(255,255,255,.12);display:grid;place-items:center}
+.lscreen iframe,.lscreen video{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000}
+.lplay{all:unset;cursor:pointer;display:grid;gap:4px;justify-items:center;text-align:center;padding:16px;color:var(--text)}.lplay b{font:600 15px system-ui}.lplay small{color:var(--muted);font-size:11.5px;max-width:30ch}
+.ltri{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;background:radial-gradient(circle at 35% 30%,#ecd978,#c2a633);color:#1a1406;font-size:20px;padding-left:4px;box-shadow:0 0 0 0 rgba(194,166,51,.5);animation:lpulse 2.2s infinite}
+.lplay:hover .ltri,.lplay:focus-visible .ltri{transform:scale(1.06)}@keyframes lpulse{70%{box-shadow:0 0 0 14px rgba(194,166,51,0)}}@media(prefers-reduced-motion:reduce){.ltri{animation:none}}
+.lcap{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}.lcap .vbtn{margin-left:auto}
+.lbadge{font:700 11px system-ui;letter-spacing:.1em;color:#ff5d5d;border:1px solid rgba(255,93,93,.5);border-radius:99px;padding:2px 8px}
+.vlive{font:700 11px system-ui;letter-spacing:.08em;color:#ff5d5d;border:1px solid rgba(255,93,93,.5);border-radius:99px;padding:2px 8px}
 .wallet{display:grid;gap:16px}.wtop,.wbal{display:grid;gap:6px}.wtop>small,.wbal>small{color:var(--muted);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase}
 .wamt{font:700 clamp(26px,5vw,38px)/1.15 system-ui;color:var(--gold);display:flex;align-items:center;gap:12px;flex-wrap:wrap;word-break:break-all}.wamt small{font:600 16px system-ui;color:var(--muted)}
 .wamt .coin{display:inline-block;width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ecd978,#c2a633);color:#1a1406;font:700 22px/36px system-ui;text-align:center;flex:none}
