@@ -35,7 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
-  The Solominers ring is now a moon: a detailed, slowly turning moon whose craters are open-pit mining sites (stepped pits with a haul road and amber rig lights, glowing most on the night side), lit by the sun of the Mining pools section so it has a bright side and a night side. The share of blocks found without a pool is still the ring around it, with the percentage under it.
+  The Solominers ring is now a moon: a detailed, slowly turning moon whose craters are open-pit mining sites (stepped pits with a haul road and amber rig lights, glowing most on the night side), lit by the sun of the Mining pools section so it has a bright side and a night side. The moon stands on its own, without a ring: the share of blocks found without a pool is the percentage under it, and the split is in the list below.
   The sun from the Bitcoin mining pools now also shines on the Bitcoin BLAKE2b chain: the same animated sun hangs behind the mining pools in the Mining pools section and on the "Pick a mining pool" page of More insights, and lights the edge of each pool's black hole.
   A mining pool's page now shows its blocks in one row that slides sideways, instead of a long list down the page: scroll sideways (or use the arrows) to reach every block the pool mined in the current difficulty period, with a line telling which blocks are in view. The same on every chain.
   The Find Mempool page now opens on Bitcoin (SHA-256) instead of Bitcoin BLAKE2b; the other blockchains are one click away in the picker.

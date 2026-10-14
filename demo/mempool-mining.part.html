@@ -204,7 +204,7 @@
     <p class="pnote" id="ms-pools-note" hidden></p>
   </article>
   <article class="mcard m-solo" id="solo-wrap" aria-label="Hashrate of miners that use no pool" hidden>
-    <div class="solo-chart" id="solo-chart"><div class="moon-box" id="moon-box"><canvas id="moon-cv" aria-hidden="true"></canvas><svg id="solo-svg" viewBox="0 0 300 300" role="img" aria-label="A moon with a ring round it: the ring shows the share of blocks found by miners that use no pool"></svg></div><p class="solo-pct" id="solo-pct"></p><p class="sky-cap" id="solo-cap"></p></div>
+    <div class="solo-chart" id="solo-chart"><div class="moon-box" id="moon-box"><canvas id="moon-cv" aria-hidden="true"></canvas><svg id="solo-svg" viewBox="0 0 300 300" role="img" aria-hidden="true"></svg></div><p class="solo-pct" id="solo-pct"></p><p class="sky-cap" id="solo-cap"></p></div>
     <p class="hrsub" id="solo-sub"></p>
     <ul class="solo-list" id="solo-list"></ul>
     <p class="solo-note" id="solo-note"></p>
@@ -1129,7 +1129,7 @@
     // the chart: a ring of the blocks found in the period, split into solo services, blocks with no known pool, and the mining pools
     const svg = $('solo-svg'); svg.replaceChildren();
     const rows = ok ? [...d.sources.map((x) => ({ name: x.name, kind: x.kind, share: x.share, hashrate: x.hashrate })), { name: 'Mining pools', kind: 'pools', share: 1 - d.share, hashrate: Math.max(0, d.networkHashrate - d.currentHashrate) }] : [];
-    if (ok) {
+    if (false) {   // the ring is gone: the moon stands alone; the shares are in the list below and the percentage under it
       const C = 150, RO = 148, RI = 137, pt = (a, r) => [C + r * Math.sin(a), C - r * Math.cos(a)];
       let a0 = 0;
       for (const r of rows) {
@@ -1151,7 +1151,7 @@
     $('solo-note').textContent = ok ? 'An estimate from the blocks found, so an upper bound: a small pool that is missing from the list of known pools counts as solo here, and a solo miner only shows up when a block is found.' + (d.sampled ? ' Over this period the blocks come from an evenly spread sample.' : '') : '';
   }
   // ---------- the moon of the miners without a pool ----------
-  // The ring chart of the solo share now circles a moon. Its craters are open-pit mining sites (stepped pits with a haul road winding down and amber lights at the bottom),
+  // The solo share is now a moon (the shares are in the list under it). Its craters are open-pit mining sites (stepped pits with a haul road winding down and amber lights at the bottom),
   // between ordinary craters. It is lit by the sun of the Mining pools section: the light comes from wherever that sun is on the page, so the moon has a bright side and a night side.
   // Only decoration: it has no meaning in the data (the ring round it is the chart). The surface is made once from noise and a height map; every frame lights it pixel by pixel.
   const moon = { W: 1536, H: 768, ready: false, building: false, on: false, phi: 0, last: 0, key: '', sites: [], L: [0.8, 0.35, 0.5] };
@@ -1218,7 +1218,7 @@
   }
   // for the size of the canvas: where each pixel of the disc lies on the sphere
   function moonLay(CW) {
-    const Rm = CW * 0.4267, C = CW / 2, pix = [], n0 = Math.ceil(Math.PI * (Rm + 2) * (Rm + 2));
+    const Rm = CW * 0.47, C = CW / 2, pix = [], n0 = Math.ceil(Math.PI * (Rm + 2) * (Rm + 2));
     const idx = new Int32Array(n0), u0 = new Float32Array(n0), vr = new Int16Array(n0), nz = new Float32Array(n0), sl = new Float32Array(n0), cl = new Float32Array(n0), px = new Float32Array(n0), py = new Float32Array(n0), ed = new Uint8Array(n0), W = moon.W, H = moon.H; let n = 0;
     for (let y = 0; y < CW; y++) for (let x = 0; x < CW; x++) {
       const dx = (x + 0.5 - C) / Rm, dy = -(y + 0.5 - C) / Rm, r2 = dx * dx + dy * dy, r = Math.sqrt(r2); if (r > 1 + 1.2 / Rm) continue;
