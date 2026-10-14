@@ -761,19 +761,21 @@ def block_page(ident, p=1):
     tl = "".join("<div class=tile><small>" + k + "</small><b style='font-size:18px'>" + v + "</b>" + (("<em>" + sub + "</em>") if sub else "") + "</div>" for k, v, sub in tiles)
     mining = [("Pool", html.escape(b["pool"])), ("Subsidy", doge(SUBSIDY)), ("Fees", doge(b["fees"])), ("Average fee rate", "{:.2f} koinu/B".format(b["avgFee"]))]
     gr = "<section class=card><h2>Mining</h2><dl>" + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in mining) + "</dl></section>"
-    pages = max(1, -(-len(b["txs"]) // TX_PAGE))
+    # the people's transactions: the block reward (the first transaction, paid to the miner) is the Mining box above, not a transfer between wallets
+    user_txs = [t for t in b["txs"] if not t["coinbase"]]
+    pages = max(1, -(-len(user_txs) // TX_PAGE))
     p = min(max(1, p), pages)
-    shown = b["txs"][(p - 1) * TX_PAGE:p * TX_PAGE]
-    prev = prev_outputs([i["prev"] for t in shown if not t["coinbase"] for i in t["vin"]])
+    shown = user_txs[(p - 1) * TX_PAGE:p * TX_PAGE]
+    prev = prev_outputs([i["prev"] for t in shown for i in t["vin"]])
     cards = "".join("<div class=txcard><div class=txhead><b>#" + str((p - 1) * TX_PAGE + n + 1) + "</b><a class=mono href='/tx/" + t["txid"] + "?b=" + h + "'>" + t["txid"][:16] + "…" + t["txid"][-6:] + "</a>"
-                    "<small>" + ("block reward" if t["coinbase"] else "{:,} bytes".format(t["size"])) + "</small></div>" + flow_html(flow_of(t, prev)) + "</div>"
-                    for n, t in enumerate(shown))
+                    "<small>{:,} bytes</small></div>".format(t["size"]) + flow_html(flow_of(t, prev)) + "</div>"
+                    for n, t in enumerate(shown)) or "<p class=muted style='margin:14px 0 0'>No transfers in this block: it holds only the block reward paid to the miner.</p>"
     base = "/block/" + h + "?p="
     nav = ("<div class=txnav>" + ("<a href='" + base + str(p - 1) + "'>← newer transactions</a>" if p > 1 else "<span>← newer transactions</span>")
            + "<small class=muted>page " + str(p) + " of " + str(pages) + "</small>"
            + ("<a href='" + base + str(p + 1) + "'>more transactions →</a>" if p < pages else "<span>more transactions →</span>") + "</div>") if pages > 1 else ""
-    txs = ("<section class=card><h2>Transactions: from address to address</h2>"
-           "<p class=muted style='margin:0 0 4px;font-size:12.5px'>Every transaction as it moves: the address the coins come from on the left, the addresses that receive them on the right. "
+    txs = ("<section class=card><h2>Transactions: from address to address (" + "{:,}".format(len(user_txs)) + ")</h2>"
+           "<p class=muted style='margin:0 0 4px;font-size:12.5px'>Where the DOGE of every transaction in this block went: the address the coins come from on the left, the addresses that receive them on the right. "
            "Coins that go back to the sender's own address are change.</p>" + cards + nav + "</section>")
     return page("Block " + str(b["height"]), head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>" + txs, extra_css=FLOW_CSS)
 
