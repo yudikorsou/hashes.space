@@ -5164,7 +5164,7 @@ window.__coins = COIN_LOGOS;
       : d ? 'Your node did not answer yet: the solo-miner hashrate comes from the explorer on your Umbrel (update it if it is an older version).' : 'Asking your node for the hashrate of miners without a pool…';
     // the chart: a ring of the blocks found in the period, split into solo services, blocks with no known pool, and the mining pools
     const svg = $('solo-svg'); svg.replaceChildren();
-    const rows = ok ? [...d.sources.map((x) => ({ name: x.name, kind: x.kind, share: x.share, hashrate: x.hashrate })), ...(d.fullSplit ? [] : [{ name: d.restName || 'Mining pools', kind: 'pools', share: 1 - d.share, hashrate: Math.max(0, d.networkHashrate - d.currentHashrate) }])] : [];
+    const rows = ok ? [...d.sources.map((x) => ({ name: x.name === 'Solo miners & unlisted pools (estimate)' ? 'Solominers estimate' : x.name, kind: x.kind, share: x.share, hashrate: x.hashrate })), ...(d.fullSplit ? [] : [{ name: d.restName || 'Mining pools', kind: 'pools', share: 1 - d.share, hashrate: Math.max(0, d.networkHashrate - d.currentHashrate) }])] : [];
     if (false) {   // the ring is gone: the moon stands alone; the shares are in the list below and the percentage under it
       const C = 150, RO = 148, RI = 137, pt = (a, r) => [C + r * Math.sin(a), C - r * Math.cos(a)];
       let a0 = 0;

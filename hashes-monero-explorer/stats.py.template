@@ -360,7 +360,7 @@ def p2pool_window(tip):
     pools = {"pools": ([{"name": "P2Pool", "blockCount": len(shared), "hashrate": p2p,
                          "miners": [{"name": str(round(sum(len(_coin[h]) for h in shared) / len(shared))) + " miners paid per block", "blockCount": len(shared)}]}] if shared else [])
              + ([{"name": "Large pools (as they report)", "blockCount": round((len(heights) - len(shared)) * listed_share / (1 - share)) if share < 1 else 0, "hashrate": med * listed_share},
-                 {"name": "Solo miners & unlisted pools (estimate)", "blockCount": round((len(heights) - len(shared)) * solo_share_ / (1 - share)) if share < 1 else 0, "hashrate": med * solo_share_}] if len(heights) > len(shared) else []),
+                 {"name": "Solominers estimate", "blockCount": round((len(heights) - len(shared)) * solo_share_ / (1 - share)) if share < 1 else 0, "hashrate": med * solo_share_}] if len(heights) > len(shared) else []),
              "sampled": False, "lastEstimatedHashrate": med, **base}
     pool_hr = {"currentHashrate": p2p, "currentShare": share, "networkHashrate": med, "complete": True, "sampled": False, "pool": "P2Pool",
                "hashrates": [{k: x[k] for k in ("timestamp", "avgHashrate", "share", "networkHashrate")} for x in series], **base}
@@ -368,7 +368,7 @@ def p2pool_window(tip):
     scale = (listed * med) / sum(x["hashrate"] for x in reports) if reports and listed else 0
     solo = {"soloBlocks": len(shared), "share": share, "currentHashrate": p2p, "networkHashrate": med, "sampled": False, "fullSplit": True,
             "sources": [{"name": "P2Pool miners", "kind": "service", "blockCount": len(shared), "share": share, "hashrate": p2p},
-                        {"name": "Solo miners & unlisted pools (estimate)", "kind": "unattributed", "blockCount": 0, "share": solo_share, "hashrate": med * solo_share},
+                        {"name": "Solominers estimate", "kind": "unattributed", "blockCount": 0, "share": solo_share, "hashrate": med * solo_share},
                         {"name": "Large pools (as they report)", "kind": "pools", "blockCount": 0, "share": listed, "hashrate": med * listed}],
             "reportedPools": [{"name": x["name"], "hashrate": x["hashrate"], "counted": x["hashrate"] * scale} for x in reports],
             "reportedTotal": sum(x["hashrate"] for x in reports), "reportedAt": _pool_rep["at"], **base}
