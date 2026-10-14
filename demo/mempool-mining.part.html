@@ -206,22 +206,6 @@
   #solo-link { position: static; width: fit-content; justify-self: center; margin: 6px auto 0; }
 
   #chain-area.p2pool-open .netbar { display: none; }
-  .sm { width: 100%; display: grid; gap: 18px; text-align: left; }
-  .sm-live { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 0; }
-  .sm-live div { padding: 12px 14px; border: 1px solid var(--line); border-radius: 12px; } .sm-live dt { font-size: 12px; opacity: .65; } .sm-live dd { margin: 4px 0 0; font-size: 20px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .sm-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 14px; counter-reset: sm; }
-  .sm-step { counter-increment: sm; position: relative; padding: 18px 16px 18px 62px; display: grid; gap: 8px; min-width: 0; }
-  .sm-step::before { content: counter(sm); position: absolute; left: 16px; top: 16px; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #1a1305; background: #f7931a; }
-  .sm-step h2, .sm-card h2 { margin: 0; font-size: 17px; } .sm-step p, .sm-card p { margin: 0; font-size: 13.5px; line-height: 1.55; opacity: .88; }
-  .sm-card { padding: 18px 16px; display: grid; gap: 12px; min-width: 0; }
-  .sm-two { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
-  .sm-opt { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: grid; gap: 8px; min-width: 0; } .sm-opt h3 { margin: 0; font-size: 14px; } .sm-opt h3 small { font-weight: 400; opacity: .6; margin-left: 6px; }
-  .sm-code { position: relative; margin: 0; padding: 34px 12px 10px; border-radius: 10px; background: rgba(120, 130, 210, .1); font: 12px/1.5 var(--mono); overflow-x: auto; white-space: pre; }
-  .sm-code button { position: absolute; right: 8px; top: 6px; font: 11px var(--sans); padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--text); cursor: pointer; }
-  .sm-calc { display: grid; gap: 12px; } .sm-in { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  .sm-in input, .sm-in select { font: 600 15px var(--mono); padding: 8px 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: transparent; color: var(--text); min-width: 0; } .sm-in input { width: 9ch; }
-  .sm-out { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; } .sm-out div { padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; } .sm-out span { display: block; font-size: 11.5px; opacity: .65; } .sm-out b { font-size: 16px; font-variant-numeric: tabular-nums; }
-  .sm-tip { font-size: 12.5px; opacity: .75; } .sm-links { display: flex; flex-wrap: wrap; gap: 8px; } .sm-links a { font-size: 12.5px; padding: 5px 12px; border: 1px solid var(--line-strong); border-radius: 999px; color: var(--text); text-decoration: none; }
 <!--HTML-->
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <header class="mhead m-hr-head">
@@ -290,33 +274,11 @@
 <!-- Get started solomining: a how-to for Monero, reached from the Solominers section -->
 <section class="poolpage p2page" id="solomine-page" aria-labelledby="sm-title" hidden>
   <header class="poolhead">
-    <p class="pool-eyebrow">Solomining Monero</p>
+    <p class="pool-eyebrow">Solomining</p>
     <h1 id="sm-title">Get started solomining</h1>
-    <p>Mine with your own computer and your own node: no account, no pool in the middle, no one holding your coins. Four steps, and a calculator for your odds.</p>
+    <p>Coming soon.</p>
   </header>
-  <div class="pool-tools"><a class="pool-backbtn" href="#dashboard">« Back to the mempool</a><a class="pool-backbtn" href="#xmrsplit">How the solominers are counted »</a></div>
-  <div class="sm">
-    <dl class="sm-live" id="sm-live"></dl>
-    <ol class="sm-steps">
-      <li class="mcard sm-step"><h2>Run your own node</h2><p>Solomining means your node builds the block you try to find, so it has to be your own and fully synced. Install the Monero Node app on your Umbrel, or run <b>monerod</b> on any computer (a pruned node needs far less disk). Your miner talks to the node's RPC port, 18081 by default.</p></li>
-      <li class="mcard sm-step"><h2>Make a wallet and keep the seed safe</h2><p>Create a wallet in the Monero GUI, Feather or the CLI wallet and write the seed phrase on paper. Your <b>primary address</b> (it starts with 4) is where rewards are paid. Mining only ever needs the address, never the seed. Share the address if you like and never share the seed.</p></li>
-      <li class="mcard sm-step"><h2>Pick how you mine</h2><p>Monero uses RandomX, which suits ordinary CPUs; there are no ASICs, so a desktop, laptop or mini PC is enough. Choose between two ways, both with <b>XMRig</b>:</p>
-        <div class="sm-two">
-          <div class="sm-opt"><h3>Pure solo <small>all or nothing</small></h3><p>Your rig is the only one building the block. A found block pays the full reward to you, but it can take a long time to hit.</p><pre class="sm-code"><button type="button" data-copy>Copy</button>xmrig -o 127.0.0.1:18081 --daemon -u YOUR_ADDRESS</pre></div>
-          <div class="sm-opt"><h3>P2Pool <small>solo with smaller swings</small></h3><p>A decentralised pool with no fee and no custodian: you run P2Pool next to your node, and every miner is paid straight in the block itself. Pick a sidechain to match your rig: <b>mini</b> for a small rig, <b>nano</b> for the smallest.</p><pre class="sm-code"><button type="button" data-copy>Copy</button>monerod --zmq-pub tcp://127.0.0.1:18083
-./p2pool --host 127.0.0.1 --wallet YOUR_ADDRESS --mini
-xmrig -o 127.0.0.1:3333</pre></div>
-        </div>
-        <p class="sm-tip">Replace YOUR_ADDRESS with your own primary address. A pool needs none of this; it is the other way to mine, with a smoother income and a fee.</p></li>
-      <li class="mcard sm-step"><h2>Tune, then be patient</h2><p>Let XMRig use huge pages (it does when started with administrator or root rights) and leave about 2 GB of RAM free per mining process; both change the hashrate a lot. A recent desktop CPU makes roughly 5 to 20 KH/s. Watch your rig in the console, and your payouts at the P2Pool observer of the sidechain you chose. A reward is locked for 60 blocks, about two hours, before you can spend it.</p>
-        <div class="sm-links"><a href="https://p2pool.observer" target="_blank" rel="noopener">P2Pool Main observer</a><a href="https://mini.p2pool.observer" target="_blank" rel="noopener">Mini observer</a><a href="https://nano.p2pool.observer" target="_blank" rel="noopener">Nano observer</a><a href="https://xmrig.com" target="_blank" rel="noopener">XMRig</a><a href="https://www.getmonero.org" target="_blank" rel="noopener">getmonero.org</a></div></li>
-    </ol>
-    <article class="mcard sm-card sm-calc"><h2>What are your odds?</h2><p>Monero finds a block every 120 seconds (720 a day), and each one is a draw weighted by hashrate. Type your rig's hashrate to see how long a block takes on your own.</p>
-      <div class="sm-in"><input id="sm-hash" type="number" min="0" step="any" value="10" inputmode="decimal" aria-label="Your hashrate"><select id="sm-unit" aria-label="Unit"><option value="1e3" selected>KH/s</option><option value="1">H/s</option><option value="1e6">MH/s</option></select><span class="sm-tip" id="sm-net"></span></div>
-      <div class="sm-out" id="sm-out"></div>
-      <p class="sm-tip" id="sm-p2"></p></article>
-    <article class="mcard sm-card"><h2>Is it worth it?</h2><p>Solomining is a lottery with a fixed prize: 0.6 XMR plus the block's fees, whoever wins. Most small rigs find a block rarely, and electricity is paid every day either way. Mine because you want to secure the network and keep your own coins, and treat any block you find as a bonus. P2Pool exists for exactly this: more frequent, smaller payouts without handing your coins to anyone.</p></article>
-  </div>
+  <div class="pool-tools"><a class="pool-backbtn" href="#dashboard">« Back to the mempool</a></div>
 </section>
 
 <!-- a mining pool's page, reached by searching its name in the bar above -->
@@ -1239,7 +1201,7 @@ xmrig -o 127.0.0.1:3333</pre></div>
   function renderSolo() {
     loadSoloFor(netId);
     const d = soloBy[netId], ok = d && d.ok, per = ok ? (d.window || SOLO_PERIOD[netId]) : '';
-    $('solo-link').hidden = netId !== 'monero';
+    $('solo-link').hidden = false;
     $('solo-title').textContent = netId === 'monero' ? 'P2Pool solominers' : 'Solominers';
     $('solo-hash').textContent = ok ? `Hashrate ${si(d.currentHashrate, 1)}H/s` : '–';
     $('solo-sub').textContent = ok ? `${netId === 'monero' ? 'P2Pool miners add' : 'Miners that use no pool add'} ${si(d.currentHashrate, 1)}H/s to the network's ${si(d.networkHashrate, 1)}H/s, going by ${per === 'blocks' ? `the median hashrate of the last ${retarget().blocks} blocks, each read at its own ${retarget().alg} difficulty` : 'the blocks of ' + windowSpoken(per)}.`
@@ -1522,21 +1484,7 @@ xmrig -o 127.0.0.1:3333</pre></div>
     const page = $('solomine-page'); if (!page) return;
     const on = typeof view !== 'undefined' && view === 'solomine';
     page.hidden = !on; $('chain-area')?.classList.toggle('p2pool-open', typeof view !== 'undefined' && (view === 'xmrsplit' || view === 'solomine')); if (!on) return;
-    loadSoloFor('monero');
-    smDraw();
   }
-  function smDraw() {
-    const sd = soloBy.monero, ok = sd && sd.ok, net = ok ? sd.networkHashrate : 6e9, f = (v) => si(v, 1) + 'H/s';
-    $('sm-live').innerHTML = ok ? [['Monero network', f(sd.networkHashrate)], ['P2Pool miners', f(sd.currentHashrate)], ['Block every', '120 s'], ['Reward per block', '0.6 XMR + fees']].map(([k, v]) => `<div><dt>${k}</dt><dd>${v}</dd></div>`).join('') : '<div><dt>Monero network</dt><dd>asking your node…</dd></div>';
-    $('sm-net').textContent = ok ? `against a network of ${f(net)}` : 'against a network of about 6 GH/s';
-    const h = (parseFloat($('sm-hash').value) || 0) * parseFloat($('sm-unit').value), share = Math.min(1, h / net), perDay = 720 * share;
-    const span = (days) => days < 1 ? `${(days * 24).toFixed(1)} hours` : days < 365 * 2 ? `${days.toFixed(days < 10 ? 1 : 0)} days` : `${(days / 365).toFixed(1)} years`;
-    $('sm-out').innerHTML = h > 0 ? [['Your share of the network', (share * 100).toFixed(5) + '%'], ['A block on average every', span(1 / perDay)], ['Chance in 30 days', (100 * (1 - Math.exp(-perDay * 30))).toFixed(1) + '%'], ['Chance in a year', (100 * (1 - Math.exp(-perDay * 365))).toFixed(1) + '%']].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('') : '';
-    $('sm-p2').textContent = h > 0 ? 'On P2Pool you are paid whenever the pool finds a block while you have a share in its window, so the smaller the sidechain, the more often you appear: ' + P2POOLS.monero.map((c) => `${c.name.replace('P2Pool ', '')} (about ${c.sideMH} MH/s): ${(100 * h / (c.sideMH * 1e6)).toFixed(h / (c.sideMH * 1e6) < 0.001 ? 3 : 2)}% of it`).join(', ') + '.' : '';
-  }
-  document.addEventListener('input', (e) => { if (e.target && (e.target.id === 'sm-hash' || e.target.id === 'sm-unit')) smDraw(); });
-  document.addEventListener('change', (e) => { if (e.target && e.target.id === 'sm-unit') smDraw(); });
-  document.addEventListener('click', (e) => { const b = e.target.closest && e.target.closest('.sm-code [data-copy]'); if (!b) return; const t = b.parentElement.textContent.replace(/^Copy/, '').trim(); try { navigator.clipboard.writeText(t).then(() => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1500); }, () => {}); } catch {} });
   function renderXmrSplitPage() {
     const page = $('xmrsplit-page'); if (!page) return;
     const on = typeof view !== 'undefined' && view === 'xmrsplit';

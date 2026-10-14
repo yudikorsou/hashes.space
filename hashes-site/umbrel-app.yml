@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.87"
+version: "1.9.88"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The "Get started solomining" button is now under the Solominers hashrate of every chain (Bitcoin, BLAKE2b, Dogecoin and Monero). Its page is empty for now (a header and a way back); the how-to comes later.
   Monero Solominers: three parts instead of two - P2Pool miners (from the chain), large pools (as they report) and a Solominers estimate (the part left over) - with a "How is this worked out?" page (an equation, a stacked bar and the steps), and a new "Get started solomining" page that teaches how to solomine Monero: your own node, a wallet, pure solo or P2Pool with XMRig, and a calculator for your odds of finding a block. Needs Monero Explorer 0.18.5.1-24.
   Monero gets the Solominers moon: P2Pool miners' share of the blocks, with their hashrate worked out at every block (difficulty / 120 s, LWMA), and a dedicated P2Pool solominers page (hashrate at every block, the latest P2Pool blocks with their payout splits, and the hashrate of the miners). Needs Monero Explorer 0.18.5.1-24.
   View pool profile opens smoothly too: the pool page and its first blocks fade in, the "reading the blocks" line keeps its room so nothing jumps when it disappears, and the blocks start at the left and fill in as they are read instead of re-centring while the list grows.
