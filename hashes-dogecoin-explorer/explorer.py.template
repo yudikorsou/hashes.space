@@ -4,7 +4,7 @@ Reads everything from the Dogecoin Core app's RPC: blocks (parsed from the raw b
 transactions and the mempool. Serves:
 
   /                      latest blocks and the mempool
-  /block/<hash|height>   a block with its transactions
+  /block/<hash|height>   a block with its transactions, each drawn from sender address to receiver address
   /tx/<txid>             a transaction (mempool, a block from this explorer, or any tx with -txindex)
   /search?q=             height, block hash or txid
   /api/v1/blocks         the last blocks, in mempool's format (for hashes.space)
@@ -189,6 +189,56 @@ def address(script):
         return b58check(0x1E, hashlib.new("ripemd160", hashlib.sha256(script[1:-1]).digest()).digest())  # P2PK
     if script[:1] == b"\x6a":
         return "OP_RETURN"
+    return None
+
+
+# ---------- who sends: the address behind an input, from the unlocking script itself (no txindex needed) ----------
+# A spend of a P2PKH output carries <signature> <public key>: hash160 of that key is the sender's address. A spend of a P2SH output ends with the
+# redeem script: hash160 of it is the P2SH address. (A pay-to-public-key spend carries only a signature, so its address needs the previous output.)
+
+def hash160(b):
+    try:
+        return hashlib.new("ripemd160", hashlib.sha256(b).digest()).digest()
+    except ValueError:  # no RIPEMD-160 in this OpenSSL build
+        return None
+
+
+def script_pushes(script):
+    out, i = [], 0
+    while i < len(script):
+        op = script[i]
+        i += 1
+        if op == 0:
+            out.append(b"")
+            continue
+        if op <= 75:
+            n = op
+        elif op in (0x4C, 0x4D, 0x4E):
+            ln = {0x4C: 1, 0x4D: 2, 0x4E: 4}[op]
+            if i + ln > len(script):
+                break
+            n = int.from_bytes(script[i:i + ln], "little")
+            i += ln
+        else:
+            continue
+        if i + n > len(script):
+            break
+        out.append(script[i:i + n])
+        i += n
+    return out
+
+
+def sender_address(script):
+    pushes = script_pushes(script)
+    if len(pushes) < 2:
+        return None
+    last, before = pushes[-1], pushes[-2]
+    if len(last) in (33, 65) and last[:1] in (b"\x02", b"\x03", b"\x04") and before[:1] == b"\x30":
+        h = hash160(last)
+        return b58check(0x1E, h) if h else None
+    if len(last) >= 3 and (before[:1] == b"\x30" or before == b""):
+        h = hash160(last)
+        return b58check(0x16, h) if h else None
     return None
 
 
@@ -651,9 +701,9 @@ details{margin-top:14px}summary{display:flex;align-items:center;justify-content:
 """
 
 
-def page(title, body, glass=False):
+def page(title, body, glass=False, extra_css=""):
     return ("<!doctype html><html lang=en><head><meta charset=utf-8><meta name=viewport content='width=device-width,initial-scale=1'>"
-            "<title>" + html.escape(title) + " · Dogecoin explorer</title><style>" + CSS + (PAGES_CSS if glass else "") + "</style></head><body" + (" class=g" if glass else "") + ">"
+            "<title>" + html.escape(title) + " · Dogecoin explorer</title><style>" + CSS + (PAGES_CSS if glass else "") + (extra_css or FLOW_CSS) + "</style></head><body" + (" class=g" if glass else "") + ">"
             "<header><a class=brand href='/'>Dogecoin <span>explorer</span></a>"
             "<form action='/search'><input name=q placeholder='Block height, block hash or transaction id' aria-label=Search>"
             "<button>Search</button></form></header><main>" + body + "</main>"
@@ -691,7 +741,10 @@ def home():
                 + prow + "</table></section>")
 
 
-def block_page(ident):
+TX_PAGE = 20
+
+
+def block_page(ident, p=1):
     h = rpc("getblockhash", int(ident)) if ident.isdigit() else ident
     b = block_by_hash(h)
     def btn(href, label):
@@ -708,7 +761,21 @@ def block_page(ident):
     tl = "".join("<div class=tile><small>" + k + "</small><b style='font-size:18px'>" + v + "</b>" + (("<em>" + sub + "</em>") if sub else "") + "</div>" for k, v, sub in tiles)
     mining = [("Pool", html.escape(b["pool"])), ("Subsidy", doge(SUBSIDY)), ("Fees", doge(b["fees"])), ("Average fee rate", "{:.2f} koinu/B".format(b["avgFee"]))]
     gr = "<section class=card><h2>Mining</h2><dl>" + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in mining) + "</dl></section>"
-    return page("Block " + str(b["height"]), head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>")
+    pages = max(1, -(-len(b["txs"]) // TX_PAGE))
+    p = min(max(1, p), pages)
+    shown = b["txs"][(p - 1) * TX_PAGE:p * TX_PAGE]
+    prev = prev_outputs([i["prev"] for t in shown if not t["coinbase"] for i in t["vin"]])
+    cards = "".join("<div class=txcard><div class=txhead><b>#" + str((p - 1) * TX_PAGE + n + 1) + "</b><a class=mono href='/tx/" + t["txid"] + "?b=" + h + "'>" + t["txid"][:16] + "…" + t["txid"][-6:] + "</a>"
+                    "<small>" + ("block reward" if t["coinbase"] else "{:,} bytes".format(t["size"])) + "</small></div>" + flow_html(flow_of(t, prev)) + "</div>"
+                    for n, t in enumerate(shown))
+    base = "/block/" + h + "?p="
+    nav = ("<div class=txnav>" + ("<a href='" + base + str(p - 1) + "'>← newer transactions</a>" if p > 1 else "<span>← newer transactions</span>")
+           + "<small class=muted>page " + str(p) + " of " + str(pages) + "</small>"
+           + ("<a href='" + base + str(p + 1) + "'>more transactions →</a>" if p < pages else "<span>more transactions →</span>") + "</div>") if pages > 1 else ""
+    txs = ("<section class=card><h2>Transactions: from address to address</h2>"
+           "<p class=muted style='margin:0 0 4px;font-size:12.5px'>Every transaction as it moves: the address the coins come from on the left, the addresses that receive them on the right. "
+           "Coins that go back to the sender's own address are change.</p>" + cards + nav + "</section>")
+    return page("Block " + str(b["height"]), head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>" + txs, extra_css=FLOW_CSS)
 
 
 def find_tx(txid, block_hash):
@@ -726,15 +793,103 @@ def find_tx(txid, block_hash):
         raise RpcError("Transaction not found in that block.")
 
 
+_prev = {}
+
+
+def prev_outputs(txids):
+    """{txid: [(value, address), ...]} of the transactions whose outputs these inputs spend, from the node (needs -txindex, or the mempool); None where it cannot say"""
+    need = [t for t in dict.fromkeys(txids) if t not in _prev]
+    if need:
+        try:
+            res = rpc_batch([("getrawtransaction", (t, 0)) for t in need])
+        except RpcError:
+            res = [None] * len(need)
+        if len(_prev) > 4000:
+            _prev.clear()
+        for t, hx in zip(need, res):
+            try:
+                _prev[t] = [(o["value"], address(o["script"])) for o in read_tx(Reader(bytes.fromhex(hx)))["vout"]] if hx else None
+            except (ValueError, KeyError, struct.error):
+                _prev[t] = None
+    return {t: _prev.get(t) for t in txids}
+
+
+def flow_of(tx, prev=None):
+    """where the coins of one transaction go: who they come from (address, amount when the node can say), and every output with the address it pays.
+    An output that pays an address that also sent is change going back to the sender."""
+    outs = [{"addr": address(o["script"]), "value": o["value"], "script": o["script"].hex()} for o in tx["vout"]]
+    total_out = sum(o["value"] for o in outs)
+    if tx["coinbase"]:
+        return {"coinbase": True, "ins": [], "outs": outs, "total_out": total_out, "total_in": None, "fee": None}
+    senders, known = {}, True
+    for i in tx["vin"]:
+        p = (prev or {}).get(i["prev"])
+        value = addr = None
+        if p and i["n"] < len(p):
+            value, addr = p[i["n"]]
+        if not addr:
+            addr = sender_address(i["script"])
+        if value is None:
+            known = False
+        e = senders.setdefault(addr or "?", {"addr": addr, "value": 0, "known": True, "n": 0})
+        e["n"] += 1
+        if value is None:
+            e["known"] = False
+        else:
+            e["value"] += value
+    mine = {a for a in senders if a != "?"}
+    for o in outs:
+        o["change"] = bool(o["addr"]) and o["addr"] in mine
+    total_in = sum(e["value"] for e in senders.values()) if known else None
+    return {"coinbase": False, "ins": list(senders.values()), "outs": outs, "total_out": total_out, "total_in": total_in,
+            "fee": (total_in - total_out) if total_in is not None else None}
+
+
+def flow_html(f):
+    def box(addr, value, tag="", cls=""):
+        return ("<div class='fbox" + (" " + cls if cls else "") + "'><span class='mono addr'>" + html.escape(addr) + "</span>"
+                + ("<span class=amt>" + value + "</span>" if value else "") + ("<em class=tag>" + tag + "</em>" if tag else "") + "</div>")
+    if f["coinbase"]:
+        left = box("New coins", doge(f["total_out"]), "the block reward and the fees, created by this block", "new")
+    else:
+        left = "".join(box(e["addr"] or "unknown address", doge(e["value"]) if e["known"] else "", "" if e["addr"] else "needs -txindex to show the address" if not e["known"] else "") for e in f["ins"])
+    sent = sum(o["value"] for o in f["outs"] if not o.get("change"))
+    mid = ("<div class=farrow><svg viewBox='0 0 64 24' aria-hidden='true'><path d='M2 12h54M46 4l10 8-10 8' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+           + "<b>" + doge(sent if not f["coinbase"] else f["total_out"]) + "</b><span>" + ("to the miner" if f["coinbase"] else "sent on") + "</span>"
+           + (("<span>fee " + doge(f["fee"]) + "</span>") if f["fee"] else "") + "</div>")
+    right = "".join(box(o["addr"] or "no address (" + o["script"][:24] + ")", doge(o["value"]),
+                        "change back to the sender" if o.get("change") else "", "chg" if o.get("change") else "") for o in f["outs"])
+    return "<div class=flow><div class=fcol><small>From</small>" + left + "</div>" + mid + "<div class=fcol><small>To</small>" + right + "</div></div>"
+
+
+FLOW_CSS = """
+.flow{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:14px;align-items:center}
+.fcol{display:grid;gap:8px;align-content:center}.fcol>small{color:var(--muted);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase}
+.fbox{border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.035);border-radius:10px;padding:8px 12px;display:grid;gap:2px;min-width:0}
+.fbox .addr{font:12.5px/1.35 ui-monospace,Menlo,monospace;word-break:break-all;color:var(--text)}.fbox .amt{font:600 14px system-ui;color:var(--gold)}
+.fbox.chg{border-style:dashed;border-color:rgba(27,216,244,.45)}.fbox.new{border-color:rgba(60,226,107,.5)}.fbox .tag{font-style:normal;font-size:11.5px;color:var(--muted)}
+.farrow{display:grid;justify-items:center;gap:2px;color:var(--muted);font-size:12px;text-align:center}.farrow svg{width:64px;height:24px;color:var(--link)}.farrow b{color:var(--text);font-size:13px}
+@media(max-width:760px){.flow{grid-template-columns:minmax(0,1fr)}.farrow svg{transform:rotate(90deg);margin:20px 0}}
+.txcard{display:grid;gap:10px;padding:14px 0;border-bottom:1px solid var(--line)}.txcard:last-child{border-bottom:0}
+.txhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 14px}.txhead .mono{word-break:break-all}.txhead small{color:var(--muted)}
+.txnav{display:flex;gap:10px;justify-content:space-between;margin-top:6px}.txnav a,.txnav span{border:1px solid var(--line);border-radius:8px;padding:6px 12px}.txnav span{color:var(--muted);opacity:.5}
+"""
+
+
 def tx_page(txid, block_hash):
     tx, bh, conf = find_tx(txid, block_hash)
     ins = "".join("<tr><td class='mono wrap'>" + ("coinbase" if tx["coinbase"] else "<a href='/tx/" + i["prev"] + "'>" + i["prev"][:16] + "…</a>:" + str(i["n"])) + "</td></tr>" for i in tx["vin"])
     outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(address(o["script"]) or o["script"].hex()[:60]) + "</td><td class=r>" + doge(o["value"]) + "</td></tr>"
                    for n, o in enumerate(tx["vout"]))
-    return page("Transaction", "<h1>Transaction</h1><section class=card><dl>"
+    f = flow_of(tx, prev_outputs([i["prev"] for i in tx["vin"]]) if not tx["coinbase"] else None)
+    flow = ("<section class=card><h2>Where the coins go</h2>" + flow_html(f)
+            + ("" if f["coinbase"] or f["total_in"] is not None else "<p class=muted style='margin:10px 0 0;font-size:12.5px'>The amounts that came in are not shown: this node cannot look up the transactions these coins come from. Run Dogecoin Core with -txindex=1 to see them.</p>")
+            + "</section>")
+    return page("Transaction", "<h1>Transaction</h1>" + flow + "<section class=card><dl>"
                 + "".join("<dt>" + k + "</dt><dd>" + v + "</dd>" for k, v in [
                     ("Txid", "<span class=mono>" + tx["txid"] + "</span>"), ("Status", ("In block <a href='/block/" + bh + "'>" + bh[:16] + "…</a> · " + "{:,}".format(conf) + " confirmations") if bh else "In the mempool, waiting for a block"),
-                    ("Size", "{:,} bytes".format(tx["size"])), ("Total out", doge(sum(o["value"] for o in tx["vout"])))])
+                    ("Size", "{:,} bytes".format(tx["size"])), ("Total out", doge(sum(o["value"] for o in tx["vout"]))),
+                    ("Fee", doge(f["fee"]) if f["fee"] is not None else "–")])
                 + "</dl></section><section class=card><h2>Inputs</h2><table>" + ins + "</table></section><section class=card><h2>Outputs</h2><table><tr><th>#</th><th>Address</th><th class=r>Value</th></tr>"
                 + outs + "</table></section>")
 
@@ -1215,7 +1370,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/":
                 return self.send(200, home())
             if path.startswith("/block/"):
-                return self.send(200, block_page(path[7:]))
+                return self.send(200, block_page(path[7:], int(params["p"]) if params.get("p", "").isdigit() else 1))
             if path.startswith("/tx/") and HEX64.fullmatch(path[4:]):
                 return self.send(200, tx_page(path[4:].lower(), params.get("b")))
             if path == "/search":
