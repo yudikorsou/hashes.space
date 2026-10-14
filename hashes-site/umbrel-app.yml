@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.91"
+version: "1.9.92"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  How to read the blocks: the Centralised (red glow) explanation now reads "The pool builds the block template, so the pool decides which transactions go in and which stay out, and it pays out miners in the pool as a third-party service."
   How to read the blocks: "Inside the miners" now follows the chain you came from, with the real four blocks of that chain and an animation each - Bitcoin and Bitcoin BLAKE2b (Fee auction, Create new block, Block assembly, Candidate block), Dogecoin (Fee sorting, Coinbase & merkle root, Block assembly with the 80-byte header, Candidate block) and Monero (Fee-per-byte ranking, Dynamic block size, Block assembly with the 76-byte header, Candidate block). Buttons on the page switch to another chain.
   How to read the blocks now has two sections: "Inside the miners" (before the fan: Fee sorting, Coinbase & merkle root, Block assembly and Candidate block, each with a small animation) and "The blockchain" (behind the fan: the glow of the blocks per chain), with buttons to jump between them.
   Picking another proof-of-work chain now switches smoothly: the blocks and the mining section fade out, swap while hidden and fade back in, and the section eases to the new chain's height instead of jumping. Rapid picks end on the last chain, and the fade is skipped for visitors who prefer reduced motion.
