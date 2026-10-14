@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.76"
+version: "1.9.77"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The Candidate block now shows that miners all over the world are hashing it: a ring of miners glows round the block, hashes fly into it, a ring of light closes in, and a line under it gives the hashrate that is on the block right now.
   Dogecoin: the Solominers and Mining pools sections (the moon and the black holes) are now based on DigiShield: the hashrate of each of the last 1,440 blocks is read from its own difficulty, and the solo miners and every pool get their share of those blocks times the median per-block hashrate. Needs Dogecoin Explorer 1.7.0 (older explorers keep the 14-day figures).
   Fixed a console error ("drawImage ... a width or height of 0") from the Space theme background when the browser window was shrunk to nothing, for example with the developer tools docked over the page.
   The moon of the solominers: the three lines of the list (Solo CK Pool, No pool tag or known payout address, Mining pools) are now three craters on the moon, one for each line, each in the colour of its line; hover or tap a crater for the hashrate and share of that source. On Bitcoin, when a block is found by Solo CK Pool or with no pool tag or known payout address (read live from your own node), the crater of that source lights up on the moon, with a ring that spreads out and a line under the moon saying which block it was.
