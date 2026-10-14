@@ -4741,11 +4741,11 @@ window.__coins = COIN_LOGOS;
   function skyLayout() {
     const key = sky.names + '|' + sky.w + 'x' + sky.h; if (sky.laid === key || !sky.ships.length || !sky.w) return; sky.laid = key;
     if (sky.picker) {   // the picker: holes side by side in rows, biggest first, each with its summary under it
-      const n = sky.ships.length, W = sky.w, cols = Math.max(1, Math.min(n, Math.floor(W / (W < 520 ? 150 : 200)))), cellW = W / cols, maxR = Math.min(cellW * 0.32, 58), rows = Math.ceil(n / cols), rowH = maxR * 2.3 + 116, need = Math.round(rows * rowH + 44);
+      const n = sky.ships.length, W = sky.w, cols = Math.max(1, Math.min(n, Math.floor(W / (W < 520 ? 150 : 200)))), cellW = W / cols, maxR = Math.min(cellW * 0.32, 58), rows = Math.ceil(n / cols), rowH = maxR * 2.3 + 100, need = Math.round(rows * rowH + 44);
       const host = $('pool-sky'); if (host && Math.abs((parseFloat(host.style.minHeight) || 0) - need) > 1) { host.style.minHeight = need + 'px'; host.style.flexBasis = need + 'px'; }
       sky.ships.forEach((sh, i) => {
         const row = Math.floor(i / cols), inRow = Math.min(cols, n - row * cols), col = i - row * cols;
-        sh.r = Math.max(13, maxR * (0.3 + 0.7 * Math.sqrt(Math.min(1, sh.vis * 2.4)))); sh.labY = maxR * 1.1 + 16; sh.btn = { x: -66, y: sh.labY + 42, w: 132, h: 26 };
+        sh.r = Math.max(13, maxR * (0.3 + 0.7 * Math.sqrt(Math.min(1, sh.vis * 2.4)))); sh.labY = maxR * 1.1 + 16; sh.btn = { x: -66, y: sh.labY + 28, w: 132, h: 26 };
         sh.hx = (cols - inRow) * cellW / 2 + (col + 0.5) * cellW; sh.hy = 26 + maxR * 1.3 + row * rowH;
       });
       { const lastN = n - (rows - 1) * cols, ly0 = 26 + maxR * 1.3 + (rows - 1) * rowH;   // Bitcoin's sun hangs in the free place at the end of the last row, or in the top right corner when the rows are full
@@ -4821,8 +4821,7 @@ window.__coins = COIN_LOGOS;
       const pk = sky.picker, ly = pk ? y + sh.labY : y + Math.max(R * 1.05, R * 0.8 + 6) + 12;
       g.textAlign = 'center'; g.fillStyle = hot ? '#fff' : '#e8ebf5'; g.font = font(pk ? 13.5 : sh.r > 24 ? 12 : 11, 600); g.fillText(sh.name.length > (pk ? 18 : 20) ? sh.name.slice(0, pk ? 17 : 19) + '…' : sh.name, x, ly);
       if (pk) {   // the summary of the pool under its hole
-        g.fillStyle = 'rgba(255,190,165,.95)'; g.font = font(12, 600); g.fillText(`${(sh.share * 100).toFixed(1)}% of the chain`, x, ly + 17);
-        g.fillStyle = muted; g.font = font(11, 500); g.fillText(`${fmt(sh.blocks)} block${sh.blocks === 1 ? '' : 's'} · ${si(sh.hash, 1)}H/s`, x, ly + 33);
+        g.fillStyle = muted; g.font = font(11, 500); g.fillText(`${fmt(sh.blocks)} block${sh.blocks === 1 ? '' : 's'} · ${si(sh.hash, 1)}H/s`, x, ly + 17);
         if (sh.pick && sh.btn) {   // the button that opens the pool's own page
           const b = sh.btn, bx = x + b.x, by = y + b.y, rr = b.h / 2, on = sky.hoverBtn === sh;
           g.beginPath(); g.moveTo(bx + rr, by); g.lineTo(bx + b.w - rr, by); g.arc(bx + b.w - rr, by + rr, rr, -1.5708, 1.5708); g.lineTo(bx + rr, by + b.h); g.arc(bx + rr, by + rr, rr, 1.5708, 4.7124); g.closePath();
