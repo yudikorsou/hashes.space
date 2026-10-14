@@ -847,7 +847,78 @@ def verified_page():
                else "<section class=card><h2>No address yet</h2><p class=muted style='margin:0'>No organisation is verified on this explorer yet. Verified addresses appear here, "
                     "and on every transaction that uses them, as soon as they are added.</p></section>")
             + "<script>" + VERIFIED_JS + "</script>")
-    return page("Verified donation addresses", body, True)
+    return page("Verified donation addresses", body, True, FLOW_CSS + SHIP_CSS).replace("<main>", "<canvas id=dship aria-hidden=true></canvas><main>", 1).replace("</body>", "<script>" + SHIP_JS + "</script></body>", 1)
+
+
+SHIP_JS = r"""(function(){
+  function skySpline(wp, u) {
+    const m = wp.length, i = Math.floor(u), f = u - i, P = (k) => wp[((k % m) + m) % m], p0 = P(i - 1), p1 = P(i), p2 = P(i + 1), p3 = P(i + 2);
+    const c = (a, b, cc, d) => 0.5 * ((2 * b) + (-a + cc) * f + (2 * a - 5 * b + 4 * cc - d) * f * f + (-a + 3 * b - 3 * cc + d) * f * f * f);
+    return { x: c(p0.x, p1.x, p2.x, p3.x), y: c(p0.y, p1.y, p2.y, p3.y) };
+  }
+  function skyAt(r, u) {
+    const N = r.pts.length, v = (((u * r.K) % N) + N) % N, i = Math.floor(v), f = v - i, a = r.pts[i], b = r.pts[(i + 1) % N];
+    return { x: a.x + (b.x - a.x) * f, y: a.y + (b.y - a.y) * f };
+  }
+  function skyShip(g, t, W, H, still) {
+    const r = skyRoute(W, H), u = still ? 0.3 : (t / 1000) * (58 / r.avg) + 0.3, pos = skyAt(r, u), nxt = skyAt(r, u + 0.02);
+    const dx = nxt.x - pos.x, dy = nxt.y - pos.y, dir = dx >= 0 ? 1 : -1, tilt = Math.atan2(dy, Math.abs(dx)) * 0.55, S = Math.max(17, Math.min(30, W / 32));
+    if (!still) for (let k = 14; k >= 1; k--) { const q = skyAt(r, u - k * 0.011); g.fillStyle = `rgba(255,${190 + k * 4},${120 + k * 6},${0.5 - k * 0.034})`; g.beginPath(); g.arc(q.x, q.y + Math.sin(t / 200 + k) * 1.2, Math.max(0.6, S * 0.09 * (1 - k / 16)), 0, 6.2832); g.fill(); }
+    g.save(); g.translate(pos.x, pos.y); g.scale(dir, 1); g.rotate(tilt); g.scale(S, S); g.lineJoin = 'round'; g.lineCap = 'round';
+    const ink = '#1a1630', lw = 0.07, fl = still ? 1 : 0.8 + 0.25 * Math.sin(t / 55) + 0.1 * Math.sin(t / 23);
+    // the flame
+    const fg = g.createLinearGradient(-1.35, 0, -1.35 - 1.1 * fl, 0); fg.addColorStop(0, 'rgba(255,214,120,.95)'); fg.addColorStop(0.5, 'rgba(255,120,40,.7)'); fg.addColorStop(1, 'rgba(255,80,40,0)');
+    g.fillStyle = fg; g.beginPath(); g.moveTo(-1.3, -0.22); g.quadraticCurveTo(-1.3 - 0.9 * fl, 0.02, -1.3, 0.3); g.closePath(); g.fill();
+    // fin
+    g.fillStyle = '#ff8a3d'; g.strokeStyle = ink; g.lineWidth = lw; g.beginPath(); g.moveTo(-0.85, 0.05); g.lineTo(-1.45, -0.55); g.lineTo(-1.3, 0.2); g.closePath(); g.fill(); g.stroke();
+    // hull
+    const hg = g.createLinearGradient(0, -0.3, 0, 0.8); hg.addColorStop(0, '#f4f7ff'); hg.addColorStop(1, '#8c97cc');
+    g.fillStyle = hg; g.beginPath(); g.ellipse(0, 0.22, 1.4, 0.55, 0, 0, 6.2832); g.fill(); g.stroke();
+    g.fillStyle = '#ff8a3d'; g.beginPath(); g.ellipse(0, 0.26, 1.3, 0.1, 0, 0, 6.2832); g.fill();
+    for (let k = 0; k < 4; k++) { g.fillStyle = k % 2 ? '#ffd27a' : '#7be8ff'; g.beginPath(); g.arc(-0.75 + k * 0.5, 0.52, 0.065, 0, 6.2832); g.fill(); }
+    // the pilot: a shiba inu behind the glass
+    const hx = 0.2, hy = -0.12;
+    g.fillStyle = '#e0963f'; g.beginPath(); g.arc(hx, hy, 0.5, 0, 6.2832); g.fill();
+    for (const sd of [-1, 1]) {
+      g.fillStyle = '#e0963f'; g.beginPath(); g.moveTo(hx + sd * 0.14, hy - 0.42); g.lineTo(hx + sd * 0.3, hy - 0.9); g.lineTo(hx + sd * 0.5, hy - 0.3); g.closePath(); g.fill();
+      g.fillStyle = '#f6c9a0'; g.beginPath(); g.moveTo(hx + sd * 0.22, hy - 0.46); g.lineTo(hx + sd * 0.31, hy - 0.74); g.lineTo(hx + sd * 0.42, hy - 0.36); g.closePath(); g.fill();
+    }
+    g.fillStyle = '#fff3df'; g.beginPath(); g.ellipse(hx, hy + 0.14, 0.34, 0.25, 0, 0, 6.2832); g.fill();
+    g.beginPath(); g.ellipse(hx - 0.26, hy + 0.04, 0.16, 0.2, 0, 0, 6.2832); g.ellipse(hx + 0.26, hy + 0.04, 0.16, 0.2, 0, 0, 6.2832); g.fill();
+    g.fillStyle = '#fff3df'; for (const sd of [-1, 1]) { g.beginPath(); g.arc(hx + sd * 0.19, hy - 0.26, 0.055, 0, 6.2832); g.fill(); }
+    g.fillStyle = ink; for (const sd of [-1, 1]) { g.beginPath(); g.arc(hx + sd * 0.19, hy - 0.1, 0.055, 0, 6.2832); g.fill(); }
+    g.beginPath(); g.ellipse(hx, hy + 0.08, 0.075, 0.05, 0, 0, 6.2832); g.fill();
+    g.strokeStyle = ink; g.lineWidth = 0.035; g.beginPath(); g.moveTo(hx, hy + 0.12); g.lineTo(hx, hy + 0.17); g.moveTo(hx - 0.11, hy + 0.2); g.quadraticCurveTo(hx, hy + 0.3, hx + 0.11, hy + 0.2); g.stroke();
+    // the glass dome over the pilot
+    const dg = g.createLinearGradient(-0.5, -0.9, 0.7, 0.2); dg.addColorStop(0, 'rgba(190,240,255,.5)'); dg.addColorStop(1, 'rgba(120,200,255,.12)');
+    g.fillStyle = dg; g.strokeStyle = 'rgba(210,245,255,.9)'; g.lineWidth = 0.05; g.beginPath(); g.arc(hx, hy + 0.02, 0.8, Math.PI, 0); g.lineTo(hx + 0.8, hy + 0.3); g.lineTo(hx - 0.8, hy + 0.3); g.closePath(); g.fill(); g.stroke();
+    g.strokeStyle = 'rgba(255,255,255,.75)'; g.lineWidth = 0.05; g.beginPath(); g.arc(hx, hy + 0.02, 0.64, Math.PI * 1.12, Math.PI * 1.38); g.stroke();
+    g.restore();
+  }
+
+  var _route = null;
+  function skyRoute(W, H) {
+    var key = W + 'x' + H; if (_route && _route.key === key) return _route;
+    var n = [[0.08, 0.30], [0.30, 0.14], [0.55, 0.26], [0.86, 0.10], [0.94, 0.42], [0.70, 0.62], [0.90, 0.86], [0.55, 0.78], [0.30, 0.92], [0.10, 0.70], [0.26, 0.48]];
+    var wp = n.map(function (p) { return { x: p[0] * W, y: p[1] * H }; }), K = 14, pts = [], len = 0;
+    for (var i = 0; i < wp.length * K; i++) pts.push(skySpline(wp, i / K));
+    pts.forEach(function (q, i) { var b = pts[(i + 1) % pts.length]; len += Math.hypot(b.x - q.x, b.y - q.y); });
+    return (_route = { pts: pts, K: K, key: key, avg: Math.max(40, len / wp.length) });
+  }
+
+  var cv = document.getElementById('dship'); if (!cv) return;
+  var g = cv.getContext('2d'), W = 0, H = 0, still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
+  function size() { var d = Math.min(2, window.devicePixelRatio || 1), w = window.innerWidth, h = window.innerHeight; if (w === W && h === H) return; W = w; H = h; cv.width = w * d; cv.height = h * d; cv.style.width = w + 'px'; cv.style.height = h + 'px'; g.setTransform(d, 0, 0, d, 0, 0); }
+  function frame(t) { size(); g.clearRect(0, 0, W, H); skyShip(g, t, W, H, still); if (!still) requestAnimationFrame(frame); }
+  window.addEventListener('resize', function () { if (still) requestAnimationFrame(frame); });
+  requestAnimationFrame(frame);
+})();"""
+
+
+SHIP_CSS = """
+#dship{position:fixed;inset:0;width:100vw;height:100vh;z-index:0;pointer-events:none}
+body.g>header,body.g>nav,body.g>main,body.g>footer{position:relative;z-index:1}
+"""
 
 
 VERIFIED_JS = """
