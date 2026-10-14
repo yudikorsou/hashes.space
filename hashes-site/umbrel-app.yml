@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.68"
+version: "1.9.69"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The "More insights" page (Pick a mining pool) no longer has the two links at the bottom ("Back to the mempool" and "Calculate hashrate"); the "Back to the mempool" button next to the search bar stays.
   On the "More insights" page (Pick a mining pool) there is now a "Back to the mempool" button right next to the search bar, and the "Back to the mempool" link at the bottom of the page is gone.
   On a mining pool's page the "Back to the mempool" link at the bottom is now a button right next to the block search bar (it reads "Back to the mining pools" when you came from the pick-a-pool page).
   The "More insights" page (Pick a mining pool) no longer shows the blockchain picker and search bar above it either; the title, the sun and the black holes start right under the top bar. They come back on the other pages.
