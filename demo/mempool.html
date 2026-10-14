@@ -1061,6 +1061,35 @@
   .glow-row p { font-size: 13.5px !important; line-height: 1.6 !important; }
   .glow-row b.red { color: #ff7a6e; } .glow-row b.green { color: var(--matrix); } .glow-row b.orange { color: var(--orange); }
 
+  /* How to read the blocks: two parts, the miners (before the fan) and the blockchain (behind it) */
+  .bp-head { width: min(100%, 860px); display: grid; gap: 14px; justify-items: center; text-align: center; margin: 6px 0 8px; }
+  .bp-head h2 { margin: 0; font: 600 28px/1.2 var(--display); color: var(--text); text-wrap: balance; }
+  .bp-head p { margin: 0; max-width: 60ch; color: var(--muted); font: 400 14.5px/1.7 var(--sans); }
+  .bp-jump { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line-strong, var(--line)); border-radius: 999px; }
+  .bp-jump button { font: 500 13px/1 var(--sans); padding: 8px 16px; border-radius: 999px; border: 0; background: transparent; color: var(--muted); cursor: pointer; }
+  .bp-jump button:hover, .bp-jump button:focus-visible { color: var(--text); background: rgba(120, 130, 210, .16); outline: none; }
+  .blocks-page .learn-blocks { border: 1px solid var(--line); border-radius: 18px; background: rgba(10, 12, 24, .35); padding: 26px 26px 22px; margin-top: 0; }
+  .lb-eyebrow { margin: 0 auto -6px; font: 500 11.5px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted-2, var(--muted)); text-align: center; }
+  .mrows { display: grid; gap: 14px; }
+  .mrow { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 18px; align-items: center; padding: 14px 16px; border-radius: 14px; background: rgba(10, 12, 24, .45); border: 1px solid var(--line); }
+  .mrow h4 { margin: 0 0 6px; font: 600 15px/1.25 var(--sans); color: var(--text); } .mrow h4 span { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px; border-radius: 50%; font: 700 12px/1 var(--sans); color: #1a1305; background: #f7931a; }
+  .mrow p { margin: 0 0 6px; color: var(--muted); font: 400 13.5px/1.65 var(--sans); } .mrow p:last-child { margin-bottom: 0; } .mrow p b { color: var(--text); font-weight: 500; } .mrow p small { display: block; margin-top: 4px; font-size: 12.5px; opacity: .8; }
+  @media (max-width: 560px) { .mrow { grid-template-columns: minmax(0, 1fr); justify-items: center; } .mrow > div:last-child { justify-self: stretch; } .blocks-page .learn-blocks { padding: 22px 14px 16px; } }
+  .mi-vis { position: relative; width: 170px; height: 108px; border-radius: 12px; border: 1px solid var(--line); background: linear-gradient(180deg, rgba(40, 46, 80, .55), rgba(16, 18, 34, .7)); display: grid; place-items: center; overflow: hidden; }
+  .mi-vis .sortbars { height: 34px; } .mi-vis .sortbars i { width: 9px; }
+  .mi-vis .cap { position: absolute; left: 0; right: 0; bottom: 6px; text-align: center; font: 500 10px/1 var(--mono); letter-spacing: .08em; color: var(--muted); text-transform: uppercase; }
+  .mi-tree text { font: 600 8px var(--mono); fill: #cfd5f5; text-anchor: middle; } .mi-tree .ln { stroke: #5b6496; stroke-width: 1.4; fill: none; } .mi-tree rect { fill: #2d3348; stroke: #5b6496; }
+  .mi-tree .lf { animation: mi-leaf 7s ease-in-out infinite; } .mi-tree .l2 { animation-delay: 1.4s; } .mi-tree .root { animation: mi-root 7s ease-in-out infinite; } .mi-tree .cb rect { fill: #f7931a; stroke: #f7931a; } .mi-tree .cb text { fill: #1a1305; }
+  @keyframes mi-leaf { 0%, 6% { opacity: 0; transform: translateY(-6px); } 16%, 90% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+  @keyframes mi-root { 0%, 55% { opacity: 0; } 70%, 92% { opacity: 1; } 100% { opacity: 0; } }
+  .mi-stack { position: absolute; left: 24px; right: 24px; bottom: 20px; display: flex; flex-direction: column-reverse; gap: 3px; }
+  .mi-stack i { display: block; height: 9px; border-radius: 2px; background: var(--c); opacity: 0; animation: mi-brick 6s ease-in-out infinite; animation-delay: calc(var(--n) * .6s); }
+  @keyframes mi-brick { 0% { opacity: 0; transform: translateY(-26px); } 8%, 86% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+  .mi-cand { width: 54px; height: 54px; border-radius: 8px; border: 1px solid #7a6cd6; background: linear-gradient(135deg, #2d3348, #3a2f6b); display: grid; place-items: center; font: 700 9px var(--mono); color: #cfd5f5; z-index: 1; }
+  .mi-bits { position: absolute; inset: 0; } .mi-bits b { position: absolute; font: 600 9px var(--mono); color: #8fe3ff; opacity: 0; animation: mi-fly 2.4s linear infinite; animation-delay: var(--d); left: var(--x); top: var(--y); }
+  @keyframes mi-fly { 0% { opacity: 0; transform: translate(0, 0); } 15% { opacity: 1; } 80% { opacity: .9; } 100% { opacity: 0; transform: translate(var(--tx), var(--ty)); } }
+  @media (prefers-reduced-motion: reduce) { .mi-tree .lf, .mi-tree .root, .mi-stack i, .mi-bits b { animation: none; opacity: 1; transform: none; } .mi-bits { display: none; } }
+
   /* Academy videos: one 1280x720 animated stage per chapter, scaled to its card */
   .lv { width: min(100%, 900px); display: grid; gap: 12px; }
   .lv-frame { position: relative; aspect-ratio: 16 / 9; border-radius: 28px; overflow: hidden; border: 1px solid var(--line); background: radial-gradient(ellipse 80% 75% at 50% 35%, rgba(70, 78, 140, 0.30), rgba(70, 78, 140, 0) 78%), var(--bg); isolation: isolate; }
@@ -1570,8 +1599,29 @@
 <!-- How to read the blocks: a page of its own, reached from the link beside the search bar -->
 <section class="learn blocks-page" id="blocks-page" hidden>
   <a class="back-link" href="#dashboard"><svg viewBox="0 0 12 12" aria-hidden="true"><path d="M9.5 6h-7M5.5 3l-3 3 3 3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Return to Mempool</a>
+  <header class="bp-head">
+    <h2 id="bp-title">How to read the blocks</h2>
+    <p>The blockchain page has two halves, split by the fan: on its left <b>the miners</b> build the next block, on its right the <b>blocks they found</b> are chained together.</p>
+    <div class="bp-jump" role="group" aria-label="Jump to a part"><button type="button" data-to="lb-miners">Inside the miners</button><button type="button" data-to="learn-blocks">The blockchain</button></div>
+  </header>
+  <section class="learn-blocks" id="lb-miners" aria-labelledby="lbm-title">
+    <p class="lb-eyebrow">Before the fan</p>
+    <h3 id="lbm-title">Inside the miners</h3>
+    <p>These four steps show how the block that is being hashed right now came to be. Each one is live: it is built from your own node's mempool and chain tip.</p>
+    <div class="mrows">
+      <div class="mrow"><div class="mi-vis" aria-hidden="true"><div class="sortbars"><i style="--h:32px;--o:3"></i><i style="--h:28px;--o:-1"></i><i style="--h:24px;--o:2"></i><i style="--h:20px;--o:-3"></i><i style="--h:16px;--o:1"></i><i style="--h:12px;--o:-2"></i><i style="--h:8px;--o:0"></i></div><span class="cap">sorted by fee</span></div>
+        <div><h4><span>1</span>Fee sorting</h4><p>Every transaction waiting in the mempool is ranked by the <b>fee rate</b> it pays: satoshis per virtual byte on Bitcoin and BLAKE2b, koinu per byte on Dogecoin and a fee per byte of weight on Monero. The bars move from the order the transactions arrived in to the order a miner takes them, best-paying first.</p><p>The figures are the median fee, the range from highest to lowest, and how many transactions are unconfirmed.</p></div></div>
+      <div class="mrow"><div class="mi-vis" aria-hidden="true"><svg class="mi-tree" viewBox="0 0 170 100" width="170" height="100"><g class="lf"><path class="ln" d="M25 34 L55 54 M63 34 L55 54"/></g><g class="lf l2"><path class="ln" d="M108 34 L115 54 M142 34 L115 54"/></g><g class="root"><path class="ln" d="M55 54 L85 76 M115 54 L85 76"/></g><g class="lf cb"><rect x="4" y="20" width="42" height="14" rx="3"/><text x="25" y="30">coinbase</text></g><g class="lf"><rect x="50" y="20" width="26" height="14" rx="3"/><text x="63" y="30">tx</text></g><g class="lf l2"><rect x="94" y="20" width="28" height="14" rx="3"/><text x="108" y="30">tx</text></g><g class="lf l2"><rect x="128" y="20" width="28" height="14" rx="3"/><text x="142" y="30">tx</text></g><g class="lf"><rect x="41" y="48" width="28" height="12" rx="3"/><text x="55" y="57">hash</text></g><g class="lf l2"><rect x="101" y="48" width="28" height="12" rx="3"/><text x="115" y="57">hash</text></g><g class="root"><rect x="60" y="72" width="50" height="14" rx="3" style="fill:#1b6a52;stroke:#2fb585"/><text x="85" y="82">merkle root</text></g></svg></div>
+        <div><h4><span>2</span>Coinbase &amp; merkle root</h4><p>The first transaction of every block is the <b>coinbase</b>: it creates the block reward and pays it, together with the fees, to the miner. The mempool transactions follow, and they are hashed in pairs, again and again, until a single hash is left: the <b>merkle root</b>.</p><p>That one hash stands for every transaction in the block, so changing a single one of them changes the root.</p></div></div>
+      <div class="mrow"><div class="mi-vis" aria-hidden="true"><div class="mi-stack"><i style="--n:4;--c:#e8ebf5"></i><i style="--n:3;--c:#ff7a3a"></i><i style="--n:2;--c:#ff9a3a"></i><i style="--n:1;--c:#ffb84a"></i><i style="--n:0;--c:#ffd24a"></i></div><span class="cap">block assembly</span></div>
+        <div><h4><span>3</span>Block assembly</h4><p>The block is built up from nothing: the coinbase goes in first, then the transactions in the order of their fee rate, flying in one after the other. The totals count up to what your node's block template holds: transactions, fees and how full the block is.</p><p>Dogecoin and Monero show the <b>block header</b> being put together instead: version, the previous block, the merkle root, the time and the nonce.</p></div></div>
+      <div class="mrow"><div class="mi-vis" aria-hidden="true"><div class="mi-bits"><b style="--x:6px;--y:14px;--tx:62px;--ty:34px;--d:0s">1011</b><b style="--x:10px;--y:84px;--tx:58px;--ty:-30px;--d:.5s">0110</b><b style="--x:118px;--y:10px;--tx:-36px;--ty:36px;--d:1s">0010</b><b style="--x:122px;--y:88px;--tx:-40px;--ty:-34px;--d:1.5s">1101</b><b style="--x:60px;--y:4px;--tx:6px;--ty:40px;--d:.8s">0101</b><b style="--x:64px;--y:92px;--tx:4px;--ty:-38px;--d:1.9s">1001</b></div><div class="mi-cand">0000</div></div>
+        <div><h4><span>4</span>Candidate block</h4><p>The finished header is the <b>candidate block</b>, and it is what miners are hashing now. They try one nonce after the other, and every try is a hash: the strings of bits flying into the block.</p><p>A block is found when the hash falls under the target. The label above it says which block height the miners are working on.</p></div></div>
+    </div>
+  </section>
   <section class="learn-blocks" id="learn-blocks" aria-labelledby="lb-title">
-    <h3 id="lb-title">How to read the blocks</h3>
+    <p class="lb-eyebrow">Behind the fan</p>
+    <h3 id="lb-title">The blockchain</h3>
     <p>The glow around a mined block tells you <b>who built its block template</b>, the list of transactions inside. The colour of the block itself still shows the fees: the warmer, the more its transactions pay. Every proof-of-work chain has its own rules:</p>
     <div class="glows">
     <section><h4>Bitcoin<small>SHA-256 · our own Bitcoin node</small></h4>
@@ -1618,6 +1668,8 @@
     });
   }
   build(); window.learnBuildMinis = build;
+  document.querySelectorAll('.bp-jump button').forEach((b) => b.addEventListener('click', () => { const el = document.getElementById(b.dataset.to); if (el) el.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' }); }));
+
 })();
 </script>
 
