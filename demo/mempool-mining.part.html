@@ -1198,12 +1198,8 @@
         h[i] += dh; al[i] += da;
       }
     };
-    const sites = []; let tries = 0;
-    while (sites.length < 20 && tries++ < 900) {
-      const lat = (R() - 0.5) * 2 * 0.95, lon = R() * 6.2832 - 3.1416, rho = 0.09 + R() * 0.075;
-      if (sites.some((s) => Math.acos(Math.max(-1, Math.min(1, Math.sin(s.lat) * Math.sin(lat) + Math.cos(s.lat) * Math.cos(lat) * Math.cos(s.lon - lon)))) < s.rho + rho + 0.06)) continue;
-      sites.push({ lat, lon, rho, ph: R() * 6.28, n: 3 + ((R() * 3) | 0), ri: sites.length });
-    }
+    // three mining pits, one for each line of the list (Solo CK Pool, no pool tag or known payout address, mining pools), side by side on the face of the moon
+    const sites = [{ lon: -0.62, lat: 0.30, rho: 0.15, kind: 'service' }, { lon: 0.02, lat: -0.22, rho: 0.17, kind: 'unattributed' }, { lon: 0.66, lat: 0.26, rho: 0.15, kind: 'pools' }].map((x) => ({ ...x, ph: R() * 6.28, n: 5 }));
     for (let k = 0; k < 430; k++) { const u = R(), rho = 0.007 + 0.085 * u * u * u, cy = ((1 - Math.asin(Math.max(-0.97, Math.min(0.97, (R() - 0.5) * 2))) / Math.PI * 2) / 2) * H; stamp(R() * W, cy, rho, 'nat', R()); }
     for (let k = 0; k < 1500; k++) { const rho = 0.0035 + 0.007 * R(), cy = ((1 - Math.asin(Math.max(-0.97, Math.min(0.97, (R() - 0.5) * 2))) / Math.PI * 2) / 2) * H; stamp(R() * W, cy, rho, 'nat', R()); }
     for (const s of sites) stamp(((s.lon + 3.1416) / 6.2832) * W, (0.5 - s.lat / Math.PI) * H, s.rho, 'mine', 0);
@@ -1222,7 +1218,7 @@
     regrad(0, W - 1, 0, H - 1);
     for (let x = 0; x < W; x++) { const l = ((x + 0.5) / W) * 6.2832 - 3.1416; lonCos[x] = Math.cos(l); lonSin[x] = Math.sin(l); }
     // a new mining site, made while the page runs (a solo miner found a block): stamped into the map, with the slopes updated round it
-    moon.addSite = (lon, lat, rho) => {
+    moon.addSite = (lon, lat, rho) => {   // (not used now: the moon keeps its three craters)
       const cx = ((lon + 3.1416) / 6.2832) * W, cy = (0.5 - lat / Math.PI) * H, ry = rho / TEX, rx = ry / Math.max(0.22, Math.cos(lat));
       stamp(cx, cy, rho, 'mine', 0); regrad(Math.floor(cx - rx * 1.6) - 2, Math.ceil(cx + rx * 1.6) + 2, Math.floor(cy - ry * 1.6) - 2, Math.ceil(cy + ry * 1.6) + 2);
     };
@@ -1270,7 +1266,7 @@
       const Px = Math.cos(s.lat) * Math.sin(s.lon), Py = Math.sin(s.lat), Pz = Math.cos(s.lat) * Math.cos(s.lon);
       const Xs = Px * Math.cos(phi) - Pz * Math.sin(phi), Zs = Px * Math.sin(phi) + Pz * Math.cos(phi);
       if (Zs < 0.1) continue;
-      const row = rows.length ? rows[(s.row != null ? s.row : s.ri) % rows.length] : null, col = MOON_LIGHT[row ? row.kind : 'service'] ?? MOON_LIGHT.service, hov = moon.hover === s;
+      const row = moonRow(s); if (!row) continue; const col = MOON_LIGHT[s.kind] ?? MOON_LIGHT.service, hov = moon.hover === s;
       const day = Math.max(0, Xs * moon.L[0] + Py * moon.L[1] + Zs * moon.L[2]), vis = Math.min(1, (Zs - 0.1) / 0.3), cx = C + Xs * Rm, cy = C - Py * Rm, rr = s.rho * Rm * 0.5, age = s.fresh != null ? (now - s.fresh) / 1000 : 99;
       const boost = (hov ? 1.5 : 1) * (age < 8 ? 1 + 2.2 * (1 - age / 8) : 1);
       moon.hits.push({ x: cx, y: cy, r: Math.max(10, s.rho * Rm * 1.1), s });
@@ -1289,23 +1285,18 @@
     }
     g.restore();
   }
+  const moonRow = (s) => { const rows = moon.rows || []; return (s.rowName && rows.find((x) => x.name === s.rowName)) || rows.find((x) => x.kind === s.kind) || null; };
   const MOON_LIGHT = { service: [255, 150, 36], unattributed: [255, 214, 140], pools: [120, 140, 255] };   // the colours of the three lines of the list
   // a solo miner found a block on Bitcoin (Solo CK Pool, or a block with no pool tag or known payout address): a new crater lights up
   function moonBlock(b) {
     const rows = moon.rows; if (moon.rowsNet !== 'sha256' || !rows || !rows.length || !moon.ready) return;
-    const name = String(b.pool ?? '').trim(); let ri = rows.findIndex((x) => x.kind === 'service' && x.name.toLowerCase() === name.toLowerCase());
-    if (ri < 0 && /solo/i.test(name)) ri = rows.findIndex((x) => x.kind === 'service');
-    if (ri < 0 && (name === '' || /^unknown$/i.test(name))) ri = rows.findIndex((x) => x.kind === 'unattributed');
-    if (ri < 0) return;
-    const fresh = performance.now(), dist = (a, c) => Math.acos(Math.max(-1, Math.min(1, Math.sin(a.lat) * Math.sin(c.lat) + Math.cos(a.lat) * Math.cos(c.lat) * Math.cos(a.lon - c.lon)))); let site = null;
-    if (moon.sites.filter((x) => x.extra).length < 14) for (let k = 0; k < 40 && !site; k++) {
-      const lat = (Math.random() - 0.5) * 1.3, lon = ((moon.phi + (Math.random() - 0.5) * 1.5 + 9.4248) % 6.2832) - 3.1416, c = { lat, lon, rho: 0.1 };
-      if (moon.sites.every((x) => dist(x, c) > x.rho + c.rho + 0.05)) site = { ...c, ph: Math.random() * 6.28, n: 3, ri: 0, row: ri, extra: true };
-    }
-    if (site) { moon.addSite(site.lon, site.lat, site.rho); moon.sites.push(site); }
-    else site = moon.sites.find((x) => (x.row != null ? x.row : x.ri) % rows.length === ri) || moon.sites[0];
-    site.fresh = fresh; site.row = ri; site.block = b.height; site.at = Date.now();
-    const el = $('solo-live'); if (el) { el.hidden = false; el.innerHTML = `<i></i>New block ${fmt(b.height)} · ${esc(rows[ri].name)}`; clearTimeout(moon.liveT); moon.liveT = setTimeout(() => { el.hidden = true; }, 15000); }
+    const name = String(b.pool ?? '').trim(); let row = rows.find((x) => x.kind === 'service' && x.name.toLowerCase() === name.toLowerCase());
+    if (!row && /solo/i.test(name)) row = rows.find((x) => x.kind === 'service');
+    if (!row && (name === '' || /^unknown$/i.test(name))) row = rows.find((x) => x.kind === 'unattributed');
+    if (!row) return;
+    const site = moon.sites.find((x) => x.kind === row.kind); if (!site) return;   // the crater of that source lights up
+    site.fresh = performance.now(); site.block = b.height; site.rowName = row.name;
+    const el = $('solo-live'); if (el) { el.hidden = false; el.innerHTML = `<i></i>New block ${fmt(b.height)} · ${esc(row.name)}`; clearTimeout(moon.liveT); moon.liveT = setTimeout(() => { el.hidden = true; }, 15000); }
   }
   window.onLiveBlock = (id, b) => { if (id === 'sha256' && b) moonBlock(b); };
   function moonStart() {
@@ -1316,7 +1307,7 @@
       if (!moon.on) return; requestAnimationFrame(step);
       if (t - moon.last < (moon.still ? 800 : 100)) return; const dt = moon.last ? Math.min(0.2, (t - moon.last) / 1000) : 0; moon.last = t;
       size(); if (!moon.ready) { if (!moon.building) { moon.building = true; setTimeout(moonBuild, 30); } return; }
-      if (!moon.still) moon.phi += dt * 0.04; moonDraw(t, cv);
+      moon.phi = moon.still ? 0 : 0.34 * Math.sin(t / 1000 * 0.17); moonDraw(t, cv);
     };
     const run = (on) => { if (on && !moon.on) { moon.on = true; requestAnimationFrame(step); } else if (!on) moon.on = false; };
     if ('IntersectionObserver' in window) new IntersectionObserver((es) => run(es.some((e) => e.isIntersecting))).observe(cv.parentNode); else run(true);
@@ -1324,9 +1315,9 @@
     const hit = (e) => { const r = cv.getBoundingClientRect(), k = cv.width / (r.width || 1), x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k; let best = null, bd = 1e9;
       for (const h of moon.hits || []) { const d = Math.hypot(x - h.x, y - h.y); if (d <= h.r && d < bd) { best = h; bd = d; } } return best; };
     cv.addEventListener('pointermove', (e) => {
-      const h = hit(e), rows = moon.rows || []; moon.hover = h ? h.s : null; cv.style.cursor = h ? 'pointer' : '';
+      const h = hit(e); moon.hover = h ? h.s : null; cv.style.cursor = h ? 'pointer' : '';
       if (!h) { tip(e, null); return; }
-      const row = rows[(h.s.row != null ? h.s.row : h.s.ri) % (rows.length || 1)]; if (!row) { tip(e, null); return; }
+      const row = moonRow(h.s); if (!row) { tip(e, null); return; }
       tip(e, `<b>${esc(row.name)}</b><br>${si(row.hashrate, 1)}H/s · ${(row.share * 100).toFixed(1)}% of the blocks${h.s.block ? `<br><i>block ${fmt(h.s.block)} just now</i>` : ''}`);
       if (moon.still) moonDraw(performance.now(), cv);
     });
