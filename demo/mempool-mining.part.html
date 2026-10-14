@@ -1526,17 +1526,9 @@
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
       const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, W, H);
       const cx = c.left + cw / 2 - L, cy = c.top + ch / 2 - T, still = STILL.matches, rx = cw * 0.5, ry = ch * 0.5;
-      // ring of light closing in
-      if (!still) for (let k = 0; k < 2; k++) {
-        const u = ((now / 3200) + k * 0.5) % 1, e = 1 - u, ax = Math.max(cw * 0.5 + 6, Math.min(cx, W - cx) * 0.94) * e + rx * 0.9 * u, ay = Math.max(ch * 0.5 + 6, Math.min(cy, H - cy) * 0.94) * e + ry * 0.9 * u;
-        g.strokeStyle = `rgba(255,211,110,${(0.22 * Math.sin(u * 3.1416)).toFixed(3)})`; g.lineWidth = 1.2; g.beginPath(); g.ellipse(cx, cy, ax, ay, 0, 0, 6.2832); g.stroke();
-      }
       // the miners and the hashes they send
       for (const m of miners) {
         const x = cx + Math.cos(m.a) * Math.max(cw * 0.5 + 6, Math.min(cx, W - cx) * 0.94) * (0.9 + 0.1 * m.r), y = cy + Math.sin(m.a) * Math.max(ch * 0.5 + 6, Math.min(cy, H - cy) * 0.94) * (0.9 + 0.1 * m.r);
-        const tw = 0.55 + 0.45 * Math.sin(now / 700 + m.tw);
-        g.fillStyle = `rgba(255,211,110,${(0.35 + 0.5 * tw).toFixed(3)})`; g.beginPath(); g.arc(x, y, 1.6 + tw * 0.9, 0, 6.2832); g.fill();
-        g.fillStyle = `rgba(255,211,110,${(0.10 * tw).toFixed(3)})`; g.beginPath(); g.arc(x, y, 6, 0, 6.2832); g.fill();
         if (!still && now > m.sent + m.next) { m.sent = now; m.next = 500 + rnd(m.a * 100 + now, 9) * 1900; shots.push({ bits: Array.from({ length: 7 }, (_, k) => (rnd(now + k, m.tw + k) > 0.5 ? '1' : '0')), /* relative to the block, so a scroll or a new render cannot strand it */ x: x - cx, y: y - cy, t0: now, tx: (rnd(now, m.tw) - 0.5) * cw * 0.5, ty: (rnd(now, m.a) - 0.5) * ch * 0.5 }); }
       }
       for (let i = shots.length - 1; i >= 0; i--) {
