@@ -983,6 +983,9 @@
 
   #chain-area.p2pool-open .netbar { display: none; }
 
+  .strip, #mining-stats { transition: opacity .32s ease; } .strip.netfade, #mining-stats.netfade { opacity: 0; transition-duration: .16s; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .strip, #mining-stats { transition: none; } }
+
   /* Learn: one topic at a time, picked from a row of tabs, on the same soft glow as the charts above */
   .learn { max-width: 1280px; margin: 0 auto; padding: 44px 20px 64px; display: grid; gap: 18px; justify-items: center; }
   .learn-head { text-align: center; display: grid; gap: 6px; justify-items: center; }
@@ -3346,7 +3349,28 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
   });
   // composedPath: the clicked node may already have been re-rendered away
   document.addEventListener('click', (e) => { if (menuOpen() && !e.composedPath().includes($('net-dd'))) closeMenu(); });
+  var netSwitchT = 0;
   function setNetwork(id) {
+    if (!chains[id]) return;
+    const els = [document.querySelector('.strip'), $('mining-stats')].filter(Boolean), ms = $('mining-stats');
+    if (id === netId || typeof view === 'undefined' || view !== 'dashboard' || document.hidden || matchMedia('(prefers-reduced-motion: reduce)').matches) { setNetworkNow(id); return; }
+    clearTimeout(netSwitchT);
+    if (ms && !ms.hidden && !ms.style.minHeight) ms.style.minHeight = ms.offsetHeight + 'px';   // the section keeps its room while it is swapped
+    els.forEach((e) => e.classList.add('netfade'));
+    netSwitchT = setTimeout(() => {
+      setNetworkNow(id);
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        els.forEach((e) => e.classList.remove('netfade'));
+        setTimeout(() => {   // the section settles to the new chain's height instead of jumping
+          if (!ms || netSwitchT === 0) return;
+          const old = ms.style.minHeight; ms.style.transition = 'none'; ms.style.minHeight = '0px'; const nat = ms.offsetHeight; ms.style.minHeight = old; void ms.offsetHeight;
+          ms.style.transition = 'opacity .32s ease, min-height .4s ease'; ms.style.minHeight = nat + 'px';
+          setTimeout(() => { ms.style.minHeight = ''; ms.style.transition = ''; }, 450);
+        }, 700);
+      }));
+    }, 170);
+  }
+  function setNetworkNow(id) {
     if (!chains[id]) return;
     netId = id; sharesThisBlock = 0; projPinned = true;
     if (typeof renderMiningStats === "function") renderMiningStats(); $('mined').scrollLeft = 0;

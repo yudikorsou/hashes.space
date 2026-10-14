@@ -206,6 +206,9 @@
   #solo-link { position: static; width: fit-content; justify-self: center; margin: 6px auto 0; }
 
   #chain-area.p2pool-open .netbar { display: none; }
+
+  .strip, #mining-stats { transition: opacity .32s ease; } .strip.netfade, #mining-stats.netfade { opacity: 0; transition-duration: .16s; pointer-events: none; }
+  @media (prefers-reduced-motion: reduce) { .strip, #mining-stats { transition: none; } }
 <!--HTML-->
 <section class="mstats" id="mining-stats" aria-label="Mining" hidden>
   <header class="mhead m-hr-head">
