@@ -940,6 +940,9 @@
   .solo-chart svg { width: min(100%, 320px); height: auto; display: block; }
   .moon-box { position: relative; width: min(100%, 320px); aspect-ratio: 1; flex: none; }
   .moon-box canvas, .solo-chart .moon-box svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .moon-box svg { pointer-events: none; }
+  .solo-live { margin: 0; color: #ffd08a; font: 500 12.5px/1.3 var(--sans); display: flex; align-items: center; gap: 8px; } .solo-live[hidden] { display: none; }
+  .solo-live i { width: 8px; height: 8px; border-radius: 50%; background: #f7931a; box-shadow: 0 0 0 0 rgba(247, 147, 26, .7); animation: poolLoad2 1.4s ease-out infinite; } @keyframes poolLoad2 { 70% { box-shadow: 0 0 0 9px rgba(247, 147, 26, 0); } 100% { box-shadow: 0 0 0 0 rgba(247, 147, 26, 0); } }
   .solo-pct { margin: 0; display: grid; gap: 2px; justify-items: center; text-align: center; }
   .solo-pct b { font: 700 32px/1.1 var(--sans); color: var(--text); font-variant-numeric: tabular-nums; } .solo-pct span { color: var(--muted); font: 400 13px/1.3 var(--sans); }
   .solo-chart .sky-cap { margin: 0; text-align: center; color: var(--muted); font: 400 12px/1.4 var(--sans); max-width: 44ch; }
@@ -1410,7 +1413,7 @@
     <p class="pnote" id="ms-pools-note" hidden></p>
   </article>
   <article class="mcard m-solo" id="solo-wrap" aria-label="Hashrate of miners that use no pool" hidden>
-    <div class="solo-chart" id="solo-chart"><div class="moon-box" id="moon-box"><canvas id="moon-cv" aria-hidden="true"></canvas><svg id="solo-svg" viewBox="0 0 300 300" role="img" aria-hidden="true"></svg></div><p class="solo-pct" id="solo-pct"></p><p class="sky-cap" id="solo-cap"></p></div>
+    <div class="solo-chart" id="solo-chart"><div class="moon-box" id="moon-box"><canvas id="moon-cv" aria-hidden="true"></canvas><svg id="solo-svg" viewBox="0 0 300 300" role="img" aria-hidden="true"></svg></div><p class="solo-pct" id="solo-pct"></p><p class="solo-live" id="solo-live" hidden></p><p class="sky-cap" id="solo-cap"></p></div>
     <p class="hrsub" id="solo-sub"></p>
     <ul class="solo-list" id="solo-list"></ul>
     <p class="solo-note" id="solo-note"></p>
@@ -3099,6 +3102,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
       c.blocks = [mapBlock(msg.block), ...c.blocks].slice(0, 8);
       c.tipHeight = Math.max(c.tipHeight, msg.block.height);
       newBlock = true;
+      if (typeof window.onLiveBlock === 'function') { try { window.onLiveBlock(id, c.blocks[0]); } catch {} }
     }
     if (Array.isArray(msg['mempool-blocks'])) {
       c.projected = padProjected(msg['mempool-blocks'].slice(0, 6).map((b, index) => ({ index, nTx: b.nTx, vsize: c.doge ? b.blockSize : b.blockVSize, bytes: c.doge ? b.blockSize : undefined, medianFee: b.medianFee,
@@ -5085,6 +5089,7 @@ window.__coins = COIN_LOGOS;
         a0 = a1;
       }
     }
+    moon.rows = ok ? rows : null; moon.rowsNet = ok ? netId : '';
     $('solo-pct').innerHTML = ok ? `<b>${(d.share * 100).toFixed(1)}%</b><span>found without a pool</span>` : '';
     moonStart();
     $('solo-cap').textContent = ok ? `${d.soloBlocks.toLocaleString('en')} of ${d.blockCount.toLocaleString('en')} blocks` + (d.window === 'epoch' && d.epochStart != null ? ` since the last difficulty adjustment (block ${fmt(d.epochStart)}) · the next one is at block ${fmt(d.nextAdjustment)}` : '') : '';
@@ -5140,22 +5145,30 @@ window.__coins = COIN_LOGOS;
     while (sites.length < 20 && tries++ < 900) {
       const lat = (R() - 0.5) * 2 * 0.95, lon = R() * 6.2832 - 3.1416, rho = 0.09 + R() * 0.075;
       if (sites.some((s) => Math.acos(Math.max(-1, Math.min(1, Math.sin(s.lat) * Math.sin(lat) + Math.cos(s.lat) * Math.cos(lat) * Math.cos(s.lon - lon)))) < s.rho + rho + 0.06)) continue;
-      sites.push({ lat, lon, rho, ph: R() * 6.28, n: 3 + ((R() * 3) | 0) });
+      sites.push({ lat, lon, rho, ph: R() * 6.28, n: 3 + ((R() * 3) | 0), ri: sites.length });
     }
     for (let k = 0; k < 430; k++) { const u = R(), rho = 0.007 + 0.085 * u * u * u, cy = ((1 - Math.asin(Math.max(-0.97, Math.min(0.97, (R() - 0.5) * 2))) / Math.PI * 2) / 2) * H; stamp(R() * W, cy, rho, 'nat', R()); }
     for (let k = 0; k < 1500; k++) { const rho = 0.0035 + 0.007 * R(), cy = ((1 - Math.asin(Math.max(-0.97, Math.min(0.97, (R() - 0.5) * 2))) / Math.PI * 2) / 2) * H; stamp(R() * W, cy, rho, 'nat', R()); }
     for (const s of sites) stamp(((s.lon + 3.1416) / 6.2832) * W, (0.5 - s.lat / Math.PI) * H, s.rho, 'mine', 0);
     // slopes (east, north) of the height map in 1/127 units, and the brightness
     const gx = new Int8Array(N), gy = new Int8Array(N), ab = new Uint8Array(N), lonCos = new Float32Array(W), lonSin = new Float32Array(W), G = 1.1;
-    for (let y = 0; y < H; y++) {
-      const cl = Math.max(0.2, Math.cos((0.5 - (y + 0.5) / H) * Math.PI)), ys = Math.max(0, y - 1), yn = Math.min(H - 1, y + 1);
-      for (let x = 0; x < W; x++) {
-        const i = y * W + x, e = h[y * W + ((x + 1) % W)] - h[y * W + ((x + W - 1) % W)], nn = h[ys * W + x] - h[yn * W + x];
-        gx[i] = Math.max(-127, Math.min(127, Math.round(((e / (2 * TEX * cl)) / G) * 127))); gy[i] = Math.max(-127, Math.min(127, Math.round(((nn / (2 * TEX)) / G) * 127)));
-        ab[i] = Math.max(0, Math.min(255, Math.round(al[i] * 255)));
+    const regrad = (x0, x1, y0, y1) => {   // slopes and brightness again for a box of the map (it wraps round in x)
+      for (let y = Math.max(0, y0); y <= Math.min(H - 1, y1); y++) {
+        const cl = Math.max(0.2, Math.cos((0.5 - (y + 0.5) / H) * Math.PI)), ys = Math.max(0, y - 1), yn = Math.min(H - 1, y + 1);
+        for (let xx = x0; xx <= x1; xx++) {
+          const x = ((xx % W) + W) % W, i = y * W + x, e = h[y * W + ((x + 1) % W)] - h[y * W + ((x + W - 1) % W)], nn = h[ys * W + x] - h[yn * W + x];
+          gx[i] = Math.max(-127, Math.min(127, Math.round(((e / (2 * TEX * cl)) / G) * 127))); gy[i] = Math.max(-127, Math.min(127, Math.round(((nn / (2 * TEX)) / G) * 127)));
+          ab[i] = Math.max(0, Math.min(255, Math.round(al[i] * 255)));
+        }
       }
-    }
+    };
+    regrad(0, W - 1, 0, H - 1);
     for (let x = 0; x < W; x++) { const l = ((x + 0.5) / W) * 6.2832 - 3.1416; lonCos[x] = Math.cos(l); lonSin[x] = Math.sin(l); }
+    // a new mining site, made while the page runs (a solo miner found a block): stamped into the map, with the slopes updated round it
+    moon.addSite = (lon, lat, rho) => {
+      const cx = ((lon + 3.1416) / 6.2832) * W, cy = (0.5 - lat / Math.PI) * H, ry = rho / TEX, rx = ry / Math.max(0.22, Math.cos(lat));
+      stamp(cx, cy, rho, 'mine', 0); regrad(Math.floor(cx - rx * 1.6) - 2, Math.ceil(cx + rx * 1.6) + 2, Math.floor(cy - ry * 1.6) - 2, Math.ceil(cy + ry * 1.6) + 2);
+    };
     Object.assign(moon, { gx, gy, ab, lonCos, lonSin, G, sites, ready: true, building: false });
   }
   // for the size of the canvas: where each pixel of the disc lies on the sphere
@@ -5194,21 +5207,50 @@ window.__coins = COIN_LOGOS;
       dat[o] = Math.min(255, a * (lit * 262 + 9) + fr * 255); dat[o + 1] = Math.min(255, a * (lit * 240 + 11) + fr * 140); dat[o + 2] = Math.min(255, a * (lit * 214 + 17) + fr * 55); dat[o + 3] = lay.ed[k];
     }
     g.putImageData(moon.img, 0, 0);
-    // the lights of the mining sites: amber rig lamps at the bottom of the pits, glowing most on the night side
-    const Rm = lay.Rm, C = lay.C; g.save(); g.globalCompositeOperation = 'lighter';
+    // the lights of the mining sites: rig lamps at the bottom of the pits, in the colour of the source the crater stands for, glowing most on the night side
+    const Rm = lay.Rm, C = lay.C, rows = moon.rows || [], now = t; g.save(); g.globalCompositeOperation = 'lighter'; moon.hits = [];
     for (const s of moon.sites) {
       const Px = Math.cos(s.lat) * Math.sin(s.lon), Py = Math.sin(s.lat), Pz = Math.cos(s.lat) * Math.cos(s.lon);
       const Xs = Px * Math.cos(phi) - Pz * Math.sin(phi), Zs = Px * Math.sin(phi) + Pz * Math.cos(phi);
       if (Zs < 0.1) continue;
-      const day = Math.max(0, Xs * moon.L[0] + Py * moon.L[1] + Zs * moon.L[2]), vis = Math.min(1, (Zs - 0.1) / 0.3), cx = C + Xs * Rm, cy = C - Py * Rm, rr = s.rho * Rm * 0.5;
+      const row = rows.length ? rows[(s.row != null ? s.row : s.ri) % rows.length] : null, col = MOON_LIGHT[row ? row.kind : 'service'] ?? MOON_LIGHT.service, hov = moon.hover === s;
+      const day = Math.max(0, Xs * moon.L[0] + Py * moon.L[1] + Zs * moon.L[2]), vis = Math.min(1, (Zs - 0.1) / 0.3), cx = C + Xs * Rm, cy = C - Py * Rm, rr = s.rho * Rm * 0.5, age = s.fresh != null ? (now - s.fresh) / 1000 : 99;
+      const boost = (hov ? 1.5 : 1) * (age < 8 ? 1 + 2.2 * (1 - age / 8) : 1);
+      moon.hits.push({ x: cx, y: cy, r: Math.max(10, s.rho * Rm * 1.1), s });
+      // a thin ring round the pit in its colour, so the three sources can be told apart
+      const rad = Math.atan2(cy - C, cx - C), pr = s.rho * Rm * 1.02;
+      g.strokeStyle = `rgba(${col[0]},${col[1]},${col[2]},${(0.42 + (hov ? 0.4 : 0)) * vis})`; g.lineWidth = Math.max(1, Rm * 0.008) * (hov ? 1.8 : 1); g.beginPath(); g.ellipse(cx, cy, Math.max(1, pr * Zs), pr, rad, 0, 6.2832); g.stroke();
+      if (age < 3) {   // the shock ring of a block that has just been found
+        const k = age / 3, er = pr * (1.1 + 1.8 * k); g.strokeStyle = `rgba(255,236,190,${0.9 * (1 - k) * vis})`; g.lineWidth = Math.max(1.5, Rm * 0.014) * (1 - k * 0.6); g.beginPath(); g.ellipse(cx, cy, Math.max(1, er * Zs), er, rad, 0, 6.2832); g.stroke();
+      }
       for (let j = 0; j < s.n; j++) {
-        const ang = s.ph + j * 2.1, ox = Math.cos(ang) * rr * 0.55, oy = Math.sin(ang) * rr * 0.55 * Zs, tw = moon.still ? 0.8 : 0.55 + 0.45 * Math.sin(t / 380 + s.ph * 3 + j * 1.7), a = vis * tw * (0.95 - 0.55 * day), px = cx + ox, py = cy + oy, gr = Math.max(3, Rm * 0.06);
-        const gd = g.createRadialGradient(px, py, 0, px, py, gr); gd.addColorStop(0, `rgba(255,${j % 3 === 2 ? 236 : 176},${j % 3 === 2 ? 190 : 70},${a})`); gd.addColorStop(0.25, `rgba(255,150,40,${a * 0.45})`); gd.addColorStop(1, 'rgba(255,120,20,0)');
+        const ang = s.ph + j * 2.1, ox = Math.cos(ang) * rr * 0.55, oy = Math.sin(ang) * rr * 0.55 * Zs, tw = moon.still ? 0.8 : 0.55 + 0.45 * Math.sin(t / 380 + s.ph * 3 + j * 1.7), a = Math.min(1, vis * tw * (0.95 - 0.55 * day) * boost), px = cx + ox, py = cy + oy, gr = Math.max(3, Rm * 0.06) * (age < 1.5 ? 1 + 1.6 * (1 - age / 1.5) : 1);
+        const core = j % 3 === 2 ? [255, 240, 205] : col, gd = g.createRadialGradient(px, py, 0, px, py, gr);
+        gd.addColorStop(0, `rgba(${core[0]},${core[1]},${core[2]},${a})`); gd.addColorStop(0.25, `rgba(${col[0]},${col[1]},${col[2]},${a * 0.45})`); gd.addColorStop(1, `rgba(${col[0]},${col[1]},${col[2]},0)`);
         g.fillStyle = gd; g.beginPath(); g.arc(px, py, gr, 0, 6.2832); g.fill();
       }
     }
     g.restore();
   }
+  const MOON_LIGHT = { service: [255, 150, 36], unattributed: [255, 214, 140], pools: [120, 140, 255] };   // the colours of the three lines of the list
+  // a solo miner found a block on Bitcoin (Solo CK Pool, or a block with no pool tag or known payout address): a new crater lights up
+  function moonBlock(b) {
+    const rows = moon.rows; if (moon.rowsNet !== 'sha256' || !rows || !rows.length || !moon.ready) return;
+    const name = String(b.pool ?? '').trim(); let ri = rows.findIndex((x) => x.kind === 'service' && x.name.toLowerCase() === name.toLowerCase());
+    if (ri < 0 && /solo/i.test(name)) ri = rows.findIndex((x) => x.kind === 'service');
+    if (ri < 0 && (name === '' || /^unknown$/i.test(name))) ri = rows.findIndex((x) => x.kind === 'unattributed');
+    if (ri < 0) return;
+    const fresh = performance.now(), dist = (a, c) => Math.acos(Math.max(-1, Math.min(1, Math.sin(a.lat) * Math.sin(c.lat) + Math.cos(a.lat) * Math.cos(c.lat) * Math.cos(a.lon - c.lon)))); let site = null;
+    if (moon.sites.filter((x) => x.extra).length < 14) for (let k = 0; k < 40 && !site; k++) {
+      const lat = (Math.random() - 0.5) * 1.3, lon = ((moon.phi + (Math.random() - 0.5) * 1.5 + 9.4248) % 6.2832) - 3.1416, c = { lat, lon, rho: 0.1 };
+      if (moon.sites.every((x) => dist(x, c) > x.rho + c.rho + 0.05)) site = { ...c, ph: Math.random() * 6.28, n: 3, ri: 0, row: ri, extra: true };
+    }
+    if (site) { moon.addSite(site.lon, site.lat, site.rho); moon.sites.push(site); }
+    else site = moon.sites.find((x) => (x.row != null ? x.row : x.ri) % rows.length === ri) || moon.sites[0];
+    site.fresh = fresh; site.row = ri; site.block = b.height; site.at = Date.now();
+    const el = $('solo-live'); if (el) { el.hidden = false; el.innerHTML = `<i></i>New block ${fmt(b.height)} · ${esc(rows[ri].name)}`; clearTimeout(moon.liveT); moon.liveT = setTimeout(() => { el.hidden = true; }, 15000); }
+  }
+  window.onLiveBlock = (id, b) => { if (id === 'sha256' && b) moonBlock(b); };
   function moonStart() {
     const cv = $('moon-cv'); if (!cv || moon.started) return; moon.started = true;
     moon.still = !!(window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches);
@@ -5221,6 +5263,18 @@ window.__coins = COIN_LOGOS;
     };
     const run = (on) => { if (on && !moon.on) { moon.on = true; requestAnimationFrame(step); } else if (!on) moon.on = false; };
     if ('IntersectionObserver' in window) new IntersectionObserver((es) => run(es.some((e) => e.isIntersecting))).observe(cv.parentNode); else run(true);
+    // hover a crater: the hashrate of the source it stands for
+    const hit = (e) => { const r = cv.getBoundingClientRect(), k = cv.width / (r.width || 1), x = (e.clientX - r.left) * k, y = (e.clientY - r.top) * k; let best = null, bd = 1e9;
+      for (const h of moon.hits || []) { const d = Math.hypot(x - h.x, y - h.y); if (d <= h.r && d < bd) { best = h; bd = d; } } return best; };
+    cv.addEventListener('pointermove', (e) => {
+      const h = hit(e), rows = moon.rows || []; moon.hover = h ? h.s : null; cv.style.cursor = h ? 'pointer' : '';
+      if (!h) { tip(e, null); return; }
+      const row = rows[(h.s.row != null ? h.s.row : h.s.ri) % (rows.length || 1)]; if (!row) { tip(e, null); return; }
+      tip(e, `<b>${esc(row.name)}</b><br>${si(row.hashrate, 1)}H/s · ${(row.share * 100).toFixed(1)}% of the blocks${h.s.block ? `<br><i>block ${fmt(h.s.block)} just now</i>` : ''}`);
+      if (moon.still) moonDraw(performance.now(), cv);
+    });
+    cv.addEventListener('pointerdown', (e) => cv.dispatchEvent(new PointerEvent('pointermove', { clientX: e.clientX, clientY: e.clientY })));   // a tap on a phone shows the same
+    cv.addEventListener('pointerleave', (e) => { moon.hover = null; tip(e, null); if (moon.still) moonDraw(performance.now(), cv); });
   }
   // how the chain stands against where it was a year ago, in words under the headline figure
   function hashrateThen(m, info, period) {
