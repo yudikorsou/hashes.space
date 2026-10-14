@@ -802,6 +802,7 @@
   var SKY_PAGE = 6;   // holes per page: more on the page where you pick a pool
   // the glow follows the labels under the mined blocks: red for a centralised pool, orange for a DATUM pool (OCEAN on Bitcoin, CONVOY on BLAKE2b), green for P2Pool on Monero
   const SKY_RED = 'hsl(0 100% 65%)', SKY_ORANGE = 'hsl(33 94% 54%)', SKY_GREEN = 'hsl(137 74% 56%)';
+  const SUN_NETS = ['sha256', 'blake2b'];   // the chains whose mining pools hang round the sun
   const skyColor = (name) => (netId === 'sha256' && /^ocean$/i.test(name)) || (netId === 'blake2b' && /^convoy$/i.test(name)) ? SKY_ORANGE : netId === 'monero' && /^p2pool$/i.test(name) ? SKY_GREEN : SKY_RED;
   const skyA = (c, a) => c.replace(')', ` / ${a})`);
   const gcd = (a, b) => (b ? gcd(b, a % b) : a);
@@ -833,14 +834,14 @@
   function skyLayout() {
     const key = sky.names + '|' + sky.w + 'x' + sky.h + '|' + (sky.picker ? ($('pools-top') ? $('pools-top').offsetHeight : 0) : 0); if (sky.laid === key || !sky.ships.length || !sky.w) return; sky.laid = key;
     if (sky.picker) {   // the picker: holes side by side in rows, biggest first, each with its summary under it
-      const n = sky.ships.length, W = sky.w, cols = Math.max(1, Math.min(n, Math.floor(W / (W < 520 ? 150 : 200)))), cellW = W / cols, maxR = Math.min(cellW * 0.32, 58), rows = Math.ceil(n / cols), rowH = maxR * 2.3 + 100, sunR = netId === 'sha256' ? Math.max(18, Math.min(40, W / 21)) : 0, topH = $('pools-top') ? $('pools-top').offsetHeight : 0, band = Math.max(topH + 18, sunR * 3.2), need = Math.round(rows * rowH + 44 + band);
+      const n = sky.ships.length, W = sky.w, cols = Math.max(1, Math.min(n, Math.floor(W / (W < 520 ? 150 : 200)))), cellW = W / cols, maxR = Math.min(cellW * 0.32, 58), rows = Math.ceil(n / cols), rowH = maxR * 2.3 + 100, sunR = SUN_NETS.includes(netId) ? Math.max(18, Math.min(40, W / 21)) : 0, topH = $('pools-top') ? $('pools-top').offsetHeight : 0, band = Math.max(topH + 18, sunR * 3.2), need = Math.round(rows * rowH + 44 + band);
       const host = $('pool-sky'); if (host && Math.abs((parseFloat(host.style.minHeight) || 0) - need) > 1) { host.style.minHeight = need + 'px'; host.style.flexBasis = need + 'px'; }
       sky.ships.forEach((sh, i) => {
         const row = Math.floor(i / cols), inRow = Math.min(cols, n - row * cols), col = i - row * cols;
         sh.r = Math.max(13, maxR * (0.3 + 0.7 * Math.sqrt(Math.min(1, sh.vis * 2.4)))); sh.labY = maxR * 1.1 + 16; sh.btn = { x: -66, y: sh.labY + 28, w: 132, h: 26 };
         sh.hx = (cols - inRow) * cellW / 2 + (col + 0.5) * cellW; sh.hy = 26 + band + maxR * 1.3 + row * rowH;
       });
-      sky.sunPos = sunR ? { x: W - sunR * 3.6, y: sunR * 2.2 } : null;   // Bitcoin's sun hangs above all the pools on the right, shining down on them
+      sky.sunPos = sunR ? { x: W - sunR * 3.6, y: sunR * 2.2 } : null;   // the sun (Bitcoin and BLAKE2b) hangs above all the pools on the right, shining down on them
       return;
     }
     const n = sky.ships.length, area = sky.w * (sky.h - 30) * 0.26, sumS = sky.refS || sky.ships.reduce((a, x) => a + Math.sqrt(x.vis), 0) || 1;
@@ -871,7 +872,7 @@
     if (sky.msg) { g.fillStyle = muted; g.font = '14px sans-serif'; g.textAlign = 'center'; g.fillText(sky.msg, sky.w / 2, sky.h / 2); return; }
     skyLayout();
     const font = (px, w) => `${w} ${px}px "Chakra Petch", "Segoe UI", system-ui, sans-serif`;
-    if (netId === 'sha256') skySun(g, t);   // Bitcoin only: behind the holes
+    if (SUN_NETS.includes(netId)) skySun(g, t);   // Bitcoin and BLAKE2b: the sun behind the holes
     for (const sh of sky.ships) {
       const { x, y } = skyPos(sh, t), R = sh.r, hot = sky.hover === sh, tilt = -0.28, spin = hot ? 1.8 : 1;
       g.save(); g.translate(x, y);
@@ -897,7 +898,7 @@
       g.fillStyle = rim; g.beginPath(); g.arc(0, 0, R * 1.35, 0, 6.2832); g.fill();
       g.fillStyle = '#000'; g.beginPath(); g.arc(0, 0, R, 0, 6.2832); g.fill();
       g.strokeStyle = 'rgba(255,240,215,.85)'; g.lineWidth = Math.max(1, R * 0.045); g.beginPath(); g.arc(0, 0, R * 1.03, 0, 6.2832); g.stroke();   // the photon ring
-      if (netId === 'sha256') {   // the sun lights the edge of each hole that faces it, a little less the further away it is
+      if (SUN_NETS.includes(netId)) {   // the sun lights the edge of each hole that faces it, a little less the further away it is
         const sn = skySunAt(), dx = sn.x - x, dy = sn.y - y, d = Math.hypot(dx, dy) || 1, k = Math.max(0.25, Math.min(1, 1.25 - d / (sky.w * 0.9))), an = Math.atan2(dy, dx);
         g.lineCap = 'round';
         g.strokeStyle = `rgba(255,170,80,${0.2 * k})`; g.lineWidth = Math.max(2, R * 0.22); g.beginPath(); g.arc(0, 0, R * 1.05, an - 0.95, an + 0.95); g.stroke();
