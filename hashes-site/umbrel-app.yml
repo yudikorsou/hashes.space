@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.63"
+version: "1.9.64"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  A mining pool's page now shows a loading bar (orange to blue, like the rest of the page) with the number of blocks read so far while your explorer is still reading the pool's blocks. It disappears when all blocks are in.
   On a mining pool's page the "Miners named in its blocks" list is gone; a search bar sits in its place and finds a block of that pool by its height or its hash (the blocks narrow down as you type).
   A mining pool's page now shows every block the pool mined since the last difficulty adjustment (not a fixed 14 days), on Bitcoin and Bitcoin BLAKE2b. Each time a new difficulty adjustment starts (every 2016 blocks) the page starts over with the new blocks of that period. Update the Bitcoin Explorer (1.18.6) and the Bitcoin BLAKE2b Explorer (1.17.6) apps too.
   A mining pool's page now shows every block the pool mined in the last 14 days (all of them, not just the latest 40) as miniature mined blocks, on Bitcoin and Bitcoin BLAKE2b. It fills in while your explorer reads the blocks, so update the Bitcoin Explorer (1.18.5) and the Bitcoin BLAKE2b Explorer (1.17.5) apps too. Without the update you still see the pool's latest blocks.

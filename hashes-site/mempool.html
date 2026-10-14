@@ -889,6 +889,14 @@
   .poolhead .pool-eyebrow { margin: 0; color: var(--muted); font: 500 12px/1.2 var(--sans); text-transform: uppercase; letter-spacing: .09em; }
   .poolhead h1 { margin: 0; font: 600 28px/1.2 var(--display); letter-spacing: .01em; color: var(--text); overflow-wrap: anywhere; }
   .poolhead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
+  .pool-load { width: min(420px, 100%); justify-self: center; display: grid; gap: 8px; margin: 4px 0 0; text-align: center; font: 400 12.5px/1.4 var(--sans); color: var(--muted); }
+  .pool-load[hidden] { display: none; }
+  .pool-load .bar { position: relative; height: 6px; border-radius: 999px; overflow: hidden; background: rgba(10, 12, 24, .55); border: 1px solid var(--line); }
+  .pool-load .bar i { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); border-radius: 999px; background: linear-gradient(90deg, var(--orange), var(--link)); box-shadow: 0 0 10px rgba(27, 216, 244, .45); transition: width .6s ease; }
+  .pool-load.indet .bar i { width: 38%; animation: poolLoad 1.3s ease-in-out infinite; }
+  .pool-load b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
+  @keyframes poolLoad { 0% { transform: translateX(-100%); } 100% { transform: translateX(270%); } }
+  @media (prefers-reduced-motion: reduce) { .pool-load.indet .bar i { animation: none; width: 100%; opacity: .5; } }
   .pool-find { width: min(420px, 100%); justify-self: center; }
   .pool-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
   .pool-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
@@ -1417,6 +1425,7 @@
     <p id="pool-context"></p>
   </header>
   <label class="pool-find" id="pool-find"><span class="sr-only">Search the blocks of this mining pool</span><input id="pool-filter" type="search" placeholder="Search a block by height or hash" autocomplete="off" spellcheck="false"></label>
+  <div class="pool-load" id="pool-load" role="status" aria-live="polite" hidden><div class="bar"><i></i></div><span id="pool-load-t"></span></div>
   <div class="pool-blocks" id="pool-blocks"></div>
   <p class="msource" id="pool-source"></p>
   <a class="more" id="pool-back" href="#dashboard">« Back to the mempool</a>
@@ -5164,8 +5173,17 @@ window.__coins = COIN_LOGOS;
       : `<p class="pool-empty">No block of ${esc(name)} among the ones this page has seen yet. The page keeps watching: the next one it finds appears here.</p>`;
     $('pool-source').textContent = q && all.length ? `${fmt(list.length)} of the ${fmt(all.length)} blocks of ${name} match.` : poolWindow[key] && !got?.length ? ''
       : got?.length
-      ? (poolWindow[key] ? `All ${fmt(list.length)} blocks of ${name} since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}), live from ${MINING_SITES[netId]}${poolBlocksBusy[key] ? ' (reading more…)' : ''}. When the next adjustment starts, this page starts over with the new blocks.` : `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`)
+      ? (poolWindow[key] ? `All ${fmt(list.length)} blocks of ${name} since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}), live from ${MINING_SITES[netId]}. When the next adjustment starts, this page starts over with the new blocks.` : `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`)
       : list.length ? `The blocks of ${name} among the ones on this page.` : '';
+    // a loading bar while the explorer is still reading the pool's blocks; the pool's share of the period gives a guess of how many are coming
+    { const ld = $('pool-load'), busy = !!poolBlocksBusy[key] || (got === undefined && !!mining?.live && !!stat?.slug);
+      ld.hidden = !busy;
+      if (busy) {
+        const have = got?.length ?? 0, tipH = Math.max(0, ...(chain().blocks ?? []).map((b) => b.height || 0), ...(got ?? []).map((b) => b.height || 0)), inEpoch = tipH ? tipH % 2016 + 1 : 0;
+        const exp = mining?.blockCount && stat ? Math.max(have, Math.round(inEpoch * stat.blocks / mining.blockCount)) : 0, pct = have && exp ? Math.min(95, Math.round(100 * have / exp)) : 0;
+        ld.classList.toggle('indet', !pct); ld.style.setProperty('--p', pct + '%');
+        $('pool-load-t').innerHTML = have ? `Reading the blocks of ${esc(name)} from your explorer… <b>${fmt(have)}</b> so far` : `Reading the blocks of ${esc(name)} from your explorer…`;
+      } }
     // the mining page keeps the pool's own block list; ask for it once
     if ((got === undefined || Date.now() - (poolBlocksAt[key] || 0) > 120000) && mining?.live && stat?.slug) fetchPoolBlocks(name, stat.slug);
   }
