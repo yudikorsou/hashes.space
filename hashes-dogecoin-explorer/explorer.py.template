@@ -819,7 +819,7 @@ def block_page(ident, p=1):
     txs = ("<section class=card><h2>Transactions: from address to address (" + "{:,}".format(len(user_txs)) + ")</h2>"
            "<p class=muted style='margin:0 0 4px;font-size:12.5px'>Where the DOGE of every transaction in this block went: the address the coins come from on the left, the addresses that receive them on the right. "
            "Coins that go back to the sender's own address are change.</p>" + cards + nav + "</section>")
-    return page("Block " + str(b["height"]), head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>" + txs, extra_css=FLOW_CSS)
+    return page("Block " + str(b["height"]), head + "<div class=tiles>" + tl + "</div><div class=groups>" + gr + "</div>" + txs, True, FLOW_CSS)
 
 
 def verified_page():
@@ -832,7 +832,7 @@ def verified_page():
             "before you send DOGE.</p></section>"
             + ("<section class=card><table class=vtbl><tr><th>Organisation</th><th>Address</th><th>What it does for animals</th><th>Website</th><th>Verified</th></tr>" + rows + "</table></section>" if VERIFIED
                else "<section class=card><p class=muted style='margin:0'>No address is verified on this explorer yet.</p></section>"))
-    return page("Verified donation addresses", body)
+    return page("Verified donation addresses", body, True)
 
 
 def address_page(a):
@@ -849,10 +849,10 @@ def address_page(a):
         return page("Verified address", "<h1><span class=vbig>✔ Verified</span> · " + html.escape(v["name"]) + "</h1><section class=card><dl>"
                     + "".join("<dt>" + k + "</dt><dd>" + x + "</dd>" for k, x in info) + "</dl></section>"
                     "<section class=card><p style='margin:0'>This address accepts donations in DOGE. Check it against the organisation's own website before you send.</p>"
-                    "<p style='margin:8px 0 0'><a href='/verified'>All verified donation addresses →</a></p></section>")
+                    "<p style='margin:8px 0 0'><a href='/verified'>All verified donation addresses →</a></p></section>", True)
     return page("Address", "<h1>Address</h1><section class=card><dl><dt>Address</dt><dd class=mono>" + html.escape(a) + "</dd></dl>"
                 "<p class=muted style='margin:10px 0 0'>This address is not on the list of verified donation addresses. This explorer reads your own Dogecoin Core node, which keeps no history per address; "
-                "open a transaction to see where its coins went.</p><p style='margin:8px 0 0'><a href='/verified'>Verified donation addresses →</a></p></section>")
+                "open a transaction to see where its coins went.</p><p style='margin:8px 0 0'><a href='/verified'>Verified donation addresses →</a></p></section>", True)
 
 
 def find_tx(txid, block_hash):
@@ -925,9 +925,9 @@ def flow_of(tx, prev=None):
 def flow_html(f):
     def box(addr, value, tag="", cls=""):
         v = VERIFIED.get(addr)
-        mark = ("<a class=vmark href='/address/" + html.escape(addr) + "'>✔ Verified · " + html.escape(v["name"]) + "</a><em class=tag>" + html.escape(v["category"]) + " · accepts DOGE donations</em>") if v else ""
+        mark = ("<a class=vmark href='/address/" + html.escape(addr) + "'>✔ Verified · " + html.escape(v["name"]) + "</a><em class=ftag>" + html.escape(v["category"]) + " · accepts DOGE donations</em>") if v else ""
         return ("<div class='fbox" + (" " + cls if cls else "") + (" ver" if v else "") + "'>" + mark + "<span class='mono addr'>" + html.escape(addr) + "</span>"
-                + ("<span class=amt>" + value + "</span>" if value else "") + ("<em class=tag>" + tag + "</em>" if tag else "") + "</div>")
+                + ("<span class=amt>" + value + "</span>" if value else "") + ("<em class=ftag>" + tag + "</em>" if tag else "") + "</div>")
     if f["coinbase"]:
         left = box("New coins", doge(f["total_out"]), "the block reward and the fees, created by this block", "new")
     else:
@@ -958,9 +958,14 @@ FLOW_CSS = """
 .fcol{display:grid;gap:8px;align-content:center}.fcol>small{color:var(--muted);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase}
 .fbox{border:1px solid rgba(255,255,255,.13);background:rgba(255,255,255,.035);border-radius:10px;padding:8px 12px;display:grid;gap:2px;min-width:0}
 .fbox .addr{font:12.5px/1.35 ui-monospace,Menlo,monospace;word-break:break-all;color:var(--text)}.fbox .amt{font:600 14px system-ui;color:var(--gold)}
-.fbox.chg{border-style:dashed;border-color:rgba(27,216,244,.45)}.fbox.new{border-color:rgba(60,226,107,.5)}.fbox .tag{font-style:normal;font-size:11.5px;color:var(--muted)}
+.fbox.chg{border-style:dashed;border-color:rgba(27,216,244,.45)}.fbox.new{border-color:rgba(60,226,107,.5)}.fbox .ftag{font-style:normal;font-size:11.5px;color:var(--muted)}
 .farrow{display:grid;justify-items:center;gap:2px;color:var(--muted);font-size:12px;text-align:center}.farrow svg{width:64px;height:24px;color:var(--link)}.farrow b{color:var(--text);font-size:13px}
 @media(max-width:760px){.flow{grid-template-columns:minmax(0,1fr)}.farrow svg{transform:rotate(90deg);margin:20px 0}}
+.g .fbox{background:linear-gradient(135deg,rgba(255,255,255,.055),rgba(255,255,255,.012));border-color:rgba(255,255,255,.12);box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+.fbox .amt::before{content:'Ð';display:inline-block;width:18px;height:18px;margin-right:7px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ecd978,#c2a633);color:#1a1406;font:700 11px/18px system-ui;text-align:center;vertical-align:1px}
+.g .farrow svg{color:var(--gold)}.g .txcard{border-bottom-color:rgba(255,255,255,.07)}.g .txhead b{color:var(--gold)}
+.g .fbox.chg{border-color:rgba(194,166,51,.55)}.g .fbox.new{border-color:rgba(194,166,51,.55)}
+.g .fcol>small{letter-spacing:.13em}.g .vtbl th{font-size:11px;letter-spacing:.1em;text-transform:uppercase}.g .vtbl td,.g .vtbl th{border-bottom-color:rgba(255,255,255,.07)}
 .fbox.ver{border-color:rgba(60,226,107,.6);background:rgba(60,226,107,.06)}.vmark{font:600 12.5px system-ui;color:#3ce26b}.vmark:hover{text-decoration:underline}
 .vchip{display:inline-flex;align-items:center;gap:6px;padding:2px 10px;border-radius:999px;background:rgba(60,226,107,.1);border:1px solid rgba(60,226,107,.5);color:#3ce26b;font-size:12px;font-weight:600}
 .vtbl td{white-space:normal;vertical-align:top}.vtbl .mono{word-break:break-all}.vbig{font:700 20px system-ui;color:#3ce26b}
@@ -985,7 +990,7 @@ def tx_page(txid, block_hash):
                     ("Size", "{:,} bytes".format(tx["size"])), ("Total out", doge(sum(o["value"] for o in tx["vout"]))),
                     ("Fee", doge(f["fee"]) if f["fee"] is not None else "–")])
                 + "</dl></section><section class=card><h2>Inputs</h2><table>" + ins + "</table></section><section class=card><h2>Outputs</h2><table><tr><th>#</th><th>Address</th><th class=r>Value</th></tr>"
-                + outs + "</table></section>")
+                + outs + "</table></section>", True)
 
 
 # ---------- the block your node would build: the pages the Find Mempool page opens from the four blocks of the Dogecoin chain ----------
