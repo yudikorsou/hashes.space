@@ -55,11 +55,11 @@ class RpcError(Exception):
     pass
 
 
-def rpc(method, *params):
+def rpc(method, *params, timeout=30):
     body = json.dumps({"jsonrpc": "1.0", "id": "x", "method": method, "params": list(params)}).encode()
     req = urllib.request.Request(RPC_URL, data=body, headers={"Authorization": AUTH, "Content-Type": "application/json"})
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
             payload = json.loads(resp.read())
     except urllib.error.HTTPError as exc:
         try:
@@ -859,23 +859,86 @@ if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.write
 
 
 def address_page(a):
+    return page("Address", wallet_html(a), True, FLOW_CSS + WALLET_CSS)
+
+
+_bal = {}
+_scan_lock = threading.Lock()
+
+
+def address_balance(a):
+    """{"total": koinu, "utxos": [...]} from the node's UTXO set (scantxoutset, no address index needed); cached for two minutes.
+    Raises RpcError when the node cannot scan (older Dogecoin Core) or is busy."""
+    hit = _bal.get(a)
+    if hit and time.time() - hit[0] < 120:
+        return hit[1]
+    if not _scan_lock.acquire(timeout=240):
+        raise RpcError("The node is busy scanning another address. Try again in a moment.")
+    try:
+        hit = _bal.get(a)
+        if hit and time.time() - hit[0] < 120:
+            return hit[1]
+        try:
+            r = rpc("scantxoutset", "start", ["addr(" + a + ")"], timeout=600)
+        except RpcError as exc:
+            if "not found" in str(exc).lower():
+                raise RpcError("This version of Dogecoin Core cannot look up the balance of an address (no scantxoutset).")
+            raise
+        if not isinstance(r, dict) or r.get("success") is False:
+            raise RpcError("The node could not finish the scan. Try again in a moment.")
+        us = sorted(({"txid": u["txid"], "vout": u["vout"], "value": int(round(float(u["amount"]) * COIN)), "height": u.get("height")} for u in r.get("unspents", [])),
+                    key=lambda u: -(u["height"] or 0))
+        out = {"address": a, "total": sum(u["value"] for u in us), "count": len(us), "height": r.get("height"), "utxos": us[:200], "shown": min(len(us), 200)}
+        if len(_bal) > 300:
+            _bal.clear()
+        _bal[a] = (time.time(), out)
+        return out
+    finally:
+        _scan_lock.release()
+
+
+WALLET_JS = r"""(function(){var a=__ADDR__;var amt=document.getElementById('wamt'),sub=document.getElementById('wsub'),bar=document.getElementById('wbar');
+function fmt(k){return (k/1e8).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:8})}
+function esc(x){var d=document.createElement('div');d.textContent=x;return d.innerHTML}
+fetch('/api/v1/address/'+a).then(function(r){return r.json().then(function(j){return{ok:r.ok,j:j}})}).then(function(x){bar.hidden=true;
+if(!x.ok){amt.innerHTML='<span class=err>'+esc(x.j.error||'Could not read the balance')+'</span>';sub.textContent='';return}
+var j=x.j;amt.innerHTML='<span class=coin>Ð</span>'+fmt(j.total)+' <small>DOGE</small>';
+sub.textContent=j.count?(j.count.toLocaleString('en-US')+' unspent output'+(j.count==1?'':'s')+(j.count>j.shown?' (newest '+j.shown+' shown)':'')+' · at block '+(j.height||0).toLocaleString('en-US')):'No coins in this wallet right now.';
+if(j.utxos.length){document.getElementById('wutxo').hidden=false;document.getElementById('wrows').innerHTML=j.utxos.map(function(u){return '<tr><td class=mono><a href="/tx/'+u.txid+'">'+u.txid.slice(0,16)+'…'+u.txid.slice(-6)+'</a></td><td class=r>'+u.vout+'</td><td class=r>'+(u.height||'')+'</td><td class=r>'+fmt(u.value)+'</td></tr>'}).join('')}
+}).catch(function(){bar.hidden=true;amt.innerHTML='<span class=err>The explorer could not be reached</span>';sub.textContent=''});
+var c=document.querySelector('.vcopy');if(c)c.onclick=function(){try{navigator.clipboard.writeText(a);c.textContent='Copied';setTimeout(function(){c.textContent='Copy'},1500)}catch(e){}}})();"""
+
+
+def wallet_html(a):
     v = VERIFIED.get(a)
+    head = ("<p class=wver><span class=vbig>✔ Verified</span> · " + html.escape(v["name"]) + " <em class=ftag>" + html.escape(v["category"]) + " · accepts DOGE donations</em></p>") if v else ""
+    about = ""
     if v:
-        info = [("Organisation", html.escape(v["name"])), ("What it does", html.escape(v["category"]) + (" · " + html.escape(v["about"]) if v["about"] else "")),
-                ("Address", "<span class=mono>" + a + "</span>")]
-        if v["url"].startswith("http"):
-            info.append(("Website", "<a href='" + html.escape(v["url"]) + "' target=_blank rel=noopener>" + html.escape(v["url"]) + "</a>"))
-        if v["source"]:
-            info.append(("Published at", html.escape(v["source"])))
-        if v["verified"]:
-            info.append(("Verified on", html.escape(v["verified"])))
-        return page("Verified address", "<h1><span class=vbig>✔ Verified</span> · " + html.escape(v["name"]) + "</h1><section class=card><dl>"
-                    + "".join("<dt>" + k + "</dt><dd>" + x + "</dd>" for k, x in info) + "</dl></section>"
-                    "<section class=card><p style='margin:0'>This address accepts donations in DOGE. Check it against the organisation's own website before you send.</p>"
-                    "<p style='margin:8px 0 0'><a href='/verified'>All verified donation addresses →</a></p></section>", True)
-    return page("Address", "<h1>Address</h1><section class=card><dl><dt>Address</dt><dd class=mono>" + html.escape(a) + "</dd></dl>"
-                "<p class=muted style='margin:10px 0 0'>This address is not on the list of verified donation addresses. This explorer reads your own Dogecoin Core node, which keeps no history per address; "
-                "open a transaction to see where its coins went.</p><p style='margin:8px 0 0'><a href='/verified'>Verified donation addresses →</a></p></section>", True)
+        about = ("<section class=card><p style='margin:0'>" + html.escape(v["about"]) + "</p>"
+                 + ("<p style='margin:8px 0 0'><a href='" + html.escape(v["url"]) + "' target=_blank rel=noopener>" + html.escape(v["url"]) + "</a></p>" if v["url"].startswith("http") else "")
+                 + ("<p class=muted style='margin:8px 0 0'>Published at " + html.escape(v["source"]) + "</p>" if v["source"] else "")
+                 + ("<p class=muted style='margin:4px 0 0'>Verified on " + html.escape(v["verified"]) + "</p>" if v["verified"] else "")
+                 + "<p class=muted style='margin:8px 0 0'>Check this address against the organisation's own website before you send.</p></section>")
+    return (head + "<h1>Wallet</h1><section class='card wallet'><div class=wtop><small>Address</small><div class=vaddr><span class=mono>" + html.escape(a)
+            + "</span><button type=button class=vcopy>Copy</button></div></div>"
+            "<div class=wbal><small>Balance</small><div class=wamt id=wamt><span class=wload>Reading the balance from your node…</span></div>"
+            "<div class=wbar id=wbar><i></i></div><div class=sub id=wsub>Scanning the node's unspent coins. The first lookup can take up to a minute.</div></div></section>"
+            "<section class=card id=wutxo hidden><h2 style='margin:0 0 8px'>Coins in this wallet</h2><div class=wscroll><table class=vtbl><thead><tr><th>Transaction</th><th class=r>Output</th><th class=r>Block</th><th class=r>Amount</th></tr></thead><tbody id=wrows></tbody></table></div></section>"
+            + about
+            + "<p class=muted style='margin:4px 2px'>The balance is the sum of the unspent outputs the node holds for this address right now. <a href='/verified'>Verified donation addresses →</a></p>"
+            "<script>" + WALLET_JS.replace("__ADDR__", json.dumps(a).replace("<", "\\u003c")) + "</script>")
+
+
+WALLET_CSS = """
+.wallet{display:grid;gap:16px}.wtop,.wbal{display:grid;gap:6px}.wtop>small,.wbal>small{color:var(--muted);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase}
+.wamt{font:700 clamp(26px,5vw,38px)/1.15 system-ui;color:var(--gold);display:flex;align-items:center;gap:12px;flex-wrap:wrap;word-break:break-all}.wamt small{font:600 16px system-ui;color:var(--muted)}
+.wamt .coin{display:inline-block;width:36px;height:36px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#ecd978,#c2a633);color:#1a1406;font:700 22px/36px system-ui;text-align:center;flex:none}
+.wload{font:500 15px system-ui;color:var(--muted)}.wbar{height:6px;border-radius:6px;background:rgba(255,255,255,.08);overflow:hidden;position:relative}.wbar[hidden]{display:none}
+.wbar i{position:absolute;inset:0 auto 0 0;width:35%;border-radius:6px;background:linear-gradient(90deg,#c2a633,#ecd978);animation:wslide 1.4s ease-in-out infinite}
+@keyframes wslide{0%{left:-35%}100%{left:100%}}.wver{margin:0 0 4px;display:flex;flex-wrap:wrap;gap:4px 12px;align-items:baseline}
+.wscroll{overflow-x:auto}.wscroll td,.wscroll th{white-space:nowrap}
+.fbox a.addr{color:var(--text)}.fbox a.addr:hover{color:var(--gold);text-decoration:underline}
+"""
 
 
 def find_tx(txid, block_hash):
@@ -949,7 +1012,7 @@ def flow_html(f):
     def box(addr, value, tag="", cls=""):
         v = VERIFIED.get(addr)
         mark = ("<a class=vmark href='/address/" + html.escape(addr) + "'>✔ Verified · " + html.escape(v["name"]) + "</a><em class=ftag>" + html.escape(v["category"]) + " · accepts DOGE donations</em>") if v else ""
-        return ("<div class='fbox" + (" " + cls if cls else "") + (" ver" if v else "") + "'>" + mark + "<span class='mono addr'>" + html.escape(addr) + "</span>"
+        return ("<div class='fbox" + (" " + cls if cls else "") + (" ver" if v else "") + "'>" + mark + (("<a class='mono addr' href='/address/" + html.escape(addr) + "'>" + html.escape(addr) + "</a>") if valid_address(addr) else "<span class='mono addr'>" + html.escape(addr) + "</span>")
                 + ("<span class=amt>" + value + "</span>" if value else "") + ("<em class=ftag>" + tag + "</em>" if tag else "") + "</div>")
     if f["coinbase"]:
         left = box("New coins", doge(f["total_out"]), "the block reward and the fees, created by this block", "new")
@@ -1009,7 +1072,7 @@ FLOW_CSS = """
 def tx_page(txid, block_hash):
     tx, bh, conf = find_tx(txid, block_hash)
     ins = "".join("<tr><td class='mono wrap'>" + ("coinbase" if tx["coinbase"] else "<a href='/tx/" + i["prev"] + "'>" + i["prev"][:16] + "…</a>:" + str(i["n"])) + "</td></tr>" for i in tx["vin"])
-    outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + html.escape(address(o["script"]) or o["script"].hex()[:60]) + "</td><td class=r>" + doge(o["value"]) + "</td></tr>"
+    outs = "".join("<tr><td class=mono>" + str(n) + "</td><td class='mono wrap'>" + (("<a href='/address/" + address(o["script"]) + "'>" + address(o["script"]) + "</a>") if address(o["script"]) else html.escape(o["script"].hex()[:60])) + "</td><td class=r>" + doge(o["value"]) + "</td></tr>"
                    for n, o in enumerate(tx["vout"]))
     f = flow_of(tx, prev_outputs([i["prev"] for i in tx["vin"]]) if not tx["coinbase"] else None)
     flow = ("<section class=card><h2>Where the coins go</h2>" + flow_html(f)
@@ -1505,6 +1568,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, verified_page())
             if path == "/api/v1/verified-addresses":
                 return self.json(list(VERIFIED.values()), 300)
+            if path.startswith("/api/v1/address/") and valid_address(path[16:]):
+                return self.json(address_balance(path[16:]), 30)
             if path.startswith("/address/") and valid_address(path[9:]):
                 return self.send(200, address_page(path[9:]))
             if path.startswith("/tx/") and HEX64.fullmatch(path[4:]):
