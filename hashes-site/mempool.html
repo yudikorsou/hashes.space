@@ -958,8 +958,10 @@
   @media (max-width: 520px) { .solo-chart { min-height: 0; } }
   /* the candidate block is being hashed by miners all over the world: a ring of miners round it, hashes flying in */
   .block-wrap.mining { position: relative; }
+  #projected { padding-bottom: 34px; margin-bottom: -34px; }   /* room under the Candidate block for its hashrate line, without moving anything else */
   .hw-cv { position: absolute; pointer-events: none; z-index: 4; }
-  .hw-line { width: 0; overflow: visible; display: flex; flex-direction: column; align-items: center; margin-top: 6px; font: 600 10.5px/1.25 var(--mono, monospace); letter-spacing: .02em; color: #ffd36e; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .hw-line { position: absolute; left: 50%; top: 100%; width: 0; overflow: visible; display: flex; flex-direction: column; align-items: center; margin-top: 4px;   /* out of the flow, so the other blocks keep their height */
+    font: 600 10.5px/1.25 var(--mono, monospace); letter-spacing: .02em; color: #ffd36e; text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
   .hw-line small { display: block; font-weight: 500; font-size: 9.5px; color: var(--muted, #9aa3bd); letter-spacing: .03em; }
   .hw-line i { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #ffd36e; vertical-align: 1px; animation: hwpulse 1.6s ease-in-out infinite; }
   @keyframes hwpulse { 50% { opacity: .25; transform: scale(.7); } }
