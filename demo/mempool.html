@@ -5454,14 +5454,16 @@ window.__coins = COIN_LOGOS;
     function frame(now) {
       requestAnimationFrame(frame);
       if (document.hidden || now - last < 33) return; last = now;
-      const wrap = document.querySelector('.block-wrap.mining'), cube = wrap && wrap.querySelector('.cube'); if (!cube) return;
+      const wrap = document.querySelector('.block-wrap.mining'), cube = wrap && wrap.querySelector('.cube'); if (!cube) { document.querySelectorAll('.hw-cv').forEach((k) => k.getContext('2d').clearRect(0, 0, k.width, k.height)); shots.length = 0; return; }
       let cv = wrap.querySelector('.hw-cv');
       if (!cv) { cv = document.createElement('canvas'); cv.className = 'hw-cv'; cv.setAttribute('aria-hidden', 'true'); wrap.appendChild(cv); }
       const w = wrap.getBoundingClientRect(), c = cube.getBoundingClientRect();
       const cw = Math.max(60, c.width), ch = Math.max(60, c.height), padX = cw * 0.85, padY = ch * 0.62, dpr = Math.min(2, window.devicePixelRatio || 1);
       // the canvas stays inside the strip the block scrolls in, so it never makes that strip scroll
       const pr = $('projected').getBoundingClientRect();
-      const L = Math.max(c.left - padX, pr.left), R = Math.min(c.right + padX, pr.right), T = Math.max(c.top - padY, pr.top), B = Math.min(c.bottom + padY, pr.bottom);
+      const pv = wrap.previousElementSibling, nx = wrap.nextElementSibling;   // and out of the neighbours' way: the blocks beside it stay clean
+      const lo = Math.max(pr.left, pv ? pv.getBoundingClientRect().right + 2 : 0), hi = Math.min(pr.right, nx ? nx.getBoundingClientRect().left - 2 : 1e9);
+      const L = Math.max(c.left - padX, lo), R = Math.min(c.right + padX, hi), T = Math.max(c.top - padY, pr.top), B = Math.min(c.bottom + padY, pr.bottom);
       const W = Math.max(1, Math.round(R - L)), H = Math.max(1, Math.round(B - T));
       cv.style.left = (L - w.left) + 'px'; cv.style.top = (T - w.top) + 'px'; cv.style.width = W + 'px'; cv.style.height = H + 'px';
       if (cv.width !== Math.round(W * dpr) || cv.height !== Math.round(H * dpr)) { cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr); }
@@ -5469,26 +5471,27 @@ window.__coins = COIN_LOGOS;
       const cx = c.left + cw / 2 - L, cy = c.top + ch / 2 - T, still = STILL.matches, rx = cw * 0.5, ry = ch * 0.5;
       // ring of light closing in
       if (!still) for (let k = 0; k < 2; k++) {
-        const u = ((now / 3200) + k * 0.5) % 1, e = 1 - u, ax = (cw * 0.5 + padX * 0.9) * e + rx * 0.9 * u, ay = (ch * 0.5 + padY * 0.9) * e + ry * 0.9 * u;
+        const u = ((now / 3200) + k * 0.5) % 1, e = 1 - u, ax = Math.max(cw * 0.5 + 6, Math.min(cx, W - cx) * 0.94) * e + rx * 0.9 * u, ay = Math.max(ch * 0.5 + 6, Math.min(cy, H - cy) * 0.94) * e + ry * 0.9 * u;
         g.strokeStyle = `rgba(255,211,110,${(0.22 * Math.sin(u * 3.1416)).toFixed(3)})`; g.lineWidth = 1.2; g.beginPath(); g.ellipse(cx, cy, ax, ay, 0, 0, 6.2832); g.stroke();
       }
       // the miners and the hashes they send
       for (const m of miners) {
-        const x = cx + Math.cos(m.a) * (cw * 0.5 + padX * 0.9) * m.r * 0.98, y = cy + Math.sin(m.a) * (ch * 0.5 + padY * 0.9) * m.r * 0.98;
+        const x = cx + Math.cos(m.a) * Math.max(cw * 0.5 + 6, Math.min(cx, W - cx) * 0.94) * (0.9 + 0.1 * m.r), y = cy + Math.sin(m.a) * Math.max(ch * 0.5 + 6, Math.min(cy, H - cy) * 0.94) * (0.9 + 0.1 * m.r);
         const tw = 0.55 + 0.45 * Math.sin(now / 700 + m.tw);
         g.fillStyle = `rgba(255,211,110,${(0.35 + 0.5 * tw).toFixed(3)})`; g.beginPath(); g.arc(x, y, 1.6 + tw * 0.9, 0, 6.2832); g.fill();
         g.fillStyle = `rgba(255,211,110,${(0.10 * tw).toFixed(3)})`; g.beginPath(); g.arc(x, y, 6, 0, 6.2832); g.fill();
-        if (!still && now > m.sent + m.next) { m.sent = now; m.next = 500 + rnd(m.a * 100 + now, 9) * 1900; shots.push({ x, y, t0: now, tx: cx + (rnd(now, m.tw) - 0.5) * cw * 0.5, ty: cy + (rnd(now, m.a) - 0.5) * ch * 0.5 }); }
+        if (!still && now > m.sent + m.next) { m.sent = now; m.next = 500 + rnd(m.a * 100 + now, 9) * 1900; shots.push({ /* relative to the block, so a scroll or a new render cannot strand it */ x: x - cx, y: y - cy, t0: now, tx: (rnd(now, m.tw) - 0.5) * cw * 0.5, ty: (rnd(now, m.a) - 0.5) * ch * 0.5 }); }
       }
       for (let i = shots.length - 1; i >= 0; i--) {
         const s = shots[i];
+        if (now - s.t0 > 1500) { shots.splice(i, 1); continue; }   // nothing stays: a hash that has not arrived by now is dropped
         if (s.hit) {   // the hash reached the block: a little flash on its edge
           const f = 1 - (now - s.hit) / 260; if (f <= 0) { shots.splice(i, 1); continue; }
-          g.fillStyle = `rgba(255,236,180,${(0.8 * f).toFixed(3)})`; g.beginPath(); g.arc(s.hx, s.hy, 1.5 + (1 - f) * 4, 0, 6.2832); g.fill(); continue;
+          g.fillStyle = `rgba(255,236,180,${(0.8 * f).toFixed(3)})`; g.beginPath(); g.arc(cx + s.hx, cy + s.hy, 1.5 + (1 - f) * 4, 0, 6.2832); g.fill(); continue;
         }
         const u = (now - s.t0) / 700, e = Math.min(1, u) ** 1.6, hx = s.x + (s.tx - s.x) * e, hy = s.y + (s.ty - s.y) * e, e0 = Math.max(0, e - 0.16);
-        if (Math.abs(hx - cx) < rx && Math.abs(hy - cy) < ry) { s.hit = now; s.hx = hx; s.hy = hy; continue; }
-        g.strokeStyle = 'rgba(255,224,150,0.85)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(s.x + (s.tx - s.x) * e0, s.y + (s.ty - s.y) * e0); g.lineTo(hx, hy); g.stroke();
+        if (Math.abs(hx) < rx && Math.abs(hy) < ry) { s.hit = now; s.hx = hx; s.hy = hy; continue; }
+        g.strokeStyle = 'rgba(255,224,150,0.85)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx + s.x + (s.tx - s.x) * e0, cy + s.y + (s.ty - s.y) * e0); g.lineTo(cx + hx, cy + hy); g.stroke();
       }
     }
     requestAnimationFrame(frame);
