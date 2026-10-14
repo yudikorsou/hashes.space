@@ -864,7 +864,7 @@
   /* the pools as black holes in space; hover one for its name and hashrate */
   .pool-sky { position: relative; width: 100%; flex: 1 1 340px; min-height: 340px; margin: -2px 0 6px; background: none; }
   #pools-page:not([hidden]) { animation: poolsin .22s ease-out; }
-  @keyframes poolsin { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes poolsin { from { opacity: .25; } to { opacity: 1; } }
   @media (prefers-reduced-motion: reduce) { #pools-page:not([hidden]) { animation: none; } }
   .pool-sky canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
   .pool-sky .sky-cap { position: absolute; left: 0; right: 0; bottom: 6px; margin: 0; text-align: center; color: var(--muted); font: 400 11.5px/1.3 var(--sans); pointer-events: none; }
@@ -893,7 +893,7 @@
   .poolhead h1 { margin: 0; font: 600 28px/1.2 var(--display); letter-spacing: .01em; color: var(--text); overflow-wrap: anywhere; }
   .poolhead p { margin: 0; color: var(--muted); font: 400 14px/1.6 var(--sans); }
   .pool-load { width: min(420px, 100%); justify-self: center; display: grid; gap: 8px; margin: 4px 0 0; text-align: center; font: 400 12.5px/1.4 var(--sans); color: var(--muted); }
-  .pool-load[hidden] { display: none; }
+  .pool-load[hidden] { display: grid; visibility: hidden; }   /* keeps its room, so the blocks below do not jump when the loading ends */
   .pool-load .bar { position: relative; height: 6px; border-radius: 999px; overflow: hidden; background: rgba(10, 12, 24, .55); border: 1px solid var(--line); }
   .pool-load .bar i { position: absolute; inset: 0 auto 0 0; width: var(--p, 0%); border-radius: 999px; background: linear-gradient(90deg, var(--orange), var(--link)); box-shadow: 0 0 10px rgba(27, 216, 244, .45); transition: width .6s ease; }
   .pool-load.indet .bar i { width: 38%; animation: poolLoad 1.3s ease-in-out infinite; }
@@ -909,10 +909,15 @@
   .pool-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
   .pool-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   /* every block of the pool is a miniature of the animated mined block in the strip: the same cube, height plate, label and DATUM badge */
+  /* opening a pool: the page and its first blocks fade in */
+  #pool-page:not([hidden]) { animation: poolsin .22s ease-out; }
+  .pool-blocks.fresh .block-wrap { animation: poolblk .35s ease-out both; }
+  @keyframes poolblk { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { #pool-page:not([hidden]), .pool-blocks.fresh .block-wrap { animation: none; } }
   .pool-slider { position: relative; width: 100%; min-width: 0; max-width: 100%; }
   .poolpage { grid-template-columns: minmax(0, 1fr); }
   /* one row of blocks that slides sideways: every block of the pool in the period is in it, scroll (or use the arrows) to reach them all */
-  .pool-blocks { --s: 108px; --k: .864; --d: 14px; width: 100%; display: flex; flex-wrap: nowrap; justify-content: safe center; align-items: flex-start; gap: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: 20px; padding: 4px 6px 14px; scrollbar-width: thin; scrollbar-color: rgba(160, 170, 230, .45) transparent; -webkit-overflow-scrolling: touch; }
+  .pool-blocks { --s: 108px; --k: .864; --d: 14px; width: 100%; display: flex; flex-wrap: nowrap; justify-content: flex-start; align-items: flex-start; gap: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: 20px; padding: 4px 6px 14px; scrollbar-width: thin; scrollbar-color: rgba(160, 170, 230, .45) transparent; -webkit-overflow-scrolling: touch; }
   .pool-blocks::-webkit-scrollbar { height: 8px; } .pool-blocks::-webkit-scrollbar-track { background: transparent; } .pool-blocks::-webkit-scrollbar-thumb { background: rgba(160, 170, 230, .35); border-radius: 999px; }
   .pool-blocks .block-wrap { flex: 0 0 auto; scroll-snap-align: start; }
   .pool-slide { position: absolute; top: calc(50% - 22px); z-index: 2; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); background: rgba(10, 12, 24, .82); color: var(--text); font: 600 18px/1 var(--sans); cursor: pointer; display: grid; place-items: center; padding: 0; box-shadow: 0 4px 18px rgba(0, 0, 0, .45); transition: border-color .15s, color .15s, opacity .15s; }
@@ -5405,6 +5410,7 @@ window.__coins = COIN_LOGOS;
       : (poolWindow[key] && !poolBlocksBusy[key]) ? `<p class="pool-empty">${esc(name)} has not mined a block since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}) yet. The page keeps watching: its next block appears here.</p>`
       : `<p class="pool-empty">No block of ${esc(name)} among the ones this page has seen yet. The page keeps watching: the next one it finds appears here.</p>`;
     if (keepName === rail.dataset.pool) rail.scrollLeft = keepX; else rail.scrollLeft = 0;
+    rail.classList.toggle('fresh', keepName !== rail.dataset.pool);   // only a pool that has just been opened fades its blocks in, not every update of the same list
     poolSlideUpdate();
     $('pool-source').textContent = q && all.length ? `${fmt(list.length)} of the ${fmt(all.length)} blocks of ${name} match.` : poolWindow[key] && !got?.length ? ''
       : got?.length
