@@ -2431,7 +2431,7 @@ function chartGeometry(points, nominalThs, width, height, unit, timeLabel, xTick
     return proj;
   }
   const projFor = (c) => (c.xmr ? padProjected(mkXmrProjected(), c) : c.doge ? padProjected(mkDogeProjected(), c) : mkProjected());
-  let netId = 'blake2b';
+  let netId = 'sha256';
   const chain = () => chains[netId];
   const network = () => NETWORKS.find((n) => n.id === netId);
   const mkProjected = () => Array.from({ length: 6 }, (_, index) => {
