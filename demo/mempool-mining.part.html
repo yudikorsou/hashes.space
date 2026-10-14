@@ -121,7 +121,7 @@
   .pool-load b { color: var(--text); font-weight: 500; font-variant-numeric: tabular-nums; }
   @keyframes poolLoad { 0% { transform: translateX(-100%); } 100% { transform: translateX(270%); } }
   @media (prefers-reduced-motion: reduce) { .pool-load.indet .bar i { animation: none; width: 100%; opacity: .5; } }
-  #chain-area.pool-open .netbar { display: none; }
+  #chain-area.pool-open .netbar, #chain-area.pools-open .netbar { display: none; }
   .pool-find { width: min(420px, 100%); justify-self: center; }
   .pool-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
   .pool-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
@@ -1155,7 +1155,7 @@
   function renderPoolsPage() {
     const page = $('pools-page'); if (!page) return;
     const on = typeof view !== 'undefined' && view === 'pools';
-    page.hidden = !on;
+    page.hidden = !on; $('chain-area')?.classList.toggle('pools-open', on);
     // the black holes are the picker: the same sky moves over to this page (and back), with more holes on a page
     const sk = $('pool-sky');
     if (sk && sky.picker !== on && !picking) {

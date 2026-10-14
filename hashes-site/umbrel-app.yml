@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.65"
+version: "1.9.66"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The "More insights" page (Pick a mining pool) no longer shows the blockchain picker and search bar above it either; the title, the sun and the black holes start right under the top bar. They come back on the other pages.
   A mining pool's page (opened with "View pool profile") no longer shows the blockchain picker and search bar above it; the pool's name and blocks start right under the top bar. They come back when you leave the pool page.
   A mining pool's page now shows a loading bar (orange to blue, like the rest of the page) with the number of blocks read so far while your explorer is still reading the pool's blocks. It disappears when all blocks are in.
   On a mining pool's page the "Miners named in its blocks" list is gone; a search bar sits in its place and finds a block of that pool by its height or its hash (the blocks narrow down as you type).
