@@ -9,6 +9,8 @@ on to it unchanged, and adds the two endpoints the hashes.space Find Mempool pag
   /api/v1/mining/hashrate/<period>   hashrate and difficulty over the period
   /api/v1/mining/pools/<period>      how the period's blocks were paid out
   /api/v1/mining/pool-hashrate/<period>  the hashrate of the P2Pool miners (the only pool whose blocks the chain shows): network hashrate times the share of P2Pool blocks
+  /api/v1/mining/solo/blocks         the P2Pool miners (decentralised solo mining) read block by block: Monero retargets every block (a 120 s target)
+  /api/v1/mining/p2pool/blocks       the P2Pool page: hashrate per slice of blocks, the latest P2Pool blocks and how each paid its miners
   (period: 24h, 14d, 1m, 6m or 1y; 1w is still answered for older versions of the page)
 
 so the page gets those graphs from the same Monero Explorer that streams the blocks
@@ -154,7 +156,7 @@ SAMPLE = 2500   # a long period reads about this many blocks for its payout spli
 _lock = threading.Lock()
 _headers = {}    # height -> (timestamp, difficulty)
 _payouts = {}    # height -> how many outputs its coinbase pays
-_result = {"hashrate": {}, "pools": {}, "pool-hashrate": {}, "info": None}
+_result = {"hashrate": {}, "pools": {}, "pool-hashrate": {}, "solo": {}, "p2pool": {}, "info": None}
 
 
 def header_at(height):
@@ -237,12 +239,95 @@ def pool_hashrate_range(tip, rng, hr):
             "sampled": stride > 1, "pool": "P2Pool", "hashrates": points}
 
 
+# ---------- P2Pool, block by block ----------
+# Monero retargets its difficulty at EVERY block (LWMA) and aims at 120 s per block, so a block's difficulty / 120 is the hashrate that found it.
+# The window is the last P2P_BLOCKS blocks (a day). The network's per-block hashrate is the median over those blocks; P2Pool's is the share of
+# the window's blocks that P2Pool found (blocks that pay several miners in their own coinbase) times that median. The coinbase amounts are public,
+# so each miner paid in a P2Pool block shows its share of that block's reward: P2Pool's hashrate split by that share is that miner's hashrate.
+P2P_BLOCKS, P2P_SLICE, P2P_LATEST = 720, 12, 30
+_coin = {}       # height -> the amounts a block's coinbase pays (atomic units)
+
+
+def coinbase_in(height):
+    block = rpc("get_block", {"height": height})
+    miner = json.loads(block["json"])["miner_tx"]
+    return [int(o.get("amount") or 0) for o in (miner.get("vout") or [])] or [0]
+
+
+def _median(xs):
+    xs = sorted(xs)
+    n = len(xs)
+    return 0 if not n else xs[n // 2] if n % 2 else (xs[n // 2 - 1] + xs[n // 2]) / 2
+
+
+def p2pool_window(tip):
+    first = max(2, tip - P2P_BLOCKS + 1)
+    for h in range(first, tip + 1):
+        try:
+            header_at(h)
+            if h not in _coin:
+                _coin[h] = coinbase_in(h)
+                _payouts[h] = len(_coin[h])
+        except Exception as exc:
+            log("p2pool block " + str(h) + ": " + str(exc))
+    for h in [h for h in _coin if h < first]:
+        del _coin[h]
+    heights = [h for h in range(first, tip + 1) if h in _coin and h in _headers]
+    if len(heights) < P2P_SLICE:
+        raise RuntimeError("no data yet")
+    rate = {h: _headers[h][1] / BLOCK_SECONDS for h in heights}
+    med = _median(rate.values())
+    shared = [h for h in heights if len(_coin[h]) > 1]
+    share = len(shared) / len(heights)
+    p2p = med * share
+    slices = [heights[i:i + P2P_SLICE] for i in range(0, len(heights), P2P_SLICE)]
+    slices = [sl for sl in slices if len(sl) >= P2P_SLICE // 2]
+    series = []
+    for sl in slices:
+        net = sum(rate[h] for h in sl) / len(sl)
+        sh = [h for h in sl if len(_coin[h]) > 1]
+        series.append({"timestamp": _headers[sl[-1]][0], "height": sl[-1], "avgHashrate": net * len(sh) / len(sl), "share": len(sh) / len(sl), "networkHashrate": net,
+                       "miners": round(sum(len(_coin[h]) for h in sh) / len(sh)) if sh else 0})
+    latest = []
+    for h in shared[::-1][:P2P_LATEST]:
+        amounts = sorted(_coin[h], reverse=True)
+        total = sum(amounts) or 1
+        latest.append({"height": h, "timestamp": _headers[h][0], "miners": len(amounts), "reward": total, "blockHashrate": rate[h], "difficulty": _headers[h][1],
+                       "shares": [round(a / total, 5) for a in amounts[:60]], "others": max(0, len(amounts) - 60)})
+    # the miners of the newest P2Pool block, each with the hashrate its payout share stands for, and the sizes over the latest blocks
+    miners = [round(p2p * x, 1) for x in (latest[0]["shares"] if latest else [])]
+    sizes = [round(p2p * sh, 1) for b in latest for sh in b["shares"]]
+    base = {"window": "blocks", "perBlock": True, "retarget": "LWMA", "blockSeconds": BLOCK_SECONDS, "blockCount": len(heights), "sliceBlocks": P2P_SLICE, "slices": len(slices),
+            "sinceBlock": heights[0], "tipBlock": heights[-1]}
+    hashrate = {"hashrates": [{"timestamp": x["timestamp"], "avgHashrate": x["networkHashrate"]} for x in series],
+                "difficulty": [{"time": _headers[sl[-1]][0], "height": sl[-1], "difficulty": _headers[sl[-1]][1]} for sl in slices],
+                "currentHashrate": med, "currentDifficulty": _headers[heights[-1]][1], **base}
+    pools = {"pools": ([{"name": "P2Pool", "blockCount": len(shared), "hashrate": p2p,
+                         "miners": [{"name": str(round(sum(len(_coin[h]) for h in shared) / len(shared))) + " miners paid per block", "blockCount": len(shared)}]}] if shared else [])
+             + ([{"name": "Single payout (pool or solo miner)", "blockCount": len(heights) - len(shared), "hashrate": med * (1 - share)}] if len(heights) > len(shared) else []),
+             "sampled": False, "lastEstimatedHashrate": med, **base}
+    pool_hr = {"currentHashrate": p2p, "currentShare": share, "networkHashrate": med, "complete": True, "sampled": False, "pool": "P2Pool",
+               "hashrates": [{k: x[k] for k in ("timestamp", "avgHashrate", "share", "networkHashrate")} for x in series], **base}
+    solo = {"soloBlocks": len(shared), "share": share, "currentHashrate": p2p, "networkHashrate": med, "sampled": False, "restName": "Single payout (pool or solo miner)",
+            "sources": [{"name": "P2Pool miners", "kind": "service", "blockCount": len(shared), "share": share, "hashrate": p2p}], **base}
+    page = {"p2poolHashrate": p2p, "networkHashrate": med, "share": share, "p2poolBlocks": len(shared), "series": series, "latest": latest, "miners": miners, "sizes": sizes,
+            "minersPerBlock": round(sum(len(_coin[h]) for h in shared) / len(shared)) if shared else 0, "currentDifficulty": _headers[heights[-1]][1], **base}
+    return hashrate, pools, pool_hr, solo, page
+
+
 def worker():
     first = True
     while True:
         try:
             info = rpc("get_info")
             tip = int(info["height"]) - 1
+            try:
+                hr0, pl0, ph0, so0, pg0 = p2pool_window(tip)
+                with _lock:
+                    _result["hashrate"]["blocks"], _result["pools"]["blocks"], _result["pool-hashrate"]["blocks"], _result["solo"]["blocks"], _result["p2pool"]["blocks"] = hr0, pl0, ph0, so0, pg0
+                    _result["info"] = info
+            except Exception as exc:
+                log("p2pool window: " + str(exc))
             for rng in RANGES:                # the short periods first, so they are ready soonest
                 hr, pl = hashrate_range(tip, info, rng), pools_range(tip, rng)
                 try:
@@ -1091,14 +1176,14 @@ class Handler(http.server.BaseHTTPRequestHandler):
             self.wfile.write(body)
 
     def mining(self, path):
-        m = re.fullmatch(r"/api/v1/mining/(hashrate|pools|pool-hashrate)/(\w+)", path)
+        m = re.fullmatch(r"/api/v1/mining/(hashrate|pools|pool-hashrate|solo|p2pool)/(\w+)", path)
         if not m:
             return self.send_json(404, {"error": "unknown endpoint"}, 0)
         kind, rng = m.groups()
         with _lock:
             data = _result[kind].get(rng)
         if data is None:
-            return self.send_json(503 if rng in RANGES else 404, {"error": "Mining statistics are being computed from your node, try again in a minute" if rng in RANGES else "unknown period"}, 0)
+            return self.send_json(503 if rng in RANGES or rng == "blocks" else 404, {"error": "Mining statistics are being computed from your node, try again in a minute" if rng in RANGES else "unknown period"}, 0)
         return self.send_json(200, data, 300)
 
     def forward(self):

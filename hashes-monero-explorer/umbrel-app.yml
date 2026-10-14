@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-monero-explorer
 category: crypto
 name: Monero Explorer
-version: "0.18.5.1-23"
+version: "0.18.5.1-24"
 tagline: A Monero block explorer on your own Monero node
 description: >-
   An Onion Monero Blockchain Explorer that reads every block and transaction straight from the
@@ -31,6 +31,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  New /api/v1/mining/(hashrate|pools|pool-hashrate|solo)/blocks and /api/v1/mining/p2pool/blocks: Monero retargets its difficulty (LWMA) at every block, so the explorer now reads the hashrate of each of the last 720 blocks (difficulty / 120 s) and splits it into the P2Pool miners (blocks whose coinbase pays several addresses) and everyone else, with the latest P2Pool blocks and their payout splits.
   The four pages (/fee-ranking, /block-size, /block-assembly, /block-candidate) now work like the Dogecoin Explorer pages: a row of four choices at the top to jump between them, and the Fee-per-byte ranking and Dynamic block size pages open with an animated stage (the rates sorting themselves; the median, limit and penalty being drawn) beside four live steps, in the same glass design.
   On the /block-assembly and /block-candidate pages the steps beside the animated block no longer fade in and out: all the text stays on screen and only the numbers change live as the node reports new data.
   On the /block-assembly page the first two steps (pick the transactions, fold them into a merkle root) stay on screen instead of fading in and out beside the animated block; the miner transaction and header steps still appear in turn.

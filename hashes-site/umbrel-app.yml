@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.86"
+version: "1.9.87"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  Monero gets the Solominers moon: P2Pool miners' share of the blocks, with their hashrate worked out at every block (difficulty / 120 s, LWMA), and a dedicated P2Pool solominers page (hashrate at every block, the latest P2Pool blocks with their payout splits, and the hashrate of the miners). Needs Monero Explorer 0.18.5.1-24.
   View pool profile opens smoothly too: the pool page and its first blocks fade in, the "reading the blocks" line keeps its room so nothing jumps when it disappears, and the blocks start at the left and fill in as they are read instead of re-centring while the list grows.
   More insights now opens smoothly: the page fades in and the black holes fade in once they are drawn at their new size, instead of showing stretched for a moment (also on the way back to the mempool).
   The Candidate block animation shows only the strings of bits flying into the block: the circle and the glowing dots round it are gone.
