@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-bitcoin-explorer
 category: crypto
 name: Bitcoin Explorer
-version: "1.18.4"
+version: "1.18.5"
 tagline: A Bitcoin block explorer on your own Bitcoin node, pruned or not
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/frontend/public/coins/bitcoin.png
 description: >-
@@ -33,6 +33,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  A mining pool's block list now covers its last 14 days: /api/v1/mining/pool/<slug>/blocks/14d returns every block the pool mined in the last difficulty period, with its weight, median fee and fee range, so the Find Mempool pool profile page can show them all as miniature blocks.
   The block animation is no longer shown on the Bitcoin BLAKE2b explorer or on blocks mined by OCEAN on the Bitcoin explorer.
   Get verified now applies to every pool on the Bitcoin BLAKE2b explorer, and on the Bitcoin explorer only to blocks mined by OCEAN; other Bitcoin blocks show their payout addresses and the whole block to everyone.
   The Get verified box has new wording (only DATUM Verified pool contributors see the transaction information of the pool they hash on) and a boxed layout that no longer breaks words.

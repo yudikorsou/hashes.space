@@ -16,7 +16,7 @@ Reads everything from the node's RPC, pruned or not, and serves:
   /api/v1/mining/pools/<period>     blocks per mining pool, from the tags and payout addresses in each coinbase
   /api/v1/mining/pool-hashrate/<period>  the hashrate of the mining pools together: the network's hashrate times the share of blocks that pools mined, per day
   /api/v1/mining/solo/<period>      the hashrate of the miners that use no pool: blocks of solo services ("solo" in the pool's name) and blocks with no pool tag or known payout address, times the network's hashrate
-  /api/v1/mining/pool/<slug>/blocks   the latest blocks of one pool (the page's pool view)
+  /api/v1/mining/pool/<slug>/blocks   the latest blocks of one pool (the page's pool view); .../blocks/14d: every block of the pool in the last 14 days, with fees
   /api/v1/difficulty-adjustment       where the chain is in its difficulty period, and the change the period is heading for
   /api/v1/fees/recommended            fastest / half-hour / hour / economy / minimum fee rates, from your own mempool
   /api/v1/halving                     blocks and time to the next halving
@@ -442,18 +442,35 @@ class ChainStats:
         with self.lock:
             return [self.history[h] for h in sorted(self.history)]
 
-    def pool_blocks(self, slug, limit=40):
-        """The latest blocks of one pool, in mempool's format (id, height, timestamp, tx_count, size)."""
+    def pool_blocks(self, slug, limit=40, epoch=False, budget=None):
+        """The latest blocks of one pool, in mempool's format (id, height, timestamp, tx_count, size, extras with the median fee and fee range).
+        epoch=True: every block of the pool in the last difficulty period (the page's "14 days"), newest first. Blocks not read yet are read within
+        `budget` seconds and the rest follow on the next request, so a first request never hangs."""
         with self.lock:
-            heights = sorted((h for h, p in self.pool_of.items() if re.sub(r"[^a-z0-9]+", "-", p.lower()).strip("-") == slug), reverse=True)[:limit]
+            hs = {h: p for h, p in self.pool_of.items() if re.sub(r"[^a-z0-9]+", "-", p.lower()).strip("-") == slug}
+            top = max(self.pool_of) if self.pool_of else 0
+        heights = sorted((h for h in hs if not epoch or h > top - EPOCH), reverse=True)
+        if not epoch:
+            heights = heights[:limit]
+        deadline = time.time() + budget if budget else None
         out = []
         for h in heights:
             row = self.pool_rows.get(h)
-            if row is None:
+            if row is None or (epoch and "extras" not in row):
+                if deadline and time.time() > deadline:
+                    break
                 try:
-                    bh = self.rpc.call("getblockhash", h)
-                    b = self.rpc.call("getblock", bh, 1, timeout=120)
-                    row = {"id": bh, "height": h, "timestamp": int(b["time"]), "tx_count": int(b["nTx"]), "size": int(b["size"])}
+                    bh = row["id"] if row else self.rpc.call("getblockhash", h)
+                    if row is None:
+                        b = self.rpc.call("getblock", bh, 1, timeout=120)
+                        row = {"id": bh, "height": h, "timestamp": int(b["time"]), "tx_count": int(b["nTx"]), "size": int(b["size"]), "weight": int(b.get("weight", int(b["size"]) * 4))}
+                    if epoch:
+                        try:
+                            st = self.rpc.call("getblockstats", h, ["feerate_percentiles", "minfeerate", "maxfeerate"], timeout=120)
+                            pc = st.get("feerate_percentiles") or [0, 0, 0, 0, 0]
+                            row["extras"] = {"medianFee": pc[2], "feeRange": [st.get("minfeerate", 0), pc[0], pc[1], pc[2], pc[3], pc[4], st.get("maxfeerate", 0)]}
+                        except Exception:  # noqa: BLE001
+                            row["extras"] = {"medianFee": 0, "feeRange": [0, 0]}
                 except Exception:  # noqa: BLE001
                     continue                       # pruned since: the block is simply left out
                 self.pool_rows[h] = row
@@ -1710,7 +1727,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.json(need_live()[1], 5)
             if path == "/api/blocks/tip/height":
                 return self.send(200, str(need_live()[0][0]["height"]), "text/plain", 5)
-            m = re.fullmatch(r"/api/v1/mining/pool/([a-z0-9-]+)/blocks", path)
+            m = re.fullmatch(r"/api/v1/mining/pool/([a-z0-9-]+)/blocks(?:/(14d))?", path)
+            if m and m.group(2):
+                return self.json(STATS.pool_blocks(m.group(1), epoch=True, budget=6), 5)
             if m:
                 return self.json(STATS.pool_blocks(m.group(1)), 60)
             m = re.fullmatch(r"/api/v1/block/([0-9]+|[0-9a-fA-F]{64})/stats", path)

@@ -896,8 +896,9 @@
   .pool-miners li b { color: var(--text); font-weight: 500; }
   .pool-miners li span { font: 500 12px/1 var(--mono); color: var(--link); font-variant-numeric: tabular-nums; }
   /* every block of the pool is a miniature of the animated mined block in the strip: the same cube, height plate, label and DATUM badge */
-  .pool-blocks { --s: 108px; --k: .864; --d: 14px; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 30px 26px; }
-  .pool-blocks .block-wrap { width: calc(var(--s) + var(--d)); }
+  .pool-blocks { --s: 108px; --k: .864; --d: 14px; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px 8px; }
+  .pool-blocks .block-wrap { box-sizing: border-box; width: calc(var(--s) + var(--d) + 26px); padding: 16px 13px 6px; content-visibility: auto; contain-intrinsic-size: auto calc(var(--s) + var(--d) + 26px) 260px; }   /* hundreds of blocks: only the ones on screen are drawn */
+  .pool-blocks .block-wrap .cube { animation: none !important; filter: drop-shadow(0 0 12px rgba(var(--glow, 255, 77, 77), .38)); }
   .pool-blocks .below { display: grid; justify-items: center; gap: 6px; }
   .pool-blocks .below .datum-badge { font-size: calc(10.5px * var(--k, 1)); letter-spacing: .02em; padding: 4px 7px; white-space: nowrap; }
   @media (max-width: 640px) { .pool-blocks { --s: 92px; --k: 1; } }
@@ -4252,8 +4253,8 @@ window.__coins = COIN_LOGOS;
   var SI = ['', 'k', 'M', 'G', 'T', 'P', 'E', 'Z', 'Y'];
   function si(v, digits) { if (!v) return '0'; let i = 0; while (Math.abs(v) >= 1000 && i < SI.length - 1) { v /= 1000; i++; } return `${v.toFixed(digits ?? (v >= 100 ? 1 : 2))} ${SI[i]}`.trim(); }
   function siShort(v) { let i = 0; while (v >= 1000 && i < SI.length - 1) { v /= 1000; i++; } return `${+v.toFixed(2)} ${SI[i]}`; }
-  async function getJson(site, path) {
-    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), 8000);
+  async function getJson(site, path, ms = 8000) {
+    const ctl = new AbortController(); const to = setTimeout(() => ctl.abort(), ms);
     try { const r = await fetch(`https://${site}/api/v1/mining${path}`, { signal: ctl.signal }); if (!r.ok) throw new Error('HTTP ' + r.status); return await r.json(); } finally { clearTimeout(to); }
   }
   async function loadMining() { await Promise.all(Object.keys(MINING_SITES).map(loadMiningFor)); }
@@ -5152,8 +5153,8 @@ window.__coins = COIN_LOGOS;
     // a simulated block has a made-up hash, so it links nowhere, just as in the strip
     const link = (chain().live || got?.length) && EXPLORER[netId] ? EXPLORER[netId] : null, onPage = chain().blocks ?? [];
     $('pool-blocks').innerHTML = list.length
-      ? list.slice(0, 60).map((b0) => {
-        const full = onPage.find((x) => x.height === b0.height), b = full ?? { medianFee: 0, feeRange: [0, 0], ...b0 };
+      ? list.map((b0) => {
+        const full = onPage.find((x) => x.height === b0.height), b = full ?? { medianFee: 0, feeRange: [0, 0], ...b0, weight: b0.weight ?? (b0.size ?? 0) * 3 };
         const d = datumLabel({ pool: name }), tag = link && (b.hash || b.height) ? 'a' : 'div';
         let cb = cube({ ...b, timestamp: b.timestamp ?? t, txCount: b.txCount ?? 0, size: b.size ?? 0 }, true);
         if (!full && !(b0.medianFee > 0)) cb = cb.replace(/<span class="fee">[^<]*<\/span><span class="range">[^<]*<\/span>/, '');   // the pool's own list gave no fees: show none rather than a made-up zero
@@ -5162,19 +5163,33 @@ window.__coins = COIN_LOGOS;
       }).join('')
       : `<p class="pool-empty">No block of ${esc(name)} among the ones this page has seen yet. The page keeps watching: the next one it finds appears here.</p>`;
     $('pool-source').textContent = got?.length
-      ? `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`
+      ? (poolWindow[key] ? `All ${fmt(list.length)} blocks of ${name} in the last 14 days, live from ${MINING_SITES[netId]}${poolBlocksBusy[key] ? ' (reading more…)' : ''}.` : `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`)
       : list.length ? `The blocks of ${name} among the ones on this page.` : '';
     // the mining page keeps the pool's own block list; ask for it once
-    if (got === undefined && mining?.live && stat?.slug) fetchPoolBlocks(name, stat.slug);
+    if ((got === undefined || Date.now() - (poolBlocksAt[key] || 0) > 120000) && mining?.live && stat?.slug) fetchPoolBlocks(name, stat.slug);
   }
+  var poolBlocksAt = {}, poolBlocksBusy = {}, poolWindow = {};
+  // Bitcoin and Bitcoin BLAKE2b: every block of the pool in the last 14 days, with its fees (the explorer reads them in the background and answers with what is ready, so this asks again until nothing new comes)
   async function fetchPoolBlocks(name, slug) {
-    const net = netId, key = net + '|' + name.toLowerCase();
-    poolBlocks[key] = [];       // asked: do not ask again for this pool
+    const net = netId, key = net + '|' + name.toLowerCase(); if (poolBlocksBusy[key]) return;
+    poolBlocksBusy[key] = true; poolBlocksAt[key] = Date.now(); if (poolBlocks[key] === undefined) poolBlocks[key] = [];
+    const map = (r) => (Array.isArray(r) ? r : []).map((b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, weight: b.weight, medianFee: b.extras?.medianFee, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0] }));
+    const again = () => netId === net && poolView && poolView.toLowerCase() === name.toLowerCase();
+    let full = net === 'sha256' || net === 'blake2b', prev = -1;
     try {
-      const r = await getJson(MINING_SITES[net], `/pool/${encodeURIComponent(slug)}/blocks`);
-      poolBlocks[key] = (Array.isArray(r) ? r : []).map((b) => ({ height: b.height, hash: b.id, timestamp: b.timestamp, txCount: b.tx_count, size: b.size, medianFee: b.extras?.medianFee, feeRange: b.extras?.feeRange?.length ? b.extras.feeRange : [0, 0] }));
+      for (let i = 0; i < 40; i++) {
+        let r;
+        try { r = await getJson(MINING_SITES[net], `/pool/${encodeURIComponent(slug)}/blocks${full ? '/14d' : ''}`, 12000); }
+        catch (e) { if (!full) throw e; full = false; r = await getJson(MINING_SITES[net], `/pool/${encodeURIComponent(slug)}/blocks`); }   // an older explorer: its latest blocks
+        const arr = map(r); if (arr.length >= poolBlocks[key].length) poolBlocks[key] = arr;
+        poolWindow[key] = full;
+        if (again()) renderPoolBlocks(name);
+        if (!full || arr.length === prev) break;
+        prev = arr.length; await new Promise((ok) => setTimeout(ok, 2500));
+      }
     } catch { /* no list from there: the blocks on this page stand */ }
-    if (netId === net && poolView && poolView.toLowerCase() === name.toLowerCase()) renderPoolBlocks(name);
+    poolBlocksBusy[key] = false;
+    if (again()) renderPoolBlocks(name);
   }
   setInterval(loadMining, 5 * 60_000);
 
