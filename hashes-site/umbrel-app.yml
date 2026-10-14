@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.96"
+version: "1.9.97"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  How to read the blocks: the Decentralised (green glow) text now says these blocks are created by miners that use Stratum V2 or DATUM Gateway, construct their own block templates by running their own node, and receive non-custodial payouts directly from the coinbase transaction.
   How to read the blocks: the Centralised (red glow) text no longer starts with "Every other pool." and now begins "The pool builds the block template".
   How to read the blocks: DATUM Compatible text now says the miners get non-custodial payouts "directly from the coinbase transaction".
   How to read the blocks: the Decentralised (green glow) explanation on Bitcoin and Bitcoin BLAKE2b now reads "Decentralised blocks are blocks that are created by miners that construct their own block templates."
