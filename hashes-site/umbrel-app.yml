@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.82"
+version: "1.9.83"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The hashes flying into the Candidate block are now small strings of bits (0 and 1) instead of sparks.
   Fix on the Dogecoin and Monero pages: sparks of the animated Candidate block no longer stay behind when the row moves or the block is drawn again, and the animation stays in the space round the block instead of covering the blocks beside it.
   The label above the Candidate block is back to "Hashing now on <block height>". The miners all round the block and the hashes flying into it stay; the hashrate text is gone.
   The two lines above the Candidate block use the same lettering as the old "Hashing now on" label (bold capitals with spacing); the unit stays H/s.

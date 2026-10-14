@@ -5480,18 +5480,24 @@ window.__coins = COIN_LOGOS;
         const tw = 0.55 + 0.45 * Math.sin(now / 700 + m.tw);
         g.fillStyle = `rgba(255,211,110,${(0.35 + 0.5 * tw).toFixed(3)})`; g.beginPath(); g.arc(x, y, 1.6 + tw * 0.9, 0, 6.2832); g.fill();
         g.fillStyle = `rgba(255,211,110,${(0.10 * tw).toFixed(3)})`; g.beginPath(); g.arc(x, y, 6, 0, 6.2832); g.fill();
-        if (!still && now > m.sent + m.next) { m.sent = now; m.next = 500 + rnd(m.a * 100 + now, 9) * 1900; shots.push({ /* relative to the block, so a scroll or a new render cannot strand it */ x: x - cx, y: y - cy, t0: now, tx: (rnd(now, m.tw) - 0.5) * cw * 0.5, ty: (rnd(now, m.a) - 0.5) * ch * 0.5 }); }
+        if (!still && now > m.sent + m.next) { m.sent = now; m.next = 500 + rnd(m.a * 100 + now, 9) * 1900; shots.push({ bits: Array.from({ length: 7 }, (_, k) => (rnd(now + k, m.tw + k) > 0.5 ? '1' : '0')), /* relative to the block, so a scroll or a new render cannot strand it */ x: x - cx, y: y - cy, t0: now, tx: (rnd(now, m.tw) - 0.5) * cw * 0.5, ty: (rnd(now, m.a) - 0.5) * ch * 0.5 }); }
       }
       for (let i = shots.length - 1; i >= 0; i--) {
         const s = shots[i];
         if (now - s.t0 > 1500) { shots.splice(i, 1); continue; }   // nothing stays: a hash that has not arrived by now is dropped
         if (s.hit) {   // the hash reached the block: a little flash on its edge
           const f = 1 - (now - s.hit) / 260; if (f <= 0) { shots.splice(i, 1); continue; }
-          g.fillStyle = `rgba(255,236,180,${(0.8 * f).toFixed(3)})`; g.beginPath(); g.arc(cx + s.hx, cy + s.hy, 1.5 + (1 - f) * 4, 0, 6.2832); g.fill(); continue;
+          g.fillStyle = `rgba(255,236,180,${(0.8 * f).toFixed(3)})`; g.font = '600 7px ui-monospace, Menlo, Consolas, monospace'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(s.bits[0], cx + s.hx, cy + s.hy); continue;
         }
         const u = (now - s.t0) / 700, e = Math.min(1, u) ** 1.6, hx = s.x + (s.tx - s.x) * e, hy = s.y + (s.ty - s.y) * e, e0 = Math.max(0, e - 0.16);
         if (Math.abs(hx) < rx && Math.abs(hy) < ry) { s.hit = now; s.hx = hx; s.hy = hy; continue; }
-        g.strokeStyle = 'rgba(255,224,150,0.85)'; g.lineWidth = 1.4; g.beginPath(); g.moveTo(cx + s.x + (s.tx - s.x) * e0, cy + s.y + (s.ty - s.y) * e0); g.lineTo(cx + hx, cy + hy); g.stroke();
+        // a string of bits on its way into the block: the head is the brightest, the tail fades
+        g.font = '600 7px ui-monospace, Menlo, Consolas, monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        for (let k = 0; k < s.bits.length; k++) {
+          const ek = e - k * 0.045; if (ek < 0) continue;
+          const bx = cx + s.x + (s.tx - s.x) * ek, by = cy + s.y + (s.ty - s.y) * ek;
+          g.fillStyle = `rgba(255,224,150,${(0.95 - k * 0.12).toFixed(3)})`; g.fillText(s.bits[k], bx, by);
+        }
       }
     }
     requestAnimationFrame(frame);
