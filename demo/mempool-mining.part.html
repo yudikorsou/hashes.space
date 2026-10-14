@@ -133,22 +133,13 @@
   .pools-chains button span { font: 500 11.5px/1 var(--mono); color: var(--muted); }
   .pools-chains button:hover { border-color: var(--line-strong); color: var(--text); }
   .pools-chains button[aria-pressed="true"] { border-color: var(--link); color: var(--text); background: rgba(22, 26, 48, .8); }
-  .pools-chains button:focus-visible, .pp:focus-visible, .pools-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .pools-chains button:focus-visible, .pools-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   .pools-find { width: min(420px, 100%); }
   .pools-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
-  .pools-grid { width: 100%; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
-  .pp { display: grid; gap: 6px; justify-items: start; text-align: left; padding: 14px 16px; border: 1px solid var(--line); border-radius: 12px; background: rgba(10, 12, 24, .45); color: inherit; font: inherit; cursor: pointer; transition: border-color .15s, background .15s, transform .15s; }
-  .pp:hover { border-color: var(--line-strong); background: rgba(16, 19, 36, .7); transform: translateY(-2px); }
-  .pp .pp-top { display: flex; align-items: baseline; gap: 8px; width: 100%; }
-  .pp .pp-rank { font: 500 11.5px/1 var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; }
-  .pp b { font: 600 16px/1.25 var(--display); color: var(--text); overflow-wrap: anywhere; }
-  .pp .pp-bar { width: 100%; height: 4px; border-radius: 2px; background: rgba(160, 170, 230, .14); overflow: hidden; }
-  .pp .pp-bar i { display: block; height: 100%; border-radius: 2px; background: linear-gradient(90deg, #ff6a4d, #ffb06a); }
-  .pp .pp-meta { color: var(--muted); font: 400 12.5px/1.4 var(--sans); font-variant-numeric: tabular-nums; }
-  .pp .pp-meta em { font-style: normal; color: var(--link); font-weight: 500; }
-  .pp .datum-badge { margin-top: 2px; }
+  .pools-sky-host { width: 100%; display: flex; }
+  .pools-sky-host .pool-sky { min-height: 580px; margin: 0; }
+  @media (max-width: 520px) { .pools-sky-host .pool-sky { min-height: 460px; flex-basis: 460px; } }
   .pools-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px 22px; }
-  @media (max-width: 520px) { .pools-grid { grid-template-columns: 1fr 1fr; } .pp { padding: 12px; } .pp b { font-size: 14.5px; } }
   @media (max-width: 520px) { .poolhead h1 { font-size: 23px; } .pool-blocks { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
   @media (max-width: 520px) { .mstats { padding-inline: 16px; } .mstats .kpis dd { font-size: 17px; } .mstats .mtitle, .mstats .kpis dt { font-size: 15.5px; } }
   /* miners without a pool: lone lights drifting through space, and where the figure comes from */
@@ -210,7 +201,8 @@
   </header>
   <div class="pools-chains" id="pools-chains" role="group" aria-label="Blockchain"></div>
   <label class="pools-find"><span class="sr-only">Search the mining pools</span><input id="pools-filter" type="search" placeholder="Search a mining pool" autocomplete="off" spellcheck="false"></label>
-  <div class="pools-grid" id="pools-grid"></div>
+  <div class="pools-sky-host" id="pools-sky-host"></div>
+  <ul class="sr-only" id="pools-list"></ul>
   <p class="msource" id="pools-source"></p>
   <div class="pools-links"><a class="more" href="#dashboard">« Back to the mempool</a><a class="more" href="#calc">Calculate hashrate »</a></div>
 </section>
@@ -518,7 +510,7 @@
       skySet(own ? rp.pools.map((x) => ({ name: x.name === 'Single payout (pool or solo miner)' ? 'Other pools & solo' : x.name, blocks: x.blocks })) : null, own ? (rp.blockCount || rp.pools.reduce((a, x) => a + x.blocks, 0)) : 0, own ? m.hash : 0, rp.window,
         m.live ? 'Waiting for your node: the ships are built from its pool statistics.' : 'Your node does not answer: the ships are built from its pool statistics.');
       sky.cap = () => { const netId2 = sky.net, own = !!sky.args[0], a = sky.page * SKY_PAGE + 1, b = a + sky.ships.length - 1, kind = netId2 === 'monero' ? 'payout kinds' : 'mining pools';
-        $('sky-cap').textContent = own && sky.ships.length ? `${sky.total > SKY_PAGE ? `${a}–${b} of ${sky.total}` : sky.total} ${kind} · biggest first · size follows hashrate · ${windowSpoken(sky.args[3])}` : '';
+        $('sky-cap').textContent = own && sky.ships.length ? `${sky.total > SKY_PAGE ? `${a}–${b} of ${sky.total}` : sky.total} ${kind} · biggest first · size follows hashrate · ${windowSpoken(sky.args[3])}${sky.picker ? ' · click a hole to open the pool' : ''}` : '';
         $('sky-prev').hidden = $('sky-next').hidden = !(own && sky.pages > 1); $('sky-prev').disabled = sky.page <= 0; $('sky-next').disabled = sky.page >= sky.pages - 1; }; sky.cap();
       if (sky.still) skyDraw(performance.now());
     }
@@ -779,8 +771,8 @@
   // From your own node's pool split (the pools endpoint of the explorer on your Umbrel): a pool's hashrate is its share of the blocks
   // found in the period times the chain's hashrate. Mempool sites and built-in snapshots are never used for it.
   // Every pool is a black hole: its size follows the hashrate it adds to the chain, and matter circles it in an accretion disc.
-  var sky = { ships: [], names: '', last: 0, hover: null, w: 0, h: 0, dpr: 1, on: false, still: false, msg: '', laid: '' };
-  const SKY_PAGE = 6;
+  var sky = { q: '', picker: false, ships: [], names: '', last: 0, hover: null, w: 0, h: 0, dpr: 1, on: false, still: false, msg: '', laid: '' };
+  var SKY_PAGE = 6;   // holes per page: more on the page where you pick a pool
   // the glow follows the labels under the mined blocks: red for a centralised pool, orange for a DATUM pool (OCEAN on Bitcoin, CONVOY on BLAKE2b), green for P2Pool on Monero
   const SKY_RED = 'hsl(0 100% 65%)', SKY_ORANGE = 'hsl(33 94% 54%)', SKY_GREEN = 'hsl(137 74% 56%)';
   const skyColor = (name) => (netId === 'sha256' && /^ocean$/i.test(name)) || (netId === 'blake2b' && /^convoy$/i.test(name)) ? SKY_ORANGE : netId === 'monero' && /^p2pool$/i.test(name) ? SKY_GREEN : SKY_RED;
@@ -790,7 +782,7 @@
   function skySet(list, total, hashNow, win, note) {
     sky.args = [list, total, hashNow, win, note];
     sky.msg = list ? '' : (note || 'Waiting for your node…');
-    const ranked = (list || []).filter((x) => x.name && x.name !== 'Unknown' && !/^btcb2$/i.test(x.name) && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
+    const ranked = (list || []).filter((x) => x.name && x.name !== 'Unknown' && !/^btcb2$/i.test(x.name) && x.blocks > 0 && (!sky.q || x.name.toLowerCase().includes(sky.q))).sort((a, b) => b.blocks - a.blocks);
     const pages = Math.max(1, Math.ceil(ranked.length / SKY_PAGE)); sky.page = Math.min(sky.page || 0, pages - 1); sky.pages = pages; sky.total = ranked.length;
     if (sky.refS == null || sky.page === 0) sky.refS = ranked.slice(0, SKY_PAGE).reduce((a, x) => a + Math.sqrt(total ? x.blocks / total : 0), 0) || 1;
     const items = ranked.slice(sky.page * SKY_PAGE, sky.page * SKY_PAGE + SKY_PAGE);
@@ -802,7 +794,7 @@
     sky.ships = items.map((x, i) => {
       const share = total ? x.blocks / total : 0, prev = old[x.name];
       const bits = prev ? prev.bits : Array.from({ length: 70 }, (_, k) => ({ f: 1.35 + rnd(i * 70 + k, 1) * 1.5, th: rnd(i * 70 + k, 2) * 6.283, w: 0.5 + rnd(i * 70 + k, 3) * 0.9, s: 0.7 + rnd(i * 70 + k, 4) * 1.2, h: rnd(i * 70 + k, 5) }));
-      return { name: x.name, share, vis: total ? (x.blocks / topHere) * (top0 / total) : 0, blocks: x.blocks, hash: share * (hashNow || 0), win, color: skyColor(x.name), bits, phase: i * 1.9, x: prev ? prev.x : null, y: prev ? prev.y : null, r: 10 };
+      return { name: x.name, share, vis: total ? (x.blocks / topHere) * (top0 / total) : 0, blocks: x.blocks, hash: share * (hashNow || 0), win, pick: x.name !== 'Other pools & solo', color: skyColor(x.name), bits, phase: i * 1.9, x: prev ? prev.x : null, y: prev ? prev.y : null, r: 10 };
     });
   }
   function skySize() {
@@ -1047,9 +1039,10 @@
     };
     el.addEventListener('pointermove', (e) => {
       const sh = find(e); sky.hover = sh; el.style.cursor = sh ? 'pointer' : '';
-      if (sh) tip(e, `<b>${esc(sh.name)}</b><br>${si(sh.hash, 1)}H/s · ${(sh.share * 100).toFixed(1)}% of the chain<br>${sh.blocks.toLocaleString('en')} blocks in ${windowSpoken(sh.win)}`); else tip(e, null);
+      if (sh) tip(e, `<b>${esc(sh.name)}</b><br>${si(sh.hash, 1)}H/s · ${(sh.share * 100).toFixed(1)}% of the chain<br>${sh.blocks.toLocaleString('en')} blocks in ${windowSpoken(sh.win)}${sky.picker && sh.pick ? '<br><i>click to open its page</i>' : ''}`); else tip(e, null);
       if (sky.still) skyDraw(performance.now());
     });
+    el.addEventListener('click', (e) => { if (!sky.picker) return; const sh = find(e); if (sh && sh.pick) { tip(e, null); poolFrom = 'pools'; showPool(sh.name); } });
     el.addEventListener('pointerleave', (e) => { sky.hover = null; tip(e, null); if (sky.still) skyDraw(performance.now()); });
   }
   // ---------- miners without a pool ----------
@@ -1131,33 +1124,38 @@
   // ---------- the page that lists every mining pool: pick one to open its own page ----------
   var poolFrom = 'dashboard';   // where the pool page was opened from, for its back link
   var poolsFilter = '';
+  var skyHome = null, picking = false;
   function renderPoolsPage() {
     const page = $('pools-page'); if (!page) return;
     const on = typeof view !== 'undefined' && view === 'pools';
-    page.hidden = !on; if (!on) return;
+    page.hidden = !on;
+    // the black holes are the picker: the same sky moves over to this page (and back), with more holes on a page
+    const sk = $('pool-sky');
+    if (sk && sky.picker !== on && !picking) {
+      picking = true; sky.picker = on; SKY_PAGE = on ? 9 : 6; sky.page = 0; sky.refS = null; sky.names = ''; sky.laid = ''; sky.q = ''; poolsFilter = ''; { const f = $('pools-filter'); if (f) f.value = ''; }
+      if (on) { skyHome = { parent: sk.parentNode, next: sk.nextSibling }; $('pools-sky-host').appendChild(sk); }
+      else if (skyHome) { skyHome.parent.insertBefore(sk, skyHome.next && skyHome.next.parentNode === skyHome.parent ? skyHome.next : null); skyHome = null; }
+      if (typeof renderMiningStats === 'function') renderMiningStats();
+      picking = false;
+    }
+    if (!on) return;
     const nets = NETWORKS.filter((n) => MINING_SITES[n.id]);
-    $('pools-chains').innerHTML = nets.map((n) => `<button type="button" data-net="${n.id}" aria-pressed="${n.id === netId}">${esc(n.chain)}<span>${miningBy[n.id] ? fmt(miningBy[n.id].pools.length) : '–'}</span></button>`).join('');
+    $('pools-chains').innerHTML = nets.map((n) => `<button type="button" data-net="${n.id}" aria-pressed="${n.id === netId}">${esc(n.chain)}<span>${miningBy[n.id] ? fmt(miningBy[n.id].pools.filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).length) : '–'}</span></button>`).join('');
     const m = miningBy[netId] ?? null, site = MINING_SITES[netId], chainName = network().chain;
     $('pools-eyebrow').textContent = `Mining pools on ${chainName}`;
-    const q = poolsFilter.trim().toLowerCase(), grid = $('pools-grid');
     if (!m) {
       $('pools-context').textContent = `No mining pools from ${chainName} yet: ${site ?? 'its explorer'} has not answered. Pick another blockchain above, or try again in a moment.`;
-      grid.innerHTML = ''; $('pools-source').textContent = ''; return;
+      $('pools-list').innerHTML = ''; $('pools-source').textContent = ''; return;
     }
-    const win = windowSpoken(m.window), all = m.pools.slice().sort((a, b) => b.blocks - a.blocks), list = q ? all.filter((x) => x.name.toLowerCase().includes(q)) : all;
+    const win = windowSpoken(m.window), all = m.pools.filter((x) => x.name && x.name !== 'Unknown' && x.blocks > 0).sort((a, b) => b.blocks - a.blocks);
     $('pools-context').textContent = `${fmt(all.length)} mining pool${all.length === 1 ? '' : 's'} found on ${chainName} in ${win}`
-      + (m.blockCount ? `, from ${fmt(m.blockCount)} blocks.` : '.') + ' Pick one to see every block it mined.';
-    grid.innerHTML = list.length ? list.map((x) => {
-      const rank = all.indexOf(x) + 1, share = m.blockCount ? x.blocks / m.blockCount : 0, d = typeof datumLabel === 'function' ? datumLabel({ pool: x.name }) : null;
-      return `<button type="button" class="pp" data-pool="${esc(x.name)}"><span class="pp-top"><span class="pp-rank">#${rank}</span><b>${esc(x.name)}</b></span>
-        <span class="pp-bar"><i style="width:${Math.max(2, Math.min(100, share * 100)).toFixed(1)}%"></i></span>
-        <span class="pp-meta"><em>${(share * 100).toFixed(1)}%</em> · ${fmt(x.blocks)} block${x.blocks === 1 ? '' : 's'}${m.hash ? ` · ~${si(share * m.hash, 1)}H/s` : ''}</span>${d ? DATUM_BADGE[d] : ''}</button>`;
-    }).join('') : `<p class="pool-empty">No mining pool called “${esc(poolsFilter.trim())}” on ${esc(chainName)}.</p>`;
+      + (m.blockCount ? `, from ${fmt(m.blockCount)} blocks.` : '.') + ' Every pool is a black hole: pick one to see every block it mined.';
+    $('pools-list').innerHTML = all.filter((x) => !sky.q || x.name.toLowerCase().includes(sky.q)).map((x) => `<li><button type="button" data-pool="${esc(x.name)}">${esc(x.name)}</button></li>`).join('');
     $('pools-source').textContent = m.live ? `Pools seen by ${fromName(netId, site)}, updated ${new Date(m.at * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}.` : `Pools from a snapshot of ${site}/mining (${site} is not reachable from this page).`;
   }
-  $('pools-chains').addEventListener('click', (e) => { const b = e.target.closest('[data-net]'); if (!b) return; poolsFilter = ''; $('pools-filter').value = ''; setNetwork(b.dataset.net); if (typeof renderMiningStats === 'function') renderMiningStats(); renderPoolsPage(); });
-  $('pools-filter').addEventListener('input', (e) => { poolsFilter = e.target.value; renderPoolsPage(); });
-  $('pools-grid').addEventListener('click', (e) => { const b = e.target.closest('[data-pool]'); if (b) { poolFrom = 'pools'; showPool(b.dataset.pool); } });
+  $('pools-chains').addEventListener('click', (e) => { const b = e.target.closest('[data-net]'); if (!b) return; poolsFilter = ''; sky.q = ''; sky.page = 0; sky.refS = null; $('pools-filter').value = ''; setNetwork(b.dataset.net); if (typeof renderMiningStats === 'function') renderMiningStats(); renderPoolsPage(); });
+  $('pools-filter').addEventListener('input', (e) => { poolsFilter = e.target.value; sky.q = poolsFilter.trim().toLowerCase(); sky.page = 0; sky.refS = null; if (typeof renderMiningStats === 'function') renderMiningStats(); });
+  $('pools-list').addEventListener('click', (e) => { const b = e.target.closest('[data-pool]'); if (b) { poolFrom = 'pools'; showPool(b.dataset.pool); } });
   // ---------- a mining pool's own page: every block it mined ----------
   var poolView = null;          // the pool the page is showing
   var poolBlocks = {};          // per network and pool: the block list its mining page gave us
