@@ -906,13 +906,23 @@
   .pool-find input { width: 100%; box-sizing: border-box; padding: 10px 16px; border: 1px solid var(--line-strong); border-radius: 999px; background: rgba(10, 12, 24, .55); color: var(--text); font: 400 14px/1.2 var(--sans); }
   .pool-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   /* every block of the pool is a miniature of the animated mined block in the strip: the same cube, height plate, label and DATUM badge */
-  .pool-blocks { --s: 108px; --k: .864; --d: 14px; width: 100%; display: flex; flex-wrap: wrap; justify-content: center; align-items: flex-start; gap: 14px 8px; }
+  .pool-slider { position: relative; width: 100%; min-width: 0; max-width: 100%; }
+  .poolpage { grid-template-columns: minmax(0, 1fr); }
+  /* one row of blocks that slides sideways: every block of the pool in the period is in it, scroll (or use the arrows) to reach them all */
+  .pool-blocks { --s: 108px; --k: .864; --d: 14px; width: 100%; display: flex; flex-wrap: nowrap; justify-content: safe center; align-items: flex-start; gap: 8px; overflow-x: auto; overflow-y: hidden; overscroll-behavior-x: contain; scroll-snap-type: x proximity; scroll-padding-inline: 20px; padding: 4px 6px 14px; scrollbar-width: thin; scrollbar-color: rgba(160, 170, 230, .45) transparent; -webkit-overflow-scrolling: touch; }
+  .pool-blocks::-webkit-scrollbar { height: 8px; } .pool-blocks::-webkit-scrollbar-track { background: transparent; } .pool-blocks::-webkit-scrollbar-thumb { background: rgba(160, 170, 230, .35); border-radius: 999px; }
+  .pool-blocks .block-wrap { flex: 0 0 auto; scroll-snap-align: start; }
+  .pool-slide { position: absolute; top: calc(50% - 22px); z-index: 2; width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); background: rgba(10, 12, 24, .82); color: var(--text); font: 600 18px/1 var(--sans); cursor: pointer; display: grid; place-items: center; padding: 0; box-shadow: 0 4px 18px rgba(0, 0, 0, .45); transition: border-color .15s, color .15s, opacity .15s; }
+  .pool-slide:hover { border-color: var(--link); color: var(--link); } .pool-slide:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
+  .pool-slide[hidden] { display: none; } .pool-slide.prev { left: 0; } .pool-slide.next { right: 0; }
+  .pool-pos { margin: 0; text-align: center; color: var(--muted); font: 400 12.5px/1.4 var(--sans); font-variant-numeric: tabular-nums; }
+  .pool-pos[hidden] { display: none; }
   .pool-blocks .block-wrap { box-sizing: border-box; width: calc(var(--s) + var(--d) + 26px); padding: 16px 13px 6px; content-visibility: auto; contain-intrinsic-size: auto calc(var(--s) + var(--d) + 26px) 260px; }   /* hundreds of blocks: only the ones on screen are drawn */
   .pool-blocks .block-wrap .cube { animation: none !important; filter: drop-shadow(0 0 12px rgba(var(--glow, 255, 77, 77), .38)); }
   .pool-blocks .below { display: grid; justify-items: center; gap: 6px; }
   .pool-blocks .below .datum-badge { font-size: calc(10.5px * var(--k, 1)); letter-spacing: .02em; padding: 4px 7px; white-space: nowrap; }
   @media (max-width: 640px) { .pool-blocks { --s: 92px; --k: 1; } }
-  .pool-empty { grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
+  .pool-empty { flex: 1 0 100%; grid-column: 1 / -1; margin: 0; text-align: center; color: var(--muted); font: 400 13.5px/1.6 var(--sans); max-width: 60ch; justify-self: center; }
   /* the page that lists every mining pool, to pick one */
   .pools-find input:focus-visible { outline: 2px solid var(--link); outline-offset: 2px; }
   .pools-find { flex: 1 1 240px; max-width: 420px; }
@@ -1429,7 +1439,8 @@
   </header>
   <div class="pool-tools"><a class="pool-backbtn" id="pool-back" href="#dashboard">« Back to the mempool</a><label class="pool-find" id="pool-find"><span class="sr-only">Search the blocks of this mining pool</span><input id="pool-filter" type="search" placeholder="Search a block by height or hash" autocomplete="off" spellcheck="false"></label></div>
   <div class="pool-load" id="pool-load" role="status" aria-live="polite" hidden><div class="bar"><i></i></div><span id="pool-load-t"></span></div>
-  <div class="pool-blocks" id="pool-blocks"></div>
+  <div class="pool-slider" id="pool-slider"><button type="button" class="pool-slide prev" id="pool-prev" aria-label="Show earlier blocks of this pool" hidden>‹</button><div class="pool-blocks" id="pool-blocks" tabindex="0" role="region" aria-label="The blocks of this mining pool, in one row: scroll sideways to see them all"></div><button type="button" class="pool-slide next" id="pool-next" aria-label="Show more blocks of this pool" hidden>›</button></div>
+  <p class="pool-pos" id="pool-pos" aria-live="polite" hidden></p>
   <p class="msource" id="pool-source"></p>
 </section>
 
@@ -5166,12 +5177,29 @@ window.__coins = COIN_LOGOS;
     renderPoolBlocks(name);
   }
   const poolBlocksOnPage = (name) => (chain().blocks ?? []).filter((b) => (b.pool ?? '').trim().toLowerCase() === name.toLowerCase());
+  // the one-row slider of a pool's blocks: arrows that move a screenful, and a line saying which blocks are in view
+  function poolSlideUpdate() {
+    const r = $('pool-blocks'), prev = $('pool-prev'), next = $('pool-next'), pos = $('pool-pos'); if (!r) return;
+    const kids = [...r.querySelectorAll('.block-wrap')], over = r.scrollWidth - r.clientWidth > 4;
+    prev.hidden = !over || r.scrollLeft < 4; next.hidden = !over || r.scrollLeft > r.scrollWidth - r.clientWidth - 4;
+    if (!kids.length) { pos.hidden = true; return; }
+    const L = r.getBoundingClientRect().left, R = L + r.clientWidth; let a = -1, z = -1;
+    kids.forEach((k, i) => { const b = k.getBoundingClientRect(); if (b.right > L + 8 && b.left < R - 8) { if (a < 0) a = i; z = i; } });
+    pos.hidden = !over; if (over && a >= 0) pos.textContent = `Blocks ${fmt(a + 1)}–${fmt(z + 1)} of ${fmt(kids.length)} · newest first · scroll sideways or use the arrows`;
+  }
+  { const r = $('pool-blocks'); if (r) {
+    r.addEventListener('scroll', () => requestAnimationFrame(poolSlideUpdate), { passive: true }); window.addEventListener('resize', poolSlideUpdate);
+    const go = (d) => r.scrollBy({ left: d * Math.max(160, r.clientWidth * 0.85), behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    $('pool-prev').addEventListener('click', () => go(-1)); $('pool-next').addEventListener('click', () => go(1));
+    r.addEventListener('keydown', (e) => { if (e.key === 'ArrowRight') { e.preventDefault(); go(0.35); } else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-0.35); } });
+  } }
   function renderPoolBlocks(name) {
     const key = netId + '|' + name.toLowerCase(), got = poolBlocks[key], stat = poolStat(name);
     const all = got?.length || poolWindow[key] ? (got ?? []) : poolBlocksOnPage(name), t = Date.now() / 1000;
     const q = poolQ.trim().toLowerCase().replace(/[,\s]/g, ''), list = q ? all.filter((b) => String(b.height).includes(q) || (b.hash ?? b.id ?? '').toLowerCase().includes(q)) : all;
     // a simulated block has a made-up hash, so it links nowhere, just as in the strip
     const link = (chain().live || got?.length) && EXPLORER[netId] ? EXPLORER[netId] : null, onPage = chain().blocks ?? [];
+    const rail = $('pool-blocks'), keepX = rail.scrollLeft, keepName = rail.dataset.pool; rail.dataset.pool = key + '|' + q;
     $('pool-blocks').innerHTML = list.length
       ? list.map((b0) => {
         const full = onPage.find((x) => x.height === b0.height), b = full ?? { medianFee: 0, feeRange: [0, 0], ...b0, weight: b0.weight ?? (b0.size ?? 0) * 3 };
@@ -5184,6 +5212,8 @@ window.__coins = COIN_LOGOS;
       : q && all.length ? `<p class="pool-empty">No block of ${esc(name)} matches "${esc(poolQ.trim())}". Search by block height or by block hash.</p>`
       : (poolWindow[key] && !poolBlocksBusy[key]) ? `<p class="pool-empty">${esc(name)} has not mined a block since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}) yet. The page keeps watching: its next block appears here.</p>`
       : `<p class="pool-empty">No block of ${esc(name)} among the ones this page has seen yet. The page keeps watching: the next one it finds appears here.</p>`;
+    if (keepName === rail.dataset.pool) rail.scrollLeft = keepX; else rail.scrollLeft = 0;
+    poolSlideUpdate();
     $('pool-source').textContent = q && all.length ? `${fmt(list.length)} of the ${fmt(all.length)} blocks of ${name} match.` : poolWindow[key] && !got?.length ? ''
       : got?.length
       ? (poolWindow[key] ? `All ${fmt(list.length)} blocks of ${name} since the last difficulty adjustment (block ${fmt(poolEpoch[key] ?? 0)}), live from ${MINING_SITES[netId]}. When the next adjustment starts, this page starts over with the new blocks.` : `The last ${fmt(list.length)} blocks of ${name}, live from ${MINING_SITES[netId]}.`)
