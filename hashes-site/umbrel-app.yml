@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.100"
+version: "1.9.101"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The Academy tab is removed from the menu for now (the page is parked and comes back later). "How to read the blocks?" is unchanged.
   How to read the blocks: the Monero Centralised (red glow) text now reads "A Monero block that is mined by a centralised pool. The reward is paid to a single address, the pool, which builds the block template and pays its miners as a third-party service."
   How to read the blocks: the DATUM Compatible (orange glow) text now says the pool lets its miners build their own block templates with their own node, that miners get non-custodial payouts directly from the coinbase transaction, and that the pool is compatible with decentralised blocks yet can also be used by miners that do not create their own block templates.
   How to read the blocks: the Decentralised (green glow) text now says these blocks are created by solominers or mining pools that only accept miners that use Stratum V2 or DATUM Gateway.
