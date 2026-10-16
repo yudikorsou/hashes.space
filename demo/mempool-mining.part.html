@@ -208,23 +208,27 @@
   #chain-area.p2pool-open .netbar { display: none; }
 
   .strip, #mining-stats { transition: opacity .32s ease; } .strip.netfade, #mining-stats.netfade { opacity: 0; transition-duration: .16s; pointer-events: none; }
-  /* PHONES (390-448 px wide for the 6.1"+ iPhones, 360-448 px for the Androids): the strip keeps its side-by-side layout (the four animations of
-     "Inside the miners", the fan, the four newest blocks) as a miniature, scaled (zoom) in steps to the width of the phone, so all of it is in view without swiping. */
+  /* PHONES (390-448 px wide for the 6.1"+ iPhones, 360-448 px for the Androids): the strip keeps its side-by-side layout - the four animations of
+     "Inside the miners", the fan, and the newest blocks of "The blockchain" (two at a time, swipe for the others) - as a miniature.
+     It is scaled with transform (the same on iOS Safari and Chrome; CSS zoom is not), in steps to the width of the phone: 444 + 73 + 236 = 753 px at full size. */
   @media (max-width: 520px) {
-    .strip { --s: 92px; --d: 14px; --z: .33; grid-template-columns: auto auto auto; justify-content: center; padding: 14px 0 6px; }
-    @media (min-width: 360px) { .strip { --z: .37; } } @media (min-width: 375px) { .strip { --z: .39; } } @media (min-width: 390px) { .strip { --z: .4; } }
-    @media (min-width: 400px) { .strip { --z: .41; } } @media (min-width: 412px) { .strip { --z: .42; } } @media (min-width: 428px) { .strip { --z: .44; } }
-    @media (min-width: 440px) { .strip { --z: .45; } } @media (min-width: 448px) { .strip { --z: .46; } } @media (min-width: 480px) { .strip { --z: .49; } }
-    .strip > * { zoom: var(--z); }
-    .strip > .strip-head { width: auto; max-width: none; font-size: 13px; letter-spacing: .12em; margin: 0 0 22px; justify-self: center; }
+    .strip { --s: 92px; --d: 14px; --z: .46; --H: 232px; grid-template-columns: calc(444px * var(--z)) calc(73px * var(--z)) calc(236px * var(--z)); grid-template-rows: auto calc(var(--H) * var(--z)); justify-content: center; column-gap: 0; padding: 18px 0 10px; }
+    @media (min-width: 360px) { .strip { --z: .47; } } @media (min-width: 375px) { .strip { --z: .49; } } @media (min-width: 390px) { .strip { --z: .51; } }
+    @media (min-width: 402px) { .strip { --z: .52; } } @media (min-width: 412px) { .strip { --z: .54; } } @media (min-width: 428px) { .strip { --z: .56; } }
+    @media (min-width: 440px) { .strip { --z: .58; } } @media (min-width: 480px) { .strip { --z: .63; } }
+    .strip > .half, .strip > .gate { transform: scale(var(--z)); transform-origin: 0 0; align-self: start; justify-self: start; }
+    .strip > .strip-head { width: auto; max-width: none; font-size: 9.5px; letter-spacing: .06em; margin: 0 0 12px; justify-self: center; }
     .strip > .strip-head.left, .strip > .strip-head.right { margin-left: 0; margin-right: 0; }
-    .strip .half, .strip .half.mined, .strip .half.projected { min-width: max-content; gap: 4px; padding: 6px 4px; overflow: visible; scroll-snap-type: none; justify-content: flex-start; }
+    .strip > .half.projected { width: 444px; }
+    .strip > .half.mined { width: 236px; }
+    .strip > .gate { width: 73px; height: var(--H); }
+    .strip .half.projected { display: flex; gap: 4px; padding: 6px 4px; overflow: visible; scroll-snap-type: none; justify-content: flex-start; }
     .strip .projected > :first-child { margin-left: 0; }
-    .strip .mined > .block-wrap:nth-child(n+5) { display: none; }       /* the four newest blocks */
-    .strip .block-wrap.clipped { visibility: visible; }
-    .swipe-hint { display: none; }
+    .strip .half.mined { gap: 12px; padding: 6px; scroll-padding: 0 6px; scrollbar-width: none; } .strip .half.mined::-webkit-scrollbar { display: none; }
+    .strip .half.mined > .block-wrap { scroll-snap-align: start; }
     .projected .above { min-height: 26px; }
-    .strip .mining .above { width: 100%; white-space: normal; flex-wrap: wrap; align-items: flex-end; line-height: 1.15; }
+    .strip .mining .above { width: 100%; white-space: normal; flex-wrap: wrap; align-items: flex-end; line-height: 1.15; overflow-wrap: normal; }
+    .strip .above, .strip .below, .strip .datum-badge { overflow-wrap: normal; word-break: normal; hyphens: none; }
     .strip .below { max-width: 100%; }
     .strip .below .datum-badge { white-space: normal; font-size: 9px; line-height: 1.2; letter-spacing: 0; padding: 3px 4px; }
     .strip .below .fleet-shares { display: none; }
