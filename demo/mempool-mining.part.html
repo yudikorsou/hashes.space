@@ -95,7 +95,7 @@
   .sky-arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line, rgba(255,255,255,.18)); background: rgba(20,22,40,.55); color: var(--text); font: 400 24px/1 var(--sans); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0 0 3px; z-index: 2; }
   .sky-arrow.prev { left: 4px; } .sky-arrow.next { right: 4px; }
   .sky-arrow:hover:not(:disabled) { border-color: var(--text); } .sky-arrow:disabled { opacity: .25; cursor: default; }
-  @media (max-width: 520px) { .pool-sky { min-height: 260px; flex-basis: 260px; } }
+  @media (max-width: 520px) { .pool-sky { min-height: 330px; flex-basis: 330px; } }
   .mcard .hrsub { margin: 4px 0 0; text-align: center; color: var(--muted); font: 400 12px/1.35 var(--sans); }
   .mstats .kpis dd { margin: 6px 0 0; font: 500 20px/1.2 var(--mono); color: var(--text); font-variant-numeric: tabular-nums; }
   .mcard svg { width: 100%; height: auto; display: block; overflow: visible; }
@@ -207,6 +207,8 @@
 
   #chain-area.p2pool-open .netbar { display: none; }
 
+  /* no pop-ups on touch screens (a tap leaves them on the screen) */
+  @media (hover: none), (pointer: coarse) { .mtip, .hr-tip { display: none !important; } }
   .strip, #mining-stats { transition: opacity .32s ease; } .strip.netfade, #mining-stats.netfade { opacity: 0; transition-duration: .16s; pointer-events: none; }
   /* PHONES (390-448 px wide for the 6.1"+ iPhones, 360-448 px for the Androids): the strip keeps its side-by-side layout - the four animations of
      "Inside the miners", the fan, and the newest blocks of "The blockchain" (two at a time, swipe for the others) - as a miniature.
@@ -813,7 +815,8 @@
     const p = (r, a) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`, large = a1 - a0 > Math.PI ? 1 : 0;
     return `M${p(r1, a0)}A${r1} ${r1} 0 ${large} 1 ${p(r1, a1)}L${p(r0, a1)}A${r0} ${r0} 0 ${large} 0 ${p(r0, a0)}Z`;
   }
-  function tip(e, html) { let t = $('mtip'); if (!t) { t = document.createElement('div'); t.id = 'mtip'; t.className = 'mtip'; document.body.appendChild(t); } if (!html) { t.hidden = true; return; } t.hidden = false; t.innerHTML = html; t.style.left = Math.min(innerWidth - 250, e.clientX + 12) + 'px'; t.style.top = e.clientY + 12 + 'px'; }
+  function tip(e, html) { if ((e && e.pointerType === 'touch') || matchMedia('(hover: none)').matches) { const t0 = $('mtip'); if (t0) t0.hidden = true; return; }   // no pop-ups on a phone: they stay on the screen after a tap
+    let t = $('mtip'); if (!t) { t = document.createElement('div'); t.id = 'mtip'; t.className = 'mtip'; document.body.appendChild(t); } if (!html) { t.hidden = true; return; } t.hidden = false; t.innerHTML = html; t.style.left = Math.min(innerWidth - 250, e.clientX + 12) + 'px'; t.style.top = e.clientY + 12 + 'px'; }
   // the pools as a half ring: it opens at the left, runs over the top and closes at the right,
   // so the chain's week reads as one sweep from the pool with the most hashrate to the one with the least
   // Bitcoin: the pools as ranked bars, the biggest on top: the easiest way to read how much hashrate each pool brings
@@ -939,7 +942,7 @@
       return;
     }
     const n = sky.ships.length, area = sky.w * (sky.h - 30) * 0.26, sumS = sky.refS || sky.ships.reduce((a, x) => a + Math.sqrt(x.vis), 0) || 1;
-    const k = Math.min(Math.max(30, Math.min(58, (sky.h - 90) / 5)), Math.max(10, Math.sqrt(area / Math.PI) * Math.sqrt(n > 1 ? 1 : 1) / Math.max(1.6, Math.sqrt(sumS * 0.9))));
+    const k = Math.min(Math.max(30, Math.min(sky.w < 560 ? 34 : 58, (sky.h - 90) / 5)), Math.max(10, Math.sqrt(area / Math.PI) * Math.sqrt(n > 1 ? 1 : 1) / Math.max(1.6, Math.sqrt(sumS * 0.9))));
     sky.ships.forEach((sh, i) => {
       sh.r = Math.max(9, k * Math.sqrt(Math.min(1, sh.vis * 2.4)) + 4);
       if (sh.x == null || sh.x > sky.w || sh.y > sky.h) { sh.x = ((i * 0.618 + 0.13) % 1) * sky.w; sh.y = 40 + ((i * 0.382 + 0.2) % 1) * (sky.h - 110); }
@@ -951,10 +954,10 @@
         const A = sky.ships[i], B = sky.ships[j], dx = B.hx - A.hx, dy = (B.hy - A.hy) * 1.15, d = Math.hypot(dx, dy) || 0.01, need = rc(A) + rc(B) - 10;
         if (d < need) { const push = (need - d) / 2 / d; A.hx -= dx * push; A.hy -= dy * push / 1.15; B.hx += dx * push; B.hy += dy * push / 1.15; }
       }
-      for (const sh of sky.ships) { const m = sh.r * 2.3 + 4; sh.hx = Math.max(m, Math.min(sky.w - m, sh.hx)); sh.hy = Math.max(sh.r * 1.2 + 6, Math.min(sky.h - 28 - Math.max(sh.r * 1.05, sh.r * 0.8 + 6) - 30, sh.hy)); }
+      for (const sh of sky.ships) { const m = sh.r * 2.3 + 4; sh.hx = Math.max(m, Math.min(sky.w - m, sh.hx)); sh.hy = Math.max(sh.r * 1.2 + 6, Math.min(sky.h - 28 - Math.max(sh.r * 1.05, sh.r * 0.8 + 6) - 30 - (sky.w < 560 ? 36 : 0), sh.hy)); }
     }
     { // centre the cluster between the top and the caption
-      const top = Math.min(...sky.ships.map((x) => x.hy - x.r * 1.3)), bot = Math.max(...sky.ships.map((x) => x.hy + Math.max(x.r * 1.05, x.r * 0.8 + 6) + 28)), dy = ((sky.h - 30) - (top + bot)) / 2;
+      const top = Math.min(...sky.ships.map((x) => x.hy - x.r * 1.3)), bot = Math.max(...sky.ships.map((x) => x.hy + Math.max(x.r * 1.05, x.r * 0.8 + 6) + 28 + (sky.w < 560 ? 36 : 0))), dy = ((sky.h - 30) - (top + bot)) / 2;
       for (const sh of sky.ships) sh.hy += dy;
     }
   }
@@ -1004,7 +1007,7 @@
       g.strokeStyle = skyA(sh.color, 0.6); g.beginPath(); g.ellipse(0, 0, R * 1.75, R * 1.75 * 0.27, 0, 0, Math.PI); g.stroke();
       g.restore();
       // what it contributes, under it
-      const pk = sky.picker, ly = pk ? y + sh.labY : y + Math.max(R * 1.05, R * 0.8 + 6) + 12;
+      const pk = sky.picker, ly = pk ? y + sh.labY : y + Math.max(R * 1.05, R * 0.8 + 6) + 12 + (sky.w < 560 ? 12 : 0);   // a little more room under the hole on a phone
       g.textAlign = 'center'; g.fillStyle = hot ? '#fff' : '#e8ebf5'; g.font = font(pk ? 13.5 : sh.r > 24 ? 12 : 11, 600); g.fillText(sh.name.length > (pk ? 18 : 20) ? sh.name.slice(0, pk ? 17 : 19) + '…' : sh.name, x, ly);
       if (pk) {   // the summary of the pool under its hole
         g.fillStyle = muted; g.font = font(11, 500); g.fillText(`${fmt(sh.blocks)} block${sh.blocks === 1 ? '' : 's'} · ${si(sh.hash, 1)}H/s`, x, ly + 17);
