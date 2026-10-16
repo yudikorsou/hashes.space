@@ -984,6 +984,28 @@
   #chain-area.p2pool-open .netbar { display: none; }
 
   .strip, #mining-stats { transition: opacity .32s ease; } .strip.netfade, #mining-stats.netfade { opacity: 0; transition-duration: .16s; pointer-events: none; }
+  /* PHONES (390-448 px wide for the 6.1"+ iPhones, 360-448 px for the Androids): the strip keeps its side-by-side layout (the four animations of
+     "Inside the miners", the fan, the four newest blocks) as a miniature, scaled (zoom) in steps to the width of the phone, so all of it is in view without swiping. */
+  @media (max-width: 520px) {
+    .strip { --s: 92px; --d: 14px; --z: .33; grid-template-columns: auto auto auto; justify-content: center; padding: 14px 0 6px; }
+    @media (min-width: 360px) { .strip { --z: .37; } } @media (min-width: 375px) { .strip { --z: .39; } } @media (min-width: 390px) { .strip { --z: .4; } }
+    @media (min-width: 400px) { .strip { --z: .41; } } @media (min-width: 412px) { .strip { --z: .42; } } @media (min-width: 428px) { .strip { --z: .44; } }
+    @media (min-width: 440px) { .strip { --z: .45; } } @media (min-width: 448px) { .strip { --z: .46; } } @media (min-width: 480px) { .strip { --z: .49; } }
+    .strip > * { zoom: var(--z); }
+    .strip > .strip-head { width: auto; max-width: none; font-size: 13px; letter-spacing: .12em; margin: 0 0 22px; justify-self: center; }
+    .strip > .strip-head.left, .strip > .strip-head.right { margin-left: 0; margin-right: 0; }
+    .strip .half, .strip .half.mined, .strip .half.projected { min-width: max-content; gap: 4px; padding: 6px 4px; overflow: visible; scroll-snap-type: none; justify-content: flex-start; }
+    .strip .projected > :first-child { margin-left: 0; }
+    .strip .mined > .block-wrap:nth-child(n+5) { display: none; }       /* the four newest blocks */
+    .strip .block-wrap.clipped { visibility: visible; }
+    .swipe-hint { display: none; }
+    .projected .above { min-height: 26px; }
+    .strip .mining .above { width: 100%; white-space: normal; flex-wrap: wrap; align-items: flex-end; line-height: 1.15; }
+    .strip .below { max-width: 100%; }
+    .strip .below .datum-badge { white-space: normal; font-size: 9px; line-height: 1.2; letter-spacing: 0; padding: 3px 4px; }
+    .strip .below .fleet-shares { display: none; }
+    .strip .txt.fp .fee { font-size: 11px; letter-spacing: 0; white-space: nowrap; }
+  }
   @media (prefers-reduced-motion: reduce) { .strip, #mining-stats { transition: none; } }
 
   /* Learn: one topic at a time, picked from a row of tabs, on the same soft glow as the charts above */
