@@ -2,7 +2,7 @@ manifestVersion: 1
 id: hashes-site
 category: crypto
 name: hashes.space
-version: "1.9.104"
+version: "1.9.105"
 tagline: The hashes.space Find Mempool page, served from your own Umbrel
 icon: https://raw.githubusercontent.com/yudikorsou/hashes.space/main/hashes-site/icon.png
 description: >-
@@ -35,6 +35,7 @@ defaultPassword: ""
 submitter: yudikorsou
 submission: https://github.com/yudikorsou/hashes.space
 releaseNotes: >-
+  The Themes menu now opens on top of the page (before it opened behind the search bar and the blocks, so a theme could not be picked on a phone). The "Swipe for more blocks" hint is smaller on phones.
   Phones: no more pop-ups on touch screens (the moon, the mining pools black holes and the hashrate chart no longer leave a box on the screen after a tap; mouse hover on a computer is unchanged). The pool names under the black holes have more room on a phone.
   Phones: the strip is fixed for iPhone Safari (the text broke apart). The four animations of "Inside the miners", the fan and the blockchain now fit as a miniature, scaled to the width of the phone; "The blockchain" shows two blocks at a time and the others are a swipe away.
   Phones: the strip with the four animations of "Inside the miners", the fan and the four newest blocks of "The blockchain" is now shown whole as a miniature, scaled to the width of the phone (360-448 px, as the iPhones and Androids of 6.1 inch and up), so nothing has to be swiped to see it.
